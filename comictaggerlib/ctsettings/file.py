@@ -63,6 +63,12 @@ def identifier(parser: settngs.Manager) -> None:
         type=int,
         help="ComicTagger will automatically add an additional cover that has any black borders cropped.\nIf the difference in height is less than %(default)s%% the cover will not be cropped.\ndefault: %(default)s\n\n",
     )
+    parser.add_setting(
+        "--tpb-detection",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Enables TPB detection. May stop comics not marked as a TPB in ComicVine from being found.",
+    )
 
     parser.add_setting(
         "--sort-series-by-year",

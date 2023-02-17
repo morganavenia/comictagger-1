@@ -25,6 +25,7 @@ def test_crop(cbz_double_cover, config, tmp_path, comicvine_api):
         cache_dir=config.Runtime_Options__config.user_cache_dir,
         border_crop_percent=config.Issue_Identifier__border_crop_percent,
         talker=comicvine_api,
+        tpb_detection=config.Issue_Identifier__tpb_detection,
     )
     ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
 
@@ -51,6 +52,7 @@ def test_get_search_keys(cbz, config, additional_md, expected, comicvine_api):
         cache_dir=config.Runtime_Options__config.user_cache_dir,
         border_crop_percent=config.Issue_Identifier__border_crop_percent,
         talker=comicvine_api,
+        tpb_detection=config.Issue_Identifier__tpb_detection,
     )
     ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
 
@@ -75,6 +77,7 @@ def test_get_issue_cover_match_score(
         cache_dir=config.Runtime_Options__config.user_cache_dir,
         border_crop_percent=config.Issue_Identifier__border_crop_percent,
         talker=comicvine_api,
+        tpb_detection=config.Issue_Identifier__tpb_detection,
     )
     ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
     score = ii._get_issue_cover_match_score(
@@ -96,6 +99,7 @@ def test_search(cbz, config, comicvine_api):
         cache_dir=config.Runtime_Options__config.user_cache_dir,
         border_crop_percent=config.Issue_Identifier__border_crop_percent,
         talker=comicvine_api,
+        tpb_detection=config.Issue_Identifier__tpb_detection,
     )
     ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
     result, issues = ii.identify(cbz, cbz.read_tags("cr"))
@@ -154,6 +158,7 @@ def test_crop_border(cbz, config, comicvine_api):
         cache_dir=config.Runtime_Options__config.user_cache_dir,
         border_crop_percent=config.Issue_Identifier__border_crop_percent,
         talker=comicvine_api,
+        tpb_detection=config.Issue_Identifier__tpb_detection,
     )
     ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
 
