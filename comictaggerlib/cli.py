@@ -94,6 +94,13 @@ class CLI:
 
     def run(self) -> int:
         if len(self.config.Runtime_Options__files) < 1:
+            if self.config.Commands__command == Action.print:
+                res = self.print(None)
+                if res.status != Status.success:
+                    return_code = 3
+                if self.config.Runtime_Options__json:
+                    print(json.dumps(dataclasses.asdict(res), cls=OutputEncoder, indent=2))
+                return 0
             logger.error("You must specify at least one filename.  Use the -h option for more info")
             return 1
         return_code = 0
@@ -279,7 +286,14 @@ class CLI:
 
         return (md, tags_used)
 
-    def print(self, ca: ComicArchive) -> Result:
+    def print(self, ca: ComicArchive | None) -> Result:
+        md = None
+        if ca is None:
+            if not self.config.Auto_Tag__metadata.is_empty:
+                if not self.config.Auto_Tag__metadata.is_empty:
+                    self.output("--------- CLI tags ---------")
+                    self.output(self.config.Auto_Tag__metadata)
+            return Result(Action.print, Status.success, None, md=md)  # type: ignore
         if not self.config.Runtime_Options__tags_read:
             page_count = ca.get_number_of_pages()
 
@@ -304,7 +318,6 @@ class CLI:
 
         self.output()
 
-        md = None
         for tag_id, tag in tags.items():
             if not self.config.Runtime_Options__tags_read or tag_id in self.config.Runtime_Options__tags_read:
                 if ca.has_tags(tag_id):

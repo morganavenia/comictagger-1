@@ -287,12 +287,11 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
     if config[0].Runtime_Options__tags_read and not config[0].Runtime_Options__tags_write:
         config[0].Runtime_Options__tags_write = config[0].Runtime_Options__tags_read
 
-    if (
-        config[0].Commands__command not in (Action.save_config, Action.list_plugins)
-        and config[0].Runtime_Options__no_gui
-        and not config[0].Runtime_Options__files
-    ):
-        parser.exit(message="Command requires at least one filename!\n", status=1)
+    if config[0].Runtime_Options__no_gui and not config[0].Runtime_Options__files:
+        if config[0].Commands__command == Action.print and not config[0].Auto_Tag__metadata.is_empty:
+            ...  # allow printing the metadata provided on the commandline
+        elif config[0].Commands__command not in (Action.save_config, Action.list_plugins):
+            parser.exit(message="Command requires at least one filename!\n", status=1)
 
     if config[0].Commands__command == Action.delete and not config[0].Runtime_Options__tags_write:
         parser.exit(message="Please specify the tags to delete with --tags-write\n", status=1)
