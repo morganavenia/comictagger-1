@@ -61,6 +61,7 @@ class Tag:
             "credits.person",
             "credits.role",
             "credits.primary",
+            "credits.language",
             "price",
             "is_version_of",
             "rights",

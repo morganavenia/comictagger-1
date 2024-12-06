@@ -43,6 +43,9 @@ logger = logging.getLogger(__name__)
 REMOVE = object()
 
 
+Credit = merge.Credit
+
+
 class PageType(merge.StrEnum):
     """
     These page info classes are exactly the same as the CIX scheme, since
@@ -106,9 +109,6 @@ class PageMetadata:
             height=self.height if "height" in attributes else None,
             width=self.width if "width" in attributes else None,
         )
-
-
-Credit = merge.Credit
 
 
 @dataclasses.dataclass
@@ -192,7 +192,7 @@ class GenericMetadata:
     characters: set[str] = dataclasses.field(default_factory=set)
     teams: set[str] = dataclasses.field(default_factory=set)
     locations: set[str] = dataclasses.field(default_factory=set)
-    credits: list[merge.Credit] = dataclasses.field(default_factory=list)
+    credits: list[Credit] = dataclasses.field(default_factory=list)
 
     # Some CoMet-only items
     price: float | None = None
@@ -391,19 +391,21 @@ class GenericMetadata:
         return coverlist
 
     @overload
-    def add_credit(self, person: merge.Credit) -> None: ...
+    def add_credit(self, person: Credit) -> None: ...
 
     @overload
-    def add_credit(self, person: str, role: str, primary: bool = False) -> None: ...
+    def add_credit(self, person: str, role: str, primary: bool = False, language: str = "") -> None: ...
 
-    def add_credit(self, person: str | merge.Credit, role: str | None = None, primary: bool = False) -> None:
+    def add_credit(
+        self, person: str | Credit, role: str | None = None, primary: bool = False, language: str = ""
+    ) -> None:
 
-        credit: merge.Credit
-        if isinstance(person, merge.Credit):
+        credit: Credit
+        if isinstance(person, Credit):
             credit = person
         else:
             assert role is not None
-            credit = merge.Credit(person=person, role=role, primary=primary)
+            credit = Credit(person=person, role=role, primary=primary, language=language)
 
         if credit.role is None:
             raise TypeError("GenericMetadata.add_credit takes either a Credit object or a person name and role")
@@ -574,12 +576,12 @@ md_test: GenericMetadata = GenericMetadata(
     teams={"Fahrenheit"},
     locations=set(utils.split("lonely  cottage ", ",")),
     credits=[
-        merge.Credit(primary=False, person="Dara Naraghi", role="Writer"),
-        merge.Credit(primary=False, person="Esteve Polls", role="Penciller"),
-        merge.Credit(primary=False, person="Esteve Polls", role="Inker"),
-        merge.Credit(primary=False, person="Neil Uyetake", role="Letterer"),
-        merge.Credit(primary=False, person="Sam Kieth", role="Cover"),
-        merge.Credit(primary=False, person="Ted Adams", role="Editor"),
+        Credit(primary=False, person="Dara Naraghi", role="Writer"),
+        Credit(primary=False, person="Esteve Polls", role="Penciller"),
+        Credit(primary=False, person="Esteve Polls", role="Inker"),
+        Credit(primary=False, person="Neil Uyetake", role="Letterer"),
+        Credit(primary=False, person="Sam Kieth", role="Cover"),
+        Credit(primary=False, person="Ted Adams", role="Editor"),
     ],
     tags=set(),
     pages=[

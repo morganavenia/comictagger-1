@@ -14,9 +14,13 @@ class Credit:
     person: str = ""
     role: str = ""
     primary: bool = False
+    language: str = ""  # Should be ISO 639 language code
 
     def __str__(self) -> str:
-        return f"{self.role}: {self.person}"
+        lang = ""
+        if self.language:
+            lang = f" [{self.language}]"
+        return f"{self.role}: {self.person}{lang}"
 
 
 class Mode(StrEnum):
