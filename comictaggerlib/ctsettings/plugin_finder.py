@@ -135,6 +135,8 @@ def _find_local_plugins(plugin_path: pathlib.Path) -> Generator[Plugin]:
 def find_plugins(plugin_folder: pathlib.Path) -> Plugins:
     """Discovers all plugins (but does not load them)."""
     ret: list[LoadedPlugin] = []
+    if not plugin_folder.is_dir():
+        return _classify_plugins(ret)
 
     zips = [x for x in plugin_folder.iterdir() if x.is_file() and x.suffix in (".zip", ".whl")]
 

@@ -27,7 +27,7 @@ if opts.APPIMAGETOOL.exists():
     raise SystemExit(0)
 
 urlretrieve(
-    "https://github.com/AppImage/AppImageKit/releases/latest/download/appimagetool-x86_64.AppImage", opts.APPIMAGETOOL
+    "https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage", opts.APPIMAGETOOL
 )
 os.chmod(opts.APPIMAGETOOL, 0o0700)
 
