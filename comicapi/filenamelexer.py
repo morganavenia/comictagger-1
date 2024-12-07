@@ -213,8 +213,11 @@ def lex_filename(lex: Lexer) -> LexerFunc | None:
         r = lex.peek()
         if r.isdigit():
             return lex_number
-        lex.accept_run(is_symbol)
-        lex.emit(ItemType.Symbol)
+        if is_symbol(r):
+            lex.accept_run(is_symbol)
+            lex.emit(ItemType.Symbol)
+        else:
+            return lex_text
     elif r.isnumeric():
         lex.backup()
         return lex_number
@@ -305,7 +308,7 @@ def lex_space(lex: Lexer) -> LexerFunc:
 def lex_text(lex: Lexer) -> LexerFunc:
     while True:
         r = lex.get()
-        if is_alpha_numeric(r):
+        if is_alpha_numeric(r) or r in "'":
             if r.isnumeric():  # E.g. v1
                 word = lex.input[lex.start : lex.pos]
                 if key.get(word.casefold(), None) == ItemType.InfoSpecifier:
@@ -313,10 +316,7 @@ def lex_text(lex: Lexer) -> LexerFunc:
                     lex.emit(key[word.casefold()])
                     return lex_filename
         else:
-            if r == "'" and lex.peek().casefold() == "s":
-                lex.get()
-            else:
-                lex.backup()
+            lex.backup()
             word = lex.input[lex.start : lex.pos + 1]
 
             if word.casefold() in key:
