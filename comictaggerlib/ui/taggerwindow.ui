@@ -919,7 +919,7 @@ Source</string>
                      <number>0</number>
                     </property>
                     <property name="columnCount">
-                     <number>3</number>
+                     <number>4</number>
                     </property>
                     <attribute name="horizontalHeaderMinimumSectionSize">
                      <number>2</number>
@@ -937,7 +937,12 @@ Source</string>
                     </column>
                     <column>
                      <property name="text">
-                      <string>Credit</string>
+                      <string>Role</string>
+                     </property>
+                    </column>
+                    <column>
+                     <property name="text">
+                      <string>Language</string>
                      </property>
                     </column>
                     <column>

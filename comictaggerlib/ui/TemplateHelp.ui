@@ -97,7 +97,7 @@ tr:nth-child(even) {
      &lt;tr&gt;&lt;td&gt;{characters}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{teams}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{locations}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
-     &lt;tr&gt;&lt;td&gt;{credits}&lt;/td&gt;&lt;td&gt;list of dict({&apos;role&apos;: string, &apos;person&apos;: string, &apos;primary&apos;: boolean})&lt;/td&gt;&lt;/tr&gt;
+     &lt;tr&gt;&lt;td&gt;{credits}&lt;/td&gt;&lt;td&gt;list of dict({&apos;role&apos;: string, &apos;person&apos;: string, &apos;primary&apos;: boolean, &apos;language&apos;: str})&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{writer}&lt;/td&gt;&lt;td&gt;(string)&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{penciller}&lt;/td&gt;&lt;td&gt;(string)&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{inker}&lt;/td&gt;&lt;td&gt;(string)&lt;/td&gt;&lt;/tr&gt;

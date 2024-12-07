@@ -105,7 +105,7 @@ Accepts the following variables:
 {characters}       (string)
 {teams}            (string)
 {locations}        (string)
-{credits}          (list of dict({'role': string, 'person': string, 'primary': boolean}))
+{credits}          (list of dict({'role': string, 'person': string, 'primary': boolean, 'language': str}))
 {writer}           (string)
 {penciller}        (string)
 {inker}            (string)

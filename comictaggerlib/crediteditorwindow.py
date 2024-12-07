@@ -17,10 +17,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+import operator
 
+import natsort
 from PyQt5 import QtWidgets, uic
 
+from comicapi import utils
+from comicapi.genericmetadata import Credit
 from comictaggerlib.ui import ui_path
 
 logger = logging.getLogger(__name__)
@@ -30,7 +33,7 @@ class CreditEditorWindow(QtWidgets.QDialog):
     ModeEdit = 0
     ModeNew = 1
 
-    def __init__(self, parent: QtWidgets.QWidget, mode: int, role: str, name: str, primary: bool) -> None:
+    def __init__(self, parent: QtWidgets.QWidget, mode: int, credit: Credit) -> None:
         super().__init__(parent)
 
         with (ui_path / "crediteditorwindow.ui").open(encoding="utf-8") as uifile:
@@ -45,54 +48,47 @@ class CreditEditorWindow(QtWidgets.QDialog):
 
         # Add the entries to the role combobox
         self.cbRole.addItem("")
-        self.cbRole.addItem("Writer")
         self.cbRole.addItem("Artist")
-        self.cbRole.addItem("Penciller")
-        self.cbRole.addItem("Inker")
         self.cbRole.addItem("Colorist")
-        self.cbRole.addItem("Letterer")
         self.cbRole.addItem("Cover Artist")
         self.cbRole.addItem("Editor")
-        self.cbRole.addItem("Other")
+        self.cbRole.addItem("Inker")
+        self.cbRole.addItem("Letterer")
+        self.cbRole.addItem("Penciller")
         self.cbRole.addItem("Plotter")
         self.cbRole.addItem("Scripter")
+        self.cbRole.addItem("Translator")
+        self.cbRole.addItem("Writer")
+        self.cbRole.addItem("Other")
 
-        self.leName.setText(name)
+        self.cbLanguage.addItem("", "")
+        for f in natsort.humansorted(utils.languages().items(), operator.itemgetter(1)):
+            self.cbLanguage.addItem(f[1], f[0])
 
-        if role is not None and role != "":
-            i = self.cbRole.findText(role)
+        self.leName.setText(credit.person)
+
+        if credit.role is not None and credit.role != "":
+            i = self.cbRole.findText(credit.role)
             if i == -1:
-                self.cbRole.setEditText(role)
+                self.cbRole.setEditText(credit.role)
             else:
                 self.cbRole.setCurrentIndex(i)
 
-        self.cbPrimary.setChecked(primary)
+        if credit.language != "":
+            i = self.cbLanguage.findText(credit.language)
+            if i == -1:
+                self.cbLanguage.setEditText(credit.language)
+            else:
+                self.cbLanguage.setCurrentIndex(i)
 
-        self.cbRole.currentIndexChanged.connect(self.role_changed)
-        self.cbRole.editTextChanged.connect(self.role_changed)
+        self.cbPrimary.setChecked(credit.primary)
 
-        self.update_primary_button()
-
-    def update_primary_button(self) -> None:
-        enabled = self.current_role_can_be_primary()
-        self.cbPrimary.setEnabled(enabled)
-
-    def current_role_can_be_primary(self) -> bool:
-        role = self.cbRole.currentText()
-        if role.casefold() in ("artist", "writer"):
-            return True
-
-        return False
-
-    def role_changed(self, s: Any) -> None:
-        self.update_primary_button()
-
-    def get_credits(self) -> tuple[str, str, bool]:
+    def get_credit(self) -> Credit:
         primary = self.current_role_can_be_primary() and self.cbPrimary.isChecked()
-        return self.cbRole.currentText(), self.leName.text(), primary
+        return Credit(self.leName.text(), self.cbRole.currentText(), primary, self.cbLanguage.currentText())
 
     def accept(self) -> None:
-        if self.cbRole.currentText() == "" or self.leName.text() == "":
-            QtWidgets.QMessageBox.warning(self, "Whoops", "You need to enter both role and name for a credit.")
+        if self.leName.text() == "":
+            QtWidgets.QMessageBox.warning(self, "Whoops", "You need to enter a name for a credit.")
         else:
             QtWidgets.QDialog.accept(self)

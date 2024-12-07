@@ -38,7 +38,7 @@ import comictaggerlib.ui
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive, tags
 from comicapi.filenameparser import FileNameParser
-from comicapi.genericmetadata import GenericMetadata
+from comicapi.genericmetadata import Credit, GenericMetadata
 from comicapi.issuestring import IssueString
 from comictaggerlib import ctsettings, ctversion
 from comictaggerlib.applicationlogwindow import ApplicationLogWindow, QTextEditLogger
@@ -126,7 +126,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
             "teams": self.teTeams,
             "locations": self.teLocations,
             "credits": (self.twCredits, self.btnAddCredit, self.btnEditCredit, self.btnRemoveCredit),
-            "credits.person": 2,
+            "credits.person": 3,
+            "credits.language": 2,
             "credits.role": 1,
             "credits.primary": 0,
             "tags": self.teTags,
@@ -874,30 +875,34 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 if self.is_dupe_credit(credit.role.title(), credit.person):
                     continue
 
-                self.add_new_credit_entry(row, credit.role.title(), credit.person, credit.primary)
+                self.add_new_credit_entry(row, credit)
 
         self.twCredits.setSortingEnabled(True)
         self.update_credit_colors()
 
-    def add_new_credit_entry(self, row: int, role: str, name: str, primary_flag: bool = False) -> None:
+    def add_new_credit_entry(self, row: int, credit: Credit) -> None:
         self.twCredits.insertRow(row)
 
-        item_text = role
-        item = QtWidgets.QTableWidgetItem(item_text)
+        item = QtWidgets.QTableWidgetItem(credit.role)
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.role)
         self.twCredits.setItem(row, 1, item)
 
-        item_text = name
-        item = QtWidgets.QTableWidgetItem(item_text)
-        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
+        language = utils.get_language_from_iso(credit.language) or credit.language
+        item = QtWidgets.QTableWidgetItem(language)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.language)
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         self.twCredits.setItem(row, 2, item)
+
+        item = QtWidgets.QTableWidgetItem(credit.person)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.person)
+        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+        self.twCredits.setItem(row, 3, item)
 
         item = QtWidgets.QTableWidgetItem("")
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         self.twCredits.setItem(row, 0, item)
-        self.update_credit_primary_flag(row, primary_flag)
+        self.update_credit_primary_flag(row, credit.primary)
 
     def is_dupe_credit(self, role: str, name: str) -> bool:
         for r in range(self.twCredits.rowCount()):
@@ -958,10 +963,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
         md.credits = []
         for row in range(self.twCredits.rowCount()):
             role = self.twCredits.item(row, 1).text()
-            name = self.twCredits.item(row, 2).text()
+            lang = self.twCredits.item(row, 2).text()
+            name = self.twCredits.item(row, 3).text()
             primary_flag = self.twCredits.item(row, 0).text() != ""
 
-            md.add_credit(name, role, bool(primary_flag))
+            md.add_credit(name, role, bool(primary_flag), lang)
 
         md.pages = self.page_list_editor.get_page_list()
 
@@ -1251,35 +1257,35 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.twCredits.item(row, 0).setText("Yes")
 
     def modify_credits(self, edit: bool) -> None:
+        row = self.twCredits.rowCount()
+        old = Credit()
         if edit:
             row = self.twCredits.currentRow()
-            role = self.twCredits.item(row, 1).text()
-            name = self.twCredits.item(row, 2).text()
-            primary = self.twCredits.item(row, 0).text() != ""
-        else:
-            row = self.twCredits.rowCount()
-            role = ""
-            name = ""
-            primary = False
+            old = Credit(
+                self.twCredits.item(row, 3).text(),
+                self.twCredits.item(row, 1).text(),
+                self.twCredits.item(row, 0).text() != "",
+                self.twCredits.item(row, 2).text(),
+            )
 
-        editor = CreditEditorWindow(self, CreditEditorWindow.ModeEdit, role, name, primary)
+        editor = CreditEditorWindow(self, CreditEditorWindow.ModeEdit, old)
         editor.setModal(True)
         editor.exec()
         if editor.result():
-            new_role, new_name, new_primary = editor.get_credits()
+            new = editor.get_credit()
 
-            if new_name == name and new_role == role and new_primary == primary:
+            if new == old:
                 # nothing has changed, just quit
                 return
 
             # name and role is the same, but primary flag changed
-            if new_name == name and new_role == role:
-                self.update_credit_primary_flag(row, new_primary)
+            if new.person == old.person and new.role == old.role:
+                self.update_credit_primary_flag(row, new.primary)
                 return
 
             # check for dupes
             ok_to_mod = True
-            if self.is_dupe_credit(new_role, new_name):
+            if self.is_dupe_credit(new.role, new.person):
                 # delete the dupe credit from list
                 qmsg = QtWidgets.QMessageBox()
                 qmsg.setText("Duplicate Credit!")
@@ -1301,13 +1307,14 @@ class TaggerWindow(QtWidgets.QMainWindow):
             if ok_to_mod:
                 # modify it
                 if edit:
-                    self.twCredits.item(row, 1).setText(new_role)
-                    self.twCredits.item(row, 2).setText(new_name)
-                    self.update_credit_primary_flag(row, new_primary)
+                    self.twCredits.item(row, 1).setText(new.role)
+                    self.twCredits.item(row, 3).setText(new.person)
+                    self.twCredits.item(row, 2).setText(new.language)
+                    self.update_credit_primary_flag(row, new.primary)
                 else:
                     # add new entry
                     row = self.twCredits.rowCount()
-                    self.add_new_credit_entry(row, new_role, new_name, new_primary)
+                    self.add_new_credit_entry(row, new)
 
             self.update_credit_colors()
             self.set_dirty_flag()
