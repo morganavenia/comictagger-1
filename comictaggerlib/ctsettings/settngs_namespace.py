@@ -130,6 +130,7 @@ class SettngsNS(settngs.TypedNS):
     Source_comicvine__comicvine_key: str | None
     Source_comicvine__comicvine_url: str | None
     Source_comicvine__cv_use_series_start_as_volume: bool
+    Source_comicvine__comicvine_custom_parameters: str | None
 
 
 class Commands(typing.TypedDict):
@@ -275,6 +276,7 @@ class Source_comicvine(typing.TypedDict):
     comicvine_key: str | None
     comicvine_url: str | None
     cv_use_series_start_as_volume: bool
+    comicvine_custom_parameters: str | None
 
 
 SettngsDict = typing.TypedDict(
