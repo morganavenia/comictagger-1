@@ -18,15 +18,15 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from comicapi.genericmetadata import GenericMetadata
 from comicapi.issuestring import IssueString
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
-from comictaggerlib.ui import qtutils, ui_path
-from comictaggerlib.ui.qtutils import new_web_view
-from comictalker.comictalker import ComicTalker, TalkerError
+from comictaggerlib.seriesselectionwindow import SeriesSelectionWindow
+from comictaggerlib.ui import ui_path
+from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 
 logger = logging.getLogger(__name__)
 
@@ -39,106 +39,52 @@ class IssueNumberTableWidgetItem(QtWidgets.QTableWidgetItem):
         return (IssueString(self_str).as_float() or 0) < (IssueString(other_str).as_float() or 0)
 
 
-class IssueSelectionWindow(QtWidgets.QDialog):
+class IssueSelectionWindow(SeriesSelectionWindow):
+    ui_file = ui_path / "issueselectionwindow.ui"
+    CoverImageMode = CoverImageWidget.AltCoverMode
+
     def __init__(
         self,
         parent: QtWidgets.QWidget,
         config: ct_ns,
         talker: ComicTalker,
-        series_id: str,
-        issue_number: str,
+        series_id: str = "",
+        issue_number: str = "",
     ) -> None:
-        super().__init__(parent)
-
-        with (ui_path / "issueselectionwindow.ui").open(encoding="utf-8") as uifile:
-            uic.loadUi(uifile, self)
-
-        self.coverWidget = CoverImageWidget(
-            self.coverImageContainer,
-            CoverImageWidget.AltCoverMode,
-            config.Runtime_Options__config.user_cache_dir,
-        )
-        gridlayout = QtWidgets.QGridLayout(self.coverImageContainer)
-        gridlayout.addWidget(self.coverWidget)
-        gridlayout.setContentsMargins(0, 0, 0, 0)
-
-        self.teDescription: QtWidgets.QWidget
-        webengine = new_web_view(self)
-        if webengine:
-            self.teDescription = qtutils.replaceWidget(self.splitter, self.teDescription, webengine)
-            logger.info("successfully loaded QWebEngineView")
-        else:
-            logger.info("failed to open QWebEngineView")
-
-        self.setWindowFlags(
-            QtCore.Qt.WindowType(
-                self.windowFlags()
-                | QtCore.Qt.WindowType.WindowSystemMenuHint
-                | QtCore.Qt.WindowType.WindowMaximizeButtonHint
-            )
-        )
-
+        super().__init__(parent, config, talker)
         self.series_id = series_id
-        self.issue_id: str = ""
-        self.config = config
-        self.talker = talker
         self.issue_list: dict[str, GenericMetadata] = {}
 
-        # Display talker logo and set url
-        self.lblIssuesSourceName.setText(talker.attribution)
-
-        self.imageIssuesSourceWidget = CoverImageWidget(
-            self.imageIssuesSourceLogo,
-            CoverImageWidget.URLMode,
-            config.Runtime_Options__config.user_cache_dir,
-            False,
-        )
-        self.imageIssuesSourceWidget.showControls = False
-        gridlayoutIssuesSourceLogo = QtWidgets.QGridLayout(self.imageIssuesSourceLogo)
-        gridlayoutIssuesSourceLogo.addWidget(self.imageIssuesSourceWidget)
-        gridlayoutIssuesSourceLogo.setContentsMargins(0, 2, 0, 0)
-        self.imageIssuesSourceWidget.set_url(talker.logo_url)
-
+        self.issue_number = issue_number
         if issue_number is None or issue_number == "":
             self.issue_number = "1"
-        else:
-            self.issue_number = issue_number
 
         self.initial_id: str = ""
         self.perform_query()
 
-        self.twList.resizeColumnsToContents()
-        self.twList.currentItemChanged.connect(self.current_item_changed)
-        self.twList.cellDoubleClicked.connect(self.cell_double_clicked)
-
         # now that the list has been sorted, find the initial record, and
         # select it
-        if not self.initial_id:
-            self.twList.selectRow(0)
-        else:
+        if self.initial_id:
             for r in range(0, self.twList.rowCount()):
                 issue_id = self.twList.item(r, 0).data(QtCore.Qt.ItemDataRole.UserRole)
                 if issue_id == self.initial_id:
                     self.twList.selectRow(r)
                     break
-
         self.leFilter.textChanged.connect(self.filter)
 
-    def filter(self, text: str) -> None:
-        rows = set(range(self.twList.rowCount()))
-        for r in rows:
-            self.twList.showRow(r)
-        if text.strip():
-            shown_rows = {x.row() for x in self.twList.findItems(text, QtCore.Qt.MatchFlag.MatchContains)}
-            for r in rows - shown_rows:
-                self.twList.hideRow(r)
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        return
 
-    def perform_query(self) -> None:
+    def perform_query(self) -> None:  # type: ignore[override]
         QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
 
         try:
             self.issue_list = {
-                x.issue_id: x for x in self.talker.fetch_issues_in_series(self.series_id) if x.issue_id is not None
+                x.issue_id: x
+                for x in self.talker.fetch_issues_in_series(
+                    self.series_id, on_rate_limit=RLCallBack(self.on_ratelimit, 10)
+                )
+                if x.issue_id is not None
             }
         except TalkerError as e:
             QtWidgets.QApplication.restoreOverrideCursor()
@@ -168,14 +114,7 @@ class IssueSelectionWindow(QtWidgets.QDialog):
     def cell_double_clicked(self, r: int, c: int) -> None:
         self.accept()
 
-    def set_description(self, widget: QtWidgets.QWidget, text: str) -> None:
-        if isinstance(widget, QtWidgets.QTextEdit):
-            widget.setText(text.replace("</figure>", "</div>").replace("<figure", "<div"))
-        else:
-            html = text
-            widget.setHtml(html, QtCore.QUrl(self.talker.website))
-
-    def update_row(self, row: int, issue: GenericMetadata) -> None:
+    def update_row(self, row: int, issue: GenericMetadata) -> None:  # type: ignore[override]
         item_text = issue.issue or ""
         item = self.twList.item(row, 0)
         item.setText(item_text)
@@ -201,35 +140,23 @@ class IssueSelectionWindow(QtWidgets.QDialog):
         qtw_item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
         qtw_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
 
-    def current_item_changed(self, curr: QtCore.QModelIndex | None, prev: QtCore.QModelIndex | None) -> None:
-        if curr is None:
-            return
-        if prev is not None and prev.row() == curr.row():
-            return
-
-        row = curr.row()
+    def _fetch(self, row: int) -> GenericMetadata:  # type: ignore[override]
         self.issue_id = self.twList.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole)
-
         # list selection was changed, update the issue cover
         issue = self.issue_list[self.issue_id]
         if not (issue.issue and issue.year and issue.month and issue._cover_image and issue.title):
             QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
             try:
-                issue = self.talker.fetch_comic_data(issue_id=self.issue_id)
+                issue = self.talker.fetch_comic_data(
+                    issue_id=self.issue_id, on_rate_limit=RLCallBack(self.ratelimit, 10)
+                )
             except TalkerError:
                 pass
-        QtWidgets.QApplication.restoreOverrideCursor()
-
         self.issue_number = issue.issue or ""
         # We don't currently have a way to display hashes to the user
         # TODO: display the hash to the user so they know it will be used for cover matching
         alt_images = [url.URL for url in issue._alternate_images]
         cover = issue._cover_image.URL if issue._cover_image else ""
-        self.coverWidget.set_issue_details(self.issue_id, [cover, *alt_images])
-        if issue.description is None:
-            self.set_description(self.teDescription, "")
-        else:
-            self.set_description(self.teDescription, issue.description)
-
-        # Update current record information
-        self.update_row(row, issue)
+        self.cover_widget.set_issue_details(self.issue_id, [cover, *issue._alternate_images])
+        self.set_description(self.teDescription, issue.description or "")
+        return issue

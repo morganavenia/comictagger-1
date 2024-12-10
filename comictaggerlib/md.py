@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from comicapi import utils
+from comicapi import merge, utils
+from comicapi.comicarchive import ComicArchive
 from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib import ctversion
 from comictaggerlib.cbltransformer import CBLTransformer
@@ -37,3 +38,25 @@ def prepare_metadata(md: GenericMetadata, new_md: GenericMetadata, config: Settn
         notes=utils.combine_notes(final_md.notes, notes, "Tagged with ComicTagger"),
         description=cleanup_html(final_md.description, config.Metadata_Options__remove_html_tables) or None,
     )
+
+
+def read_selected_tags(
+    tag_ids: list[str], ca: ComicArchive, mode: merge.Mode = merge.Mode.OVERLAY, merge_lists: bool = False
+) -> tuple[GenericMetadata, list[str], Exception | None]:
+    md = GenericMetadata()
+    error = None
+    tags_used = []
+    try:
+        for tag_id in tag_ids:
+            metadata = ca.read_tags(tag_id)
+            if not metadata.is_empty:
+                md.overlay(
+                    metadata,
+                    mode=mode,
+                    merge_lists=merge_lists,
+                )
+                tags_used.append(tag_id)
+    except Exception as e:
+        error = e
+
+    return md, tags_used, error

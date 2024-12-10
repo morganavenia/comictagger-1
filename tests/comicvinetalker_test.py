@@ -9,9 +9,12 @@ import testing.comicvine
 
 
 def test_search_for_series(comicvine_api, comic_cache):
-    results = comicvine_api.search_for_series("cory doctorows futuristic tales of the here and now")[0]
+    results = comicvine_api.search_for_series(
+        "cory doctorows futuristic tales of the here and now", on_rate_limit=None
+    )[0]
     cache_series = comic_cache.get_search_results(
-        comicvine_api.id, "cory doctorows futuristic tales of the here and now"
+        comicvine_api.id,
+        "cory doctorows futuristic tales of the here and now",
     )[0][0]
     series_results = comicvine_api._format_series(json.loads(cache_series.data))
     assert results == series_results
@@ -40,7 +43,7 @@ def test_fetch_issues_in_series(comicvine_api, comic_cache):
 
 
 def test_fetch_issue_data_by_issue_id(comicvine_api):
-    result = comicvine_api.fetch_comic_data(140529)
+    result = comicvine_api.fetch_comic_data(140529, on_rate_limit=None)
     result.notes = None
 
     assert result == testing.comicvine.cv_md
@@ -75,6 +78,6 @@ cv_issue = [
 
 @pytest.mark.parametrize("series_id, issue_number, expected", cv_issue)
 def test_fetch_issue_data(comicvine_api, series_id, issue_number, expected):
-    results = comicvine_api._fetch_issue_data(series_id, issue_number)
+    results = comicvine_api._fetch_issue_data(series_id, issue_number, on_rate_limit=None)
     results.notes = None
     assert results == expected

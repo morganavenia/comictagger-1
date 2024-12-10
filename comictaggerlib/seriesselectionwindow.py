@@ -29,13 +29,14 @@ from comicapi.comicarchive import ComicArchive
 from comicapi.genericmetadata import ComicSeries, GenericMetadata
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
-from comictaggerlib.issueidentifier import IssueIdentifier
-from comictaggerlib.issueselectionwindow import IssueSelectionWindow
+from comictaggerlib.ctsettings.settngs_namespace import SettngsNS
+from comictaggerlib.issueidentifier import IssueIdentifier, IssueIdentifierOptions
+from comictaggerlib.issueidentifier import Result as IIResult
 from comictaggerlib.matchselectionwindow import MatchSelectionWindow
 from comictaggerlib.progresswindow import IDProgressWindow
 from comictaggerlib.resulttypes import IssueResult
 from comictaggerlib.ui import qtutils, ui_path
-from comictalker.comictalker import ComicTalker, TalkerError
+from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ logger = logging.getLogger(__name__)
 class SearchThread(QtCore.QThread):
     searchComplete = pyqtSignal()
     progressUpdate = pyqtSignal(int, int)
+    ratelimit = pyqtSignal(float, float)
 
     def __init__(
         self, talker: ComicTalker, series_name: str, refresh: bool, literal: bool = False, series_match_thresh: int = 90
@@ -61,7 +63,12 @@ class SearchThread(QtCore.QThread):
         try:
             self.ct_error = False
             self.ct_search_results = self.talker.search_for_series(
-                self.series_name, self.prog_callback, self.refresh, self.literal, self.series_match_thresh
+                self.series_name,
+                callback=self.prog_callback,
+                refresh_cache=self.refresh,
+                literal=self.literal,
+                series_match_thresh=self.series_match_thresh,
+                on_rate_limit=RLCallBack(self.on_ratelimit, 10),
             )
         except TalkerError as e:
             self.ct_search_results = []
@@ -74,60 +81,91 @@ class SearchThread(QtCore.QThread):
     def prog_callback(self, current: int, total: int) -> None:
         self.progressUpdate.emit(current, total)
 
+    def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
+        self.ratelimit.emit(full_time, sleep_time)
+
 
 class IdentifyThread(QtCore.QThread):
-    identifyComplete = pyqtSignal((int, list))
+    ratelimit = pyqtSignal(float, float)
+    identifyComplete = pyqtSignal(IIResult, list)
     identifyLogMsg = pyqtSignal(str)
     identifyProgress = pyqtSignal(int, int)
 
-    def __init__(self, identifier: IssueIdentifier, ca: ComicArchive, md: GenericMetadata) -> None:
+    def __init__(self, ca: ComicArchive, config: SettngsNS, talker: ComicTalker, md: GenericMetadata) -> None:
         QtCore.QThread.__init__(self)
-        self.identifier = identifier
-        self.identifier.set_output_function(self.log_output)
-        self.identifier.set_progress_callback(self.progress_callback)
+        iio = IssueIdentifierOptions(
+            series_match_search_thresh=config.Issue_Identifier__series_match_search_thresh,
+            series_match_identify_thresh=config.Issue_Identifier__series_match_identify_thresh,
+            use_publisher_filter=config.Auto_Tag__use_publisher_filter,
+            publisher_filter=config.Auto_Tag__publisher_filter,
+            quiet=config.Runtime_Options__quiet,
+            cache_dir=config.Runtime_Options__config.user_cache_dir,
+            border_crop_percent=config.Issue_Identifier__border_crop_percent,
+            talker=talker,
+        )
+        self.identifier = IssueIdentifier(
+            iio,
+            on_rate_limit=RLCallBack(self.on_ratelimit, 10),
+            output=self.log_output,
+            on_progress=self.progress_callback,
+        )
         self.ca = ca
         self.md = md
 
     def log_output(self, text: str) -> None:
         self.identifyLogMsg.emit(str(text))
 
-    def progress_callback(self, cur: int, total: int) -> None:
+    def progress_callback(self, cur: int, total: int, image: bytes) -> None:
         self.identifyProgress.emit(cur, total)
 
     def run(self) -> None:
         self.identifyComplete.emit(*self.identifier.identify(self.ca, self.md))
 
+    def cancel(self) -> None:
+        self.identifier.cancel = True
+
+    def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
+        self.ratelimit.emit(full_time, sleep_time)
+
 
 class SeriesSelectionWindow(QtWidgets.QDialog):
+    ui_file = ui_path / "seriesselectionwindow.ui"
+    CoverImageMode = CoverImageWidget.URLMode
+
     def __init__(
         self,
         parent: QtWidgets.QWidget,
-        series_name: str,
-        issue_number: str,
-        year: int | None,
-        issue_count: int | None,
-        comic_archive: ComicArchive | None,
         config: ct_ns,
         talker: ComicTalker,
+        series_name: str = "",
+        issue_number: str = "",
+        comic_archive: ComicArchive | None = None,
+        year: int | None = None,
+        issue_count: int | None = None,
         autoselect: bool = False,
         literal: bool = False,
     ) -> None:
         super().__init__(parent)
 
-        with (ui_path / "seriesselectionwindow.ui").open(encoding="utf-8") as uifile:
+        with self.ui_file.open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
 
-        self.imageWidget = CoverImageWidget(
-            self.imageContainer, CoverImageWidget.URLMode, config.Runtime_Options__config.user_cache_dir
+        self.cover_widget = CoverImageWidget(
+            self.coverImageContainer,
+            self.CoverImageMode,
+            config.Runtime_Options__config.user_cache_dir,
         )
-        gridlayout = QtWidgets.QGridLayout(self.imageContainer)
-        gridlayout.addWidget(self.imageWidget)
+        gridlayout = QtWidgets.QGridLayout(self.coverImageContainer)
+        gridlayout.addWidget(self.cover_widget)
         gridlayout.setContentsMargins(0, 0, 0, 0)
 
-        self.teDetails: QtWidgets.QWidget
+        self.teDescription: QtWidgets.QWidget
         webengine = qtutils.new_web_view(self)
         if webengine:
-            self.teDetails = qtutils.replaceWidget(self.splitter, self.teDetails, webengine)
+            self.teDescription = qtutils.replaceWidget(self.splitter, self.teDescription, webengine)
+            logger.info("successfully loaded QWebEngineView")
+        else:
+            logger.info("failed to open QWebEngineView")
 
         self.setWindowFlags(
             QtCore.Qt.WindowType(
@@ -138,29 +176,11 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         )
 
         self.config = config
-        self.series_name = series_name
-        self.issue_number = issue_number
-        self.issue_id: str = ""
-        self.year = year
-        self.issue_count = issue_count
-        self.series_id: str = ""
-        self.comic_archive = comic_archive
-        self.immediate_autoselect = autoselect
-        self.series_list: dict[str, ComicSeries] = {}
-        self.literal = literal
-        self.ii: IssueIdentifier | None = None
-        self.iddialog: IDProgressWindow | None = None
-        self.id_thread: IdentifyThread | None = None
-        self.progdialog: QtWidgets.QProgressDialog | None = None
-        self.search_thread: SearchThread | None = None
-
-        self.use_filter = self.config.Auto_Tag__use_publisher_filter
-
-        # Load to retrieve settings
         self.talker = talker
+        self.issue_id: str = ""
 
         # Display talker logo and set url
-        self.lblSourceName.setText(talker.attribution)
+        self.lblIssuesSourceName.setText(talker.attribution)
 
         self.imageSourceWidget = CoverImageWidget(
             self.imageSourceLogo,
@@ -177,19 +197,115 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         # Set the minimum row height to the default.
         # this way rows will be more consistent when resizeRowsToContents is called
         self.twList.verticalHeader().setMinimumSectionSize(self.twList.verticalHeader().defaultSectionSize())
+        self.twList.resizeColumnsToContents()
         self.twList.currentItemChanged.connect(self.current_item_changed)
         self.twList.cellDoubleClicked.connect(self.cell_double_clicked)
-        self.btnRequery.clicked.connect(self.requery)
-        self.btnIssues.clicked.connect(self.show_issues)
-        self.btnAutoSelect.clicked.connect(self.auto_select)
-
-        self.cbxFilter.setChecked(self.use_filter)
-        self.cbxFilter.toggled.connect(self.filter_toggled)
-
-        self.update_buttons()
+        self.leFilter.textChanged.connect(self.filter)
         self.twList.selectRow(0)
 
-        self.leFilter.textChanged.connect(self.filter)
+        if series_name:
+            self.series_name = series_name
+            self.issue_number = issue_number
+            self.year = year
+            self.issue_count = issue_count
+            self.series_id: str = ""
+            self.comic_archive = comic_archive
+            self.immediate_autoselect = autoselect
+            self.series_list: dict[str, ComicSeries] = {}
+            self.literal = literal
+            self.iddialog: IDProgressWindow | None = None
+            self.id_thread: IdentifyThread | None = None
+            self.progdialog: QtWidgets.QProgressDialog | None = None
+            self.search_thread: SearchThread | None = None
+
+            self.use_publisher_filter = self.config.Auto_Tag__use_publisher_filter
+
+            self.btnRequery.clicked.connect(self.requery)
+            self.btnIssues.clicked.connect(self.show_issues)
+            self.btnAutoSelect.clicked.connect(self.auto_select)
+
+            self.cbxPublisherFilter.setChecked(self.use_publisher_filter)
+            self.cbxPublisherFilter.toggled.connect(self.publisher_filter_toggled)
+
+            self.update_buttons()
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        self.perform_query()
+        QtCore.QCoreApplication.processEvents()
+        if not self.series_list:
+            QtWidgets.QMessageBox.information(self, "Search Result", "No matches found!")
+            QtCore.QTimer.singleShot(200, self.close_me)
+
+        elif self.immediate_autoselect:
+            # defer the immediate autoselect so this dialog has time to pop up
+            QtCore.QTimer.singleShot(10, self.do_immediate_autoselect)
+
+    def perform_query(self, refresh: bool = False) -> None:
+        self.search_thread = SearchThread(
+            self.talker,
+            self.series_name,
+            refresh,
+            self.literal,
+            self.config.Issue_Identifier__series_match_search_thresh,
+        )
+        self.search_thread.searchComplete.connect(self.search_complete)
+        self.search_thread.progressUpdate.connect(self.search_progress_update)
+        self.search_thread.ratelimit.connect(self.on_ratelimit)
+        self.search_thread.ratelimit.connect(self.parent().on_ratelimit)
+        self.search_thread.start()
+
+        self.progdialog = QtWidgets.QProgressDialog("Searching Online", "Cancel", 0, 100, self)
+        self.progdialog.setWindowTitle("Online Search")
+        self.progdialog.canceled.connect(self.search_canceled)
+        self.progdialog.setModal(True)
+        self.progdialog.setMinimumDuration(300)
+
+        if refresh or self.search_thread.isRunning():
+            self.progdialog.exec()
+        else:
+            self.progdialog = None
+
+    def cell_double_clicked(self, r: int, c: int) -> None:
+        self.show_issues()
+
+    def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
+        self.log_output(
+            f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
+        )
+
+    def update_row(self, row: int, series: ComicSeries) -> None:
+        item_text = series.name
+        item = self.twList.item(row, 0)
+        item.setText(item_text)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
+        item.setData(QtCore.Qt.ItemDataRole.UserRole, series.id)
+        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+
+        item_text = f"{series.start_year:04}" if series.start_year is not None else ""
+        item = self.twList.item(row, 1)
+        item.setText(item_text)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
+        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+
+        item_text = f"{series.count_of_issues:04}" if series.count_of_issues is not None else ""
+        item = self.twList.item(row, 2)
+        item.setText(item_text)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
+        item.setData(QtCore.Qt.ItemDataRole.DisplayRole, series.count_of_issues)
+        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+
+        item_text = series.publisher if series.publisher is not None else ""
+        item = self.twList.item(row, 3)
+        item.setText(item_text)
+        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
+        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+
+    def set_description(self, widget: QtWidgets.QWidget, text: str) -> None:
+        if isinstance(widget, QtWidgets.QTextEdit):
+            widget.setText(text.replace("</figure>", "</div>").replace("<figure", "<div"))
+        else:
+            html = text
+            widget.setHtml(html, QUrl(self.talker.website))
 
     def filter(self, text: str) -> None:
         rows = set(range(self.twList.rowCount()))
@@ -199,6 +315,28 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
             shown_rows = {x.row() for x in self.twList.findItems(text, QtCore.Qt.MatchFlag.MatchContains)}
             for r in rows - shown_rows:
                 self.twList.hideRow(r)
+
+    def _fetch(self, row: int) -> ComicSeries:
+        self.series_id = self.twList.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole)
+
+        # list selection was changed, update the info on the series
+        series = self.series_list[self.series_id]
+        if not (
+            series.name
+            and series.start_year
+            and series.count_of_issues
+            and series.publisher
+            and series.description
+            and series.image_url
+        ):
+            QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+            try:
+                series = self.talker.fetch_series(self.series_id, on_rate_limit=RLCallBack(self.ratelimit, 10))
+            except TalkerError:
+                pass
+        self.set_description(self.teDescription, series.description or "")
+        self.cover_widget.set_url(series.image_url)
+        return series
 
     def update_buttons(self) -> None:
         enabled = bool(self.series_list)
@@ -214,8 +352,8 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         self.perform_query(refresh=True)
         self.twList.selectRow(0)
 
-    def filter_toggled(self) -> None:
-        self.use_filter = not self.use_filter
+    def publisher_filter_toggled(self) -> None:
+        self.use_publisher_filter = self.cbxPublisherFilter.isChecked()
         self.perform_query(refresh=False)
 
     def auto_select(self) -> None:
@@ -229,10 +367,7 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
 
         self.iddialog = IDProgressWindow(self)
         self.iddialog.setModal(True)
-        self.iddialog.rejected.connect(self.identify_cancel)
         self.iddialog.show()
-
-        self.ii = IssueIdentifier(self.comic_archive, self.config, self.talker)
 
         md = GenericMetadata()
         md.series = self.series_name
@@ -240,16 +375,19 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         md.year = self.year
         md.issue_count = self.issue_count
 
-        self.id_thread = IdentifyThread(self.ii, self.comic_archive, md)
+        self.id_thread = IdentifyThread(self.comic_archive, self.config, self.talker, md)
         self.id_thread.identifyComplete.connect(self.identify_complete)
-        self.id_thread.identifyLogMsg.connect(self.log_id_output)
+        self.id_thread.identifyLogMsg.connect(self.log_output)
         self.id_thread.identifyProgress.connect(self.identify_progress)
+        self.id_thread.ratelimit.connect(self.on_ratelimit)
+        self.id_thread.ratelimit.connect(self.parent().on_ratelimit)
+        self.iddialog.rejected.connect(self.id_thread.cancel)
 
         self.id_thread.start()
 
         self.iddialog.exec()
 
-    def log_id_output(self, text: str) -> None:
+    def log_output(self, text: str) -> None:
         if self.iddialog is not None:
             self.iddialog.textEdit.append(text.rstrip())
             self.iddialog.textEdit.ensureCursorVisible()
@@ -260,37 +398,28 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
             self.iddialog.progressBar.setMaximum(total)
             self.iddialog.progressBar.setValue(cur)
 
-    def identify_cancel(self) -> None:
-        if self.ii is not None:
-            self.ii.cancel = True
-
-    def identify_complete(self, result: int, issues: list[IssueResult]) -> None:
+    def identify_complete(self, result: IIResult, issues: list[IssueResult]) -> None:
         if self.iddialog is not None and self.comic_archive is not None:
 
             found_match = None
             choices = False
-            if result == IssueIdentifier.result_no_matches:
+            if result == IIResult.no_matches:
                 QtWidgets.QMessageBox.information(self, "Auto-Select Result", " No issues found :-(")
-            elif result == IssueIdentifier.result_found_match_but_bad_cover_score:
+            elif result == IIResult.single_bad_cover_score:
                 QtWidgets.QMessageBox.information(
                     self,
                     "Auto-Select Result",
                     " Found a match, but cover doesn't seem the same.  Verify before committing!",
                 )
                 found_match = issues[0]
-            elif result == IssueIdentifier.result_found_match_but_not_first_page:
-                QtWidgets.QMessageBox.information(
-                    self, "Auto-Select Result", " Found a match, but not with the first page of the archive."
-                )
-                found_match = issues[0]
-            elif result == IssueIdentifier.result_multiple_matches_with_bad_image_scores:
+            elif result == IIResult.multiple_bad_cover_scores:
                 QtWidgets.QMessageBox.information(
                     self, "Auto-Select Result", " Found some possibilities, but no confidence. Proceed manually."
                 )
                 choices = True
-            elif result == IssueIdentifier.result_one_good_match:
+            elif result == IIResult.single_good_match:
                 found_match = issues[0]
-            elif result == IssueIdentifier.result_multiple_good_matches:
+            elif result == IIResult.multiple_good_matches:
                 QtWidgets.QMessageBox.information(
                     self, "Auto-Select Result", " Found multiple likely matches.  Please select."
                 )
@@ -315,6 +444,8 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
                 self.show_issues()
 
     def show_issues(self) -> None:
+        from comictaggerlib.issueselectionwindow import IssueSelectionWindow
+
         selector = IssueSelectionWindow(self, self.config, self.talker, self.series_id, self.issue_number)
         title = ""
         for series in self.series_list.values():
@@ -331,36 +462,13 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
             self.issue_id = selector.issue_id
             self.accept()
         else:
-            self.imageWidget.update_content()
+            self.cover_widget.update_content()
 
     def select_by_id(self) -> None:
         for r in range(self.twList.rowCount()):
             if self.series_id == self.twList.item(r, 0).data(QtCore.Qt.ItemDataRole.UserRole):
                 self.twList.selectRow(r)
                 break
-
-    def perform_query(self, refresh: bool = False) -> None:
-        self.search_thread = SearchThread(
-            self.talker,
-            self.series_name,
-            refresh,
-            self.literal,
-            self.config.Issue_Identifier__series_match_search_thresh,
-        )
-        self.search_thread.searchComplete.connect(self.search_complete)
-        self.search_thread.progressUpdate.connect(self.search_progress_update)
-        self.search_thread.start()
-
-        self.progdialog = QtWidgets.QProgressDialog("Searching Online", "Cancel", 0, 100, self)
-        self.progdialog.setWindowTitle("Online Search")
-        self.progdialog.canceled.connect(self.search_canceled)
-        self.progdialog.setModal(True)
-        self.progdialog.setMinimumDuration(300)
-
-        if refresh or self.search_thread.isRunning():
-            self.progdialog.exec()
-        else:
-            self.progdialog = None
 
     def search_canceled(self) -> None:
         if self.progdialog is not None:
@@ -377,8 +485,10 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
 
     def search_progress_update(self, current: int, total: int) -> None:
         if self.progdialog is not None:
+            QtCore.QCoreApplication.processEvents()
             self.progdialog.setMaximum(total)
             self.progdialog.setValue(current + 1)
+            QtCore.QCoreApplication.processEvents()
 
     def search_complete(self) -> None:
         if self.progdialog is not None:
@@ -396,7 +506,7 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         tmp_list = self.search_thread.ct_search_results if self.search_thread is not None else []
         self.series_list = {x.id: x for x in tmp_list}
         # filter the publishers if enabled set
-        if self.use_filter:
+        if self.use_publisher_filter:
             try:
                 publisher_filter = {s.strip().casefold() for s in self.config.Auto_Tag__publisher_filter}
                 # use '' as publisher name if None
@@ -491,57 +601,9 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         # Resize row height so the whole series can still be seen
         self.twList.resizeRowsToContents()
 
-    def showEvent(self, event: QtGui.QShowEvent) -> None:
-        self.perform_query()
-        QtCore.QCoreApplication.processEvents()
-        if not self.series_list:
-            QtWidgets.QMessageBox.information(self, "Search Result", "No matches found!")
-            QtCore.QTimer.singleShot(200, self.close_me)
-
-        elif self.immediate_autoselect:
-            # defer the immediate autoselect so this dialog has time to pop up
-            QtCore.QTimer.singleShot(10, self.do_immediate_autoselect)
-
     def do_immediate_autoselect(self) -> None:
         self.immediate_autoselect = False
         self.auto_select()
-
-    def cell_double_clicked(self, r: int, c: int) -> None:
-        self.show_issues()
-
-    def set_description(self, widget: QtWidgets.QWidget, text: str) -> None:
-        if isinstance(widget, QtWidgets.QTextEdit):
-            widget.setText(text.replace("</figure>", "</div>").replace("<figure", "<div"))
-        else:
-            html = text
-            widget.setHtml(html, QUrl(self.talker.website))
-
-    def update_row(self, row: int, series: ComicSeries) -> None:
-        item_text = series.name
-        item = self.twList.item(row, 0)
-        item.setText(item_text)
-        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
-        item.setData(QtCore.Qt.ItemDataRole.UserRole, series.id)
-        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-
-        item_text = f"{series.start_year:04}" if series.start_year is not None else ""
-        item = self.twList.item(row, 1)
-        item.setText(item_text)
-        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
-        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-
-        item_text = f"{series.count_of_issues:04}" if series.count_of_issues is not None else ""
-        item = self.twList.item(row, 2)
-        item.setText(item_text)
-        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
-        item.setData(QtCore.Qt.ItemDataRole.DisplayRole, series.count_of_issues)
-        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-
-        item_text = series.publisher if series.publisher is not None else ""
-        item = self.twList.item(row, 3)
-        item.setText(item_text)
-        item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
-        item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
 
     def current_item_changed(self, curr: QtCore.QModelIndex | None, prev: QtCore.QModelIndex | None) -> None:
         if curr is None:
@@ -550,31 +612,9 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
             return
 
         row = curr.row()
-        self.series_id = self.twList.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole)
 
-        # list selection was changed, update the info on the series
-        series = self.series_list[self.series_id]
-        if not (
-            series.name
-            and series.start_year
-            and series.count_of_issues
-            and series.publisher
-            and series.description
-            and series.image_url
-        ):
-            QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
-            # Changing of usernames and passwords with using cache can cause talker errors to crash out
-            try:
-                series = self.talker.fetch_series(self.series_id)
-            except TalkerError:
-                pass
+        item = self._fetch(row)
         QtWidgets.QApplication.restoreOverrideCursor()
 
-        if series.description is None:
-            self.set_description(self.teDetails, "")
-        else:
-            self.set_description(self.teDetails, series.description)
-        self.imageWidget.set_url(series.image_url)
-
         # Update current record information
-        self.update_row(row, series)
+        self.update_row(row, item)

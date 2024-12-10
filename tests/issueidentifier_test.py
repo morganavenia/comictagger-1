@@ -15,8 +15,17 @@ from comictaggerlib.resulttypes import IssueResult
 
 def test_crop(cbz_double_cover, config, tmp_path, comicvine_api):
     config, definitions = config
-
-    ii = comictaggerlib.issueidentifier.IssueIdentifier(cbz_double_cover, config, comicvine_api)
+    iio = comictaggerlib.issueidentifier.IssueIdentifierOptions(
+        series_match_search_thresh=config.Issue_Identifier__series_match_search_thresh,
+        series_match_identify_thresh=config.Issue_Identifier__series_match_identify_thresh,
+        use_publisher_filter=config.Auto_Tag__use_publisher_filter,
+        publisher_filter=config.Auto_Tag__publisher_filter,
+        quiet=config.Runtime_Options__quiet,
+        cache_dir=config.Runtime_Options__config.user_cache_dir,
+        border_crop_percent=config.Issue_Identifier__border_crop_percent,
+        talker=comicvine_api,
+    )
+    ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
 
     im = Image.open(io.BytesIO(cbz_double_cover.archiver.read_file("double_cover.jpg")))
 
@@ -32,7 +41,17 @@ def test_crop(cbz_double_cover, config, tmp_path, comicvine_api):
 @pytest.mark.parametrize("additional_md, expected", testing.comicdata.metadata_keys)
 def test_get_search_keys(cbz, config, additional_md, expected, comicvine_api):
     config, definitions = config
-    ii = comictaggerlib.issueidentifier.IssueIdentifier(cbz, config, comicvine_api)
+    iio = comictaggerlib.issueidentifier.IssueIdentifierOptions(
+        series_match_search_thresh=config.Issue_Identifier__series_match_search_thresh,
+        series_match_identify_thresh=config.Issue_Identifier__series_match_identify_thresh,
+        use_publisher_filter=config.Auto_Tag__use_publisher_filter,
+        publisher_filter=config.Auto_Tag__publisher_filter,
+        quiet=config.Runtime_Options__quiet,
+        cache_dir=config.Runtime_Options__config.user_cache_dir,
+        border_crop_percent=config.Issue_Identifier__border_crop_percent,
+        talker=comicvine_api,
+    )
+    ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
 
     assert expected == ii._get_search_keys(additional_md)
 
@@ -46,7 +65,17 @@ def test_get_issue_cover_match_score(
     expected: comictaggerlib.issueidentifier.Score,
 ):
     config, definitions = config
-    ii = comictaggerlib.issueidentifier.IssueIdentifier(cbz, config, comicvine_api)
+    iio = comictaggerlib.issueidentifier.IssueIdentifierOptions(
+        series_match_search_thresh=config.Issue_Identifier__series_match_search_thresh,
+        series_match_identify_thresh=config.Issue_Identifier__series_match_identify_thresh,
+        use_publisher_filter=config.Auto_Tag__use_publisher_filter,
+        publisher_filter=config.Auto_Tag__publisher_filter,
+        quiet=config.Runtime_Options__quiet,
+        cache_dir=config.Runtime_Options__config.user_cache_dir,
+        border_crop_percent=config.Issue_Identifier__border_crop_percent,
+        talker=comicvine_api,
+    )
+    ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
     score = ii._get_issue_cover_match_score(
         primary_img_url=data[0],
         alt_urls=data[1],
@@ -57,7 +86,17 @@ def test_get_issue_cover_match_score(
 
 def test_search(cbz, config, comicvine_api):
     config, definitions = config
-    ii = comictaggerlib.issueidentifier.IssueIdentifier(cbz, config, comicvine_api)
+    iio = comictaggerlib.issueidentifier.IssueIdentifierOptions(
+        series_match_search_thresh=config.Issue_Identifier__series_match_search_thresh,
+        series_match_identify_thresh=config.Issue_Identifier__series_match_identify_thresh,
+        use_publisher_filter=config.Auto_Tag__use_publisher_filter,
+        publisher_filter=config.Auto_Tag__publisher_filter,
+        quiet=config.Runtime_Options__quiet,
+        cache_dir=config.Runtime_Options__config.user_cache_dir,
+        border_crop_percent=config.Issue_Identifier__border_crop_percent,
+        talker=comicvine_api,
+    )
+    ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
     result, issues = ii.identify(cbz, cbz.read_tags("cr"))
     cv_expected = IssueResult(
         series=f"{testing.comicvine.cv_volume_result['results']['name']} ({testing.comicvine.cv_volume_result['results']['start_year']})",
@@ -81,7 +120,17 @@ def test_search(cbz, config, comicvine_api):
 
 def test_crop_border(cbz, config, comicvine_api):
     config, definitions = config
-    ii = comictaggerlib.issueidentifier.IssueIdentifier(cbz, config, comicvine_api)
+    iio = comictaggerlib.issueidentifier.IssueIdentifierOptions(
+        series_match_search_thresh=config.Issue_Identifier__series_match_search_thresh,
+        series_match_identify_thresh=config.Issue_Identifier__series_match_identify_thresh,
+        use_publisher_filter=config.Auto_Tag__use_publisher_filter,
+        publisher_filter=config.Auto_Tag__publisher_filter,
+        quiet=config.Runtime_Options__quiet,
+        cache_dir=config.Runtime_Options__config.user_cache_dir,
+        border_crop_percent=config.Issue_Identifier__border_crop_percent,
+        talker=comicvine_api,
+    )
+    ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
 
     # This creates a white square centered on a black background
     bg = Image.new("RGBA", (100, 100), (0, 0, 0, 255))

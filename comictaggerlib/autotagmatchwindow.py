@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Callable
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
@@ -40,7 +39,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         parent: QtWidgets.QWidget,
         match_set_list: list[Result],
         read_tags: list[str],
-        fetch_func: Callable[[IssueResult], GenericMetadata],
         config: ct_ns,
         talker: ComicTalker,
     ) -> None:
@@ -79,7 +77,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
         self.match_set_list = match_set_list
         self._tags = read_tags
-        self.fetch_func = fetch_func
 
         self.current_match_set_idx = 0
 
@@ -88,6 +85,9 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.skipButton.clicked.connect(self.skip_to_next)
 
         self.update_data()
+
+    def fetch(self, match: IssueResult) -> GenericMetadata:
+        return self.current_talker().fetch_comic_data(issue_id=match.issue_id)
 
     def update_data(self) -> None:
         self.current_match_set = self.match_set_list[self.current_match_set_idx]
@@ -252,7 +252,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         # now get the particular issue data
 
         try:
-            self.current_match_set.md = ct_md = self.fetch_func(match)
+            self.current_match_set.md = ct_md = self.fetch(match)
         except TalkerError as e:
             QtWidgets.QApplication.restoreOverrideCursor()
             QtWidgets.QMessageBox.critical(self, f"{e.source} {e.code_name} Error", f"{e}")

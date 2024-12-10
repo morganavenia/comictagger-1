@@ -130,7 +130,8 @@ def open_tagger_window(
             ctypes.windll.user32.SetWindowPos(console_wnd, None, 0, 0, 0, 0, swp_hidewindow)  # type: ignore[attr-defined]
 
     if platform.system() != "Linux":
-        img = QtGui.QPixmap(str(graphics_path / "tags.png"))
+        img = QtGui.QPixmap()
+        img.loadFromData((graphics_path / "tags.png").read_bytes())
 
         splash = QtWidgets.QSplashScreen(img)
         splash.show()

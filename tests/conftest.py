@@ -12,7 +12,6 @@ from typing import Any
 import pytest
 import settngs
 from PIL import Image
-from pyrate_limiter import Limiter, RequestRate
 
 import comicapi.comicarchive
 import comicapi.filenamelexer
@@ -23,6 +22,7 @@ import comictalker
 import comictalker.comiccacher
 import comictalker.talkers.comicvine
 from comicapi import utils
+from comictalker.vendor.pyrate_limiter import Limiter, RequestRate
 from testing import comicvine, filenames
 from testing.comicdata import all_seed_imprints, seed_imprints
 

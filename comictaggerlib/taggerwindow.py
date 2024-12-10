@@ -23,7 +23,6 @@ import operator
 import os
 import pickle
 import platform
-import re
 import sys
 import webbrowser
 from collections.abc import Sequence
@@ -44,7 +43,7 @@ from comicapi.issuestring import IssueString
 from comictaggerlib import ctsettings, ctversion
 from comictaggerlib.applicationlogwindow import ApplicationLogWindow, QTextEditLogger
 from comictaggerlib.autotagmatchwindow import AutoTagMatchWindow
-from comictaggerlib.autotagprogresswindow import AutoTagProgressWindow
+from comictaggerlib.autotagprogresswindow import AutoTagProgressWindow, AutoTagThread
 from comictaggerlib.autotagstartwindow import AutoTagStartWindow
 from comictaggerlib.cbltransformer import CBLTransformer
 from comictaggerlib.coverimagewidget import CoverImageWidget
@@ -54,20 +53,20 @@ from comictaggerlib.exportwindow import ExportConflictOpts, ExportWindow
 from comictaggerlib.fileselectionlist import FileSelectionList
 from comictaggerlib.graphics import graphics_path
 from comictaggerlib.gtinvalidator import is_valid_gtin
-from comictaggerlib.issueidentifier import IssueIdentifier
 from comictaggerlib.logwindow import LogWindow
-from comictaggerlib.md import prepare_metadata
+from comictaggerlib.md import prepare_metadata, read_selected_tags
 from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
 from comictaggerlib.pagebrowser import PageBrowserWindow
 from comictaggerlib.pagelisteditor import PageListEditor
 from comictaggerlib.renamewindow import RenameWindow
-from comictaggerlib.resulttypes import Action, MatchStatus, OnlineMatchResults, Result, Status
+from comictaggerlib.resulttypes import OnlineMatchResults
 from comictaggerlib.seriesselectionwindow import SeriesSelectionWindow
 from comictaggerlib.settingswindow import SettingsWindow
 from comictaggerlib.ui import ui_path
+from comictaggerlib.ui.pyqttoast import Toast, ToastPreset
 from comictaggerlib.ui.qtutils import center_window_on_parent, enable_widget
 from comictaggerlib.versionchecker import VersionChecker
-from comictalker.comictalker import ComicTalker, TalkerError
+from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +78,8 @@ def execute(f: Callable[[], Any]) -> None:
 class TaggerWindow(QtWidgets.QMainWindow):
     appName = "ComicTagger"
     version = ctversion.version
+    ratelimit = QtCore.pyqtSignal(float, float)
+    finish = QtCore.pyqtSignal(GenericMetadata, str)
 
     def __init__(
         self,
@@ -294,6 +295,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.leGtin.textChanged.connect(self.gtin_changed)
 
         self.page_list_editor.set_blur(self.config[0].General__blur)
+
+        self.ratelimit.connect(self.on_ratelimit)
+        self.finish.connect(self.finish_query)
 
         def _sync_blur(*args: Any) -> None:
             self.config[0].General__blur = self.page_list_editor.blur
@@ -1134,13 +1138,13 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         selector = SeriesSelectionWindow(
             self,
-            series_name,
-            issue_number,
-            year,
-            issue_count,
-            self.comic_archive,
             self.config[0],
             self.current_talker(),
+            series_name,
+            issue_number,
+            self.comic_archive,
+            year,
+            issue_count,
             autoselect,
             literal,
         )
@@ -1151,31 +1155,74 @@ class TaggerWindow(QtWidgets.QMainWindow):
         selector.exec()
 
         if selector.result():
-            # we should now have a series ID
-            QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
 
-            # copy the form onto metadata object
-            self.form_to_metadata()
+            class QueryThread(QtCore.QThread):
+                def __init__(
+                    self,
+                    talker: ComicTalker,
+                    issue_id: str,
+                    series_id: str,
+                    issue_number: str,
+                    finish: QtCore.pyqtSignal,
+                    on_rate_limit: QtCore.pyqtSignal,
+                ) -> None:
+                    super().__init__()
+                    self.issue_id = issue_id
+                    self.series_id = series_id
+                    self.issue_number = issue_number
+                    self.talker = talker
+                    self.finish = finish
+                    self.on_rate_limit = on_rate_limit
 
-            try:
-                new_metadata = self.current_talker().fetch_comic_data(
-                    issue_id=selector.issue_id, series_id=selector.series_id, issue_number=selector.issue_number
-                )
-            except TalkerError as e:
-                QtWidgets.QApplication.restoreOverrideCursor()
-                QtWidgets.QMessageBox.critical(self, f"{e.source} {e.code_name} Error", f"{e}")
-                return
-            QtWidgets.QApplication.restoreOverrideCursor()
+                def run(self) -> None:
+                    try:
+                        new_metadata = self.talker.fetch_comic_data(
+                            issue_id=self.issue_id,
+                            series_id=self.series_id,
+                            issue_number=self.issue_number,
+                            on_rate_limit=RLCallBack(lambda x, y: self.on_rate_limit.emit(x, y), 60),
+                        )
+                    except TalkerError as e:
+                        QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
+                        return
+                    self.finish.emit(new_metadata, self.issue_number)
 
-            if new_metadata is None or new_metadata.is_empty:
-                QtWidgets.QMessageBox.critical(
-                    self, "Search", f"Could not find an issue {selector.issue_number} for that series"
-                )
-                return
+            self.querythread = QueryThread(
+                self.current_talker(),
+                selector.issue_id,
+                selector.series_id,
+                selector.issue_number,
+                self.finish,
+                self.ratelimit,
+            )
+            self.querythread.start()
 
-            self.metadata = prepare_metadata(self.metadata, new_metadata, self.config[0])
-            # Now push the new combined data into the edit controls
-            self.metadata_to_form()
+    def finish_query(self, new_metadata: GenericMetadata, issue_number: str) -> None:
+        # we should now have a series ID
+        # QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+        QtWidgets.QApplication.restoreOverrideCursor()
+
+        # copy the form onto metadata object
+        self.form_to_metadata()
+
+        if new_metadata is None or new_metadata.is_empty:
+            QtWidgets.QMessageBox.critical(None, "Search", f"Could not find an issue {new_metadata} for that series")
+            return
+
+        self.metadata = prepare_metadata(self.metadata, new_metadata, self.config[0])
+        # Now push the new combined data into the edit controls
+        self.metadata_to_form()
+
+    def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
+        toast = Toast(self)
+        toast.setDuration(10000)
+        toast.setTitle("Rate Limit Hit!")
+        toast.setText(
+            f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
+        )
+        toast.applyPreset(ToastPreset.WARNING)
+        toast.setPositionRelativeToWidget(self)
+        toast.show()
 
     def write_tags(self) -> None:
         if self.metadata is not None and self.comic_archive is not None:
@@ -1218,7 +1265,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.update_menus()
 
                 # Only try to read if write was successful
-                self.metadata, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
+                self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
                 if error is not None:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -1711,7 +1758,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     if prog_idx % 10 == 0:
                         QtCore.QCoreApplication.processEvents()
                     ca_saved = False
-                    md, error = self.read_selected_tags(src_tag_ids, ca)
+                    md, _, error = self.read_selected_tags(src_tag_ids, ca)
                     if error is not None:
                         failed_list.append(ca.path)
                         continue
@@ -1763,193 +1810,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.atprogdialog.textEdit.ensureCursorVisible()
             QtCore.QCoreApplication.processEvents()
 
-    def identify_and_tag_single_archive(
-        self, ca: ComicArchive, match_results: OnlineMatchResults, dlg: AutoTagStartWindow
-    ) -> tuple[bool, OnlineMatchResults]:
-
-        success = False
-        ii = IssueIdentifier(ca, self.config[0], self.current_talker())
-
-        # read in tags, and parse file name if not there
-        md, error = self.read_selected_tags(self.selected_read_tags, ca)
-        if error is not None:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Aborting...",
-                f"One or more of the read tags failed to load for {ca.path}. Aborting to prevent any possible further damage. Check log for details.",
-            )
-            logger.error("Failed to load tags from %s: %s", self.ca.path, error)
-            return False, match_results
-
-        if md.is_empty:
-            md = ca.metadata_from_filename(
-                self.config[0].Filename_Parsing__filename_parser,
-                self.config[0].Filename_Parsing__remove_c2c,
-                self.config[0].Filename_Parsing__remove_fcbd,
-                self.config[0].Filename_Parsing__remove_publisher,
-                dlg.split_words,
-                self.config[0].Filename_Parsing__allow_issue_start_with_letter,
-                self.config[0].Filename_Parsing__protofolius_issue_number_scheme,
-            )
-            if dlg.ignore_leading_digits_in_filename and md.series is not None:
-                # remove all leading numbers
-                md.series = re.sub(r"(^[\d.]*)(.*)", r"\2", md.series)
-
-        # use the dialog specified search string
-        if dlg.search_string:
-            md.series = dlg.search_string
-
-        if md is None or md.is_empty:
-            logger.error("No metadata given to search online with!")
-            return False, match_results
-
-        if dlg.dont_use_year:
-            md.year = None
-        if md.issue is None or md.issue == "":
-            if dlg.assume_issue_one:
-                md.issue = "1"
-            else:
-                md.issue = utils.xlate(md.volume)
-
-        ii.set_output_function(self.auto_tag_log)
-        if self.atprogdialog is not None:
-            ii.set_cover_url_callback(self.atprogdialog.set_test_image)
-        ii.series_match_thresh = dlg.name_length_match_tolerance
-
-        result, matches = ii.identify(ca, md)
-
-        found_match = False
-        choices = False
-        low_confidence = False
-
-        if result == ii.result_no_matches:
-            pass
-        elif result == ii.result_found_match_but_bad_cover_score:
-            low_confidence = True
-            found_match = True
-        elif result == ii.result_found_match_but_not_first_page:
-            found_match = True
-        elif result == ii.result_multiple_matches_with_bad_image_scores:
-            low_confidence = True
-            choices = True
-        elif result == ii.result_one_good_match:
-            found_match = True
-        elif result == ii.result_multiple_good_matches:
-            choices = True
-
-        if choices:
-            if low_confidence:
-                self.auto_tag_log("Online search: Multiple low-confidence matches.  Save aborted\n")
-                match_results.low_confidence_matches.append(
-                    Result(
-                        Action.save,
-                        Status.match_failure,
-                        ca.path,
-                        online_results=matches,
-                        match_status=MatchStatus.low_confidence_match,
-                    )
-                )
-            else:
-                self.auto_tag_log("Online search: Multiple matches.  Save aborted\n")
-                match_results.multiple_matches.append(
-                    Result(
-                        Action.save,
-                        Status.match_failure,
-                        ca.path,
-                        online_results=matches,
-                        match_status=MatchStatus.multiple_match,
-                    )
-                )
-        elif low_confidence and not dlg.auto_save_on_low:
-            self.auto_tag_log("Online search: Low confidence match.  Save aborted\n")
-            match_results.low_confidence_matches.append(
-                Result(
-                    Action.save,
-                    Status.match_failure,
-                    ca.path,
-                    online_results=matches,
-                    match_status=MatchStatus.low_confidence_match,
-                )
-            )
-        elif not found_match:
-            self.auto_tag_log("Online search: No match found.  Save aborted\n")
-            match_results.no_matches.append(
-                Result(
-                    Action.save,
-                    Status.match_failure,
-                    ca.path,
-                    online_results=matches,
-                    match_status=MatchStatus.no_match,
-                )
-            )
-        else:
-            # a single match!
-            if low_confidence:
-                self.auto_tag_log("Online search: Low confidence match, but saving anyways, as indicated...\n")
-
-            # now get the particular issue data
-            QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
-
-            try:
-
-                ct_md = self.current_talker().fetch_comic_data(matches[0].issue_id)
-            except TalkerError:
-                logger.exception("Save aborted.")
-                return False, match_results
-
-            QtWidgets.QApplication.restoreOverrideCursor()
-
-            if ct_md is None or ct_md.is_empty:
-                match_results.fetch_data_failures.append(
-                    Result(
-                        Action.save,
-                        Status.fetch_data_failure,
-                        ca.path,
-                        online_results=matches,
-                        match_status=MatchStatus.good_match,
-                    )
-                )
-
-            if ct_md is not None:
-                temp_opts = cast(ct_ns, settngs.get_namespace(self.config, True, True, True, False)[0])
-                temp_opts.Auto_Tag__clear_tags = dlg.cbxClearMetadata.isChecked()
-
-                md = prepare_metadata(md, ct_md, temp_opts)
-
-                res = Result(
-                    Action.save,
-                    status=Status.success,
-                    original_path=ca.path,
-                    online_results=matches,
-                    match_status=MatchStatus.good_match,
-                    md=md,
-                    tags_written=self.selected_write_tags,
-                )
-
-                def write_Tags() -> bool:
-                    for tag_id in self.selected_write_tags:
-                        # write out the new data
-                        if not ca.write_tags(md, tag_id):
-                            self.auto_tag_log(
-                                f"{tags[tag_id].name()} save failed! Aborting any additional tag saves.\n"
-                            )
-                            return False
-                    return True
-
-                # Save tags
-                if write_Tags():
-                    match_results.good_matches.append(res)
-                    success = True
-                    self.auto_tag_log("Save complete!\n")
-                else:
-                    res.status = Status.write_failure
-                    match_results.write_failures.append(res)
-
-                ca.reset_cache()
-                ca.load_cache({*self.selected_read_tags, *self.selected_write_tags})
-
-        return success, match_results
-
     def auto_tag(self) -> None:
         ca_list = self.fileSelectionList.get_selected_archive_list()
         tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
@@ -1982,43 +1842,37 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.atprogdialog.show()
         self.atprogdialog.progressBar.setMaximum(len(ca_list))
         self.atprogdialog.setWindowTitle("Auto-Tagging")
+
         center_window_on_parent(self.atprogdialog)
+        temp_opts = cast(ct_ns, settngs.get_namespace(self.config, True, True, True, False)[0])
+        temp_opts.Auto_Tag__clear_tags = atstartdlg.cbxClearMetadata.isChecked()
+        temp_opts.Issue_Identifier__series_match_identify_thresh = atstartdlg.name_length_match_tolerance
+        temp_opts.Auto_Tag__ignore_leading_numbers_in_filename = atstartdlg.ignore_leading_digits_in_filename
+        temp_opts.Auto_Tag__use_year_when_identifying = not atstartdlg.dont_use_year
+        temp_opts.Auto_Tag__assume_issue_one = atstartdlg.assume_issue_one
+        temp_opts.internal__remove_archive_after_successful_match = atstartdlg.remove_after_success
+        temp_opts.Runtime_Options__tags_read = self.selected_read_tags
+        temp_opts.Runtime_Options__tags_write = self.selected_write_tags
+
+        self.autotagthread = AutoTagThread(atstartdlg.search_string, ca_list, self.config[0], self.current_talker())
+
+        self.autotagthread.autoTagComplete.connect(self.auto_tag_finished)
+        self.autotagthread.autoTagLogMsg.connect(self.auto_tag_log)
+        self.autotagthread.autoTagProgress.connect(self.atprogdialog.on_progress)
+        self.autotagthread.ratelimit.connect(self.ratelimit)
+
+        self.atprogdialog.rejected.connect(self.autotagthread.cancel)
 
         self.auto_tag_log("==========================================================================\n")
         self.auto_tag_log(f"Auto-Tagging Started for {len(ca_list)} items\n")
+        self.autotagthread.start()
 
-        match_results = OnlineMatchResults()
-        archives_to_remove = []
-        for prog_idx, ca in enumerate(ca_list):
-            self.auto_tag_log("==========================================================================\n")
-            self.auto_tag_log(f"Auto-Tagging {prog_idx} of {len(ca_list)}\n")
-            self.auto_tag_log(f"{ca.path}\n")
-            QtCore.QCoreApplication.processEvents()
-            try:
-                cover_idx = ca.read_tags(self.selected_read_tags[0]).get_cover_page_index_list()[0]
-            except Exception as e:
-                cover_idx = 0
-                logger.error("Failed to load metadata for %s: %s", ca.path, e)
-            image_data = ca.get_page(cover_idx)
-            self.atprogdialog.set_archive_image(image_data)
-            self.atprogdialog.set_test_image(b"")
+    def auto_tag_finished(self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive]) -> None:
+        tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
+        if self.atprogdialog:
+            self.atprogdialog.close()
 
-            if self.atprogdialog.isdone:
-                break
-            self.atprogdialog.progressBar.setValue(prog_idx)
-
-            self.atprogdialog.label.setText(str(ca.path))
-
-            if ca.is_writable():
-                success, match_results = self.identify_and_tag_single_archive(ca, match_results, atstartdlg)
-
-                if success and atstartdlg.remove_after_success:
-                    archives_to_remove.append(ca)
-
-        self.atprogdialog.close()
-
-        if atstartdlg.remove_after_success:
-            self.fileSelectionList.remove_archive_list(archives_to_remove)
+        self.fileSelectionList.remove_archive_list(archives_to_remove)
         self.fileSelectionList.update_selected_rows()
 
         new_ca = self.fileSelectionList.get_current_archive()
@@ -2064,7 +1918,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     self,
                     match_results.multiple_matches,
                     self.selected_write_tags,
-                    lambda match: self.current_talker().fetch_comic_data(match.issue_id),
                     self.config[0],
                     self.current_talker(),
                 )
@@ -2215,28 +2068,19 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.config[0].internal__last_opened_folder = os.path.abspath(os.path.split(comic_archive.path)[0])
         self.comic_archive = comic_archive
 
-        self.metadata, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
+        self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
         if error is not None:
             logger.error("Failed to load tags from %s: %s", self.comic_archive.path, error)
             self.exception(f"Failed to load tags from {self.comic_archive.path}, see log for details\n\n")
 
         self.update_ui_for_archive()
 
-    def read_selected_tags(self, tag_ids: list[str], ca: ComicArchive) -> tuple[GenericMetadata, Exception | None]:
-        md = GenericMetadata()
-        error = None
-        try:
-            for tag_id in tag_ids:
-                metadata = ca.read_tags(tag_id)
-                md.overlay(
-                    metadata,
-                    mode=self.config[0].Metadata_Options__tag_merge,
-                    merge_lists=self.config[0].Metadata_Options__tag_merge_lists,
-                )
-        except Exception as e:
-            error = e
-
-        return md, error
+    def read_selected_tags(
+        self, tag_ids: list[str], ca: ComicArchive
+    ) -> tuple[GenericMetadata, list[str], Exception | None]:
+        return read_selected_tags(
+            tag_ids, ca, self.config[0].Metadata_Options__tag_merge, self.config[0].Metadata_Options__tag_merge_lists
+        )
 
     def file_list_cleared(self) -> None:
         self.reset_app()

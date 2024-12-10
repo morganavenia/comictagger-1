@@ -381,7 +381,7 @@ class QuickTag:
             aggressive_results, display_results, ca, tags, interactive, aggressive_filtering
         )
         if chosen_result:
-            return self.talker.fetch_comic_data(issue_id=chosen_result.ID)
+            return self.talker.fetch_comic_data(issue_id=chosen_result.ID, on_rate_limit=None)
         return None
 
     def SearchHashes(
@@ -421,10 +421,10 @@ class QuickTag:
         self.output(f"Retrieving basic {self.talker.name} data for {len(relevant_ids)} results")
         # Try to do a bulk fetch of basic issue data, if we have more than 1 id
         if hasattr(self.talker, "fetch_comics") and len(all_ids) > 1:
-            md_results = self.talker.fetch_comics(issue_ids=list(all_ids))
+            md_results = self.talker.fetch_comics(issue_ids=list(all_ids), on_rate_limit=None)
         else:
             for md_id in all_ids:
-                md_results.append(self.talker.fetch_comic_data(issue_id=md_id))
+                md_results.append(self.talker.fetch_comic_data(issue_id=md_id, on_rate_limit=None))
 
         retrieved_ids = {ID(self.domain, md.issue_id) for md in md_results}  # type: ignore[arg-type]
         bad_ids = relevant_ids - retrieved_ids

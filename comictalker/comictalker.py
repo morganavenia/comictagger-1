@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 import settngs
 
@@ -23,6 +23,11 @@ from comicapi.genericmetadata import ComicSeries, GenericMetadata
 from comictalker.talker_utils import fix_url
 
 logger = logging.getLogger(__name__)
+
+
+class RLCallBack(NamedTuple):
+    callback: Callable[[float, float], None]
+    interval: float
 
 
 class TalkerError(Exception):
@@ -170,6 +175,8 @@ class ComicTalker:
         refresh_cache: bool = False,
         literal: bool = False,
         series_match_thresh: int = 90,
+        *,
+        on_rate_limit: RLCallBack | None = None,
     ) -> list[ComicSeries]:
         """
         This function should return a list of series that match the given series name
@@ -191,7 +198,12 @@ class ComicTalker:
         raise NotImplementedError
 
     def fetch_comic_data(
-        self, issue_id: str | None = None, series_id: str | None = None, issue_number: str = ""
+        self,
+        issue_id: str | None = None,
+        series_id: str | None = None,
+        issue_number: str = "",
+        *,
+        on_rate_limit: RLCallBack | None = None,
     ) -> GenericMetadata:
         """
         This function should return an instance of GenericMetadata for a single issue.
@@ -210,19 +222,34 @@ class ComicTalker:
         """
         raise NotImplementedError
 
-    def fetch_series(self, series_id: str) -> ComicSeries:
+    def fetch_series(
+        self,
+        series_id: str,
+        *,
+        on_rate_limit: RLCallBack | None = None,
+    ) -> ComicSeries:
         """
         This function should return an instance of ComicSeries from the given series ID.
         Caching MUST be implemented on this function.
         """
         raise NotImplementedError
 
-    def fetch_issues_in_series(self, series_id: str) -> list[GenericMetadata]:
+    def fetch_issues_in_series(
+        self,
+        series_id: str,
+        *,
+        on_rate_limit: RLCallBack | None = None,
+    ) -> list[GenericMetadata]:
         """Expected to return a list of issues with a given series ID"""
         raise NotImplementedError
 
     def fetch_issues_by_series_issue_num_and_year(
-        self, series_id_list: list[str], issue_number: str, year: int | None
+        self,
+        series_id_list: list[str],
+        issue_number: str,
+        year: int | None,
+        *,
+        on_rate_limit: RLCallBack | None = None,
     ) -> list[GenericMetadata]:
         """
         This function should return a single issue for each series id in

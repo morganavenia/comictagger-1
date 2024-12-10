@@ -31,7 +31,7 @@
         <number>0</number>
        </property>
        <item alignment="Qt::AlignTop">
-        <widget class="QWidget" name="imageContainer" native="true">
+        <widget class="QWidget" name="coverImageContainer" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -66,7 +66,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="lblSourceName">
+        <widget class="QLabel" name="lblIssuesSourceName">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -177,7 +177,7 @@
            </property>
           </column>
          </widget>
-         <widget class="QTextEdit" name="teDetails">
+         <widget class="QTextEdit" name="teDescription">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>
@@ -223,7 +223,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="cbxFilter">
+          <widget class="QCheckBox" name="cbxPublisherFilter">
            <property name="toolTip">
             <string>Filter the publishers based on the publisher filter.</string>
            </property>
