@@ -504,7 +504,7 @@ def countries() -> dict[str | None, str | None]:
 
         for alpha_2, c in isocodes.countries.by_alpha_2:
             _countries[alpha_2] = c["name"]
-    return _countries
+    return _countries.copy()
 
 
 def languages() -> dict[str | None, str | None]:
@@ -513,11 +513,11 @@ def languages() -> dict[str | None, str | None]:
 
         for alpha_2, lng in isocodes.extendend_languages._sorted_by_index(index="alpha_2"):
             _languages[alpha_2] = lng["name"]
-    return _languages
+    return _languages.copy()
 
 
 def get_language_from_iso(iso: str | None) -> str | None:
-    return languages()[iso]
+    return _languages[iso]
 
 
 def get_language_iso(string: str | None) -> str | None:
@@ -542,7 +542,7 @@ def get_language_iso(string: str | None) -> str | None:
 
 
 def get_country_from_iso(iso: str | None) -> str | None:
-    return countries()[iso]
+    return _countries[iso]
 
 
 def get_publisher(publisher: str) -> tuple[str, str]:
