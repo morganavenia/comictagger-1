@@ -84,8 +84,9 @@ class CreditEditorWindow(QtWidgets.QDialog):
         self.cbPrimary.setChecked(credit.primary)
 
     def get_credit(self) -> Credit:
-        primary = self.current_role_can_be_primary() and self.cbPrimary.isChecked()
-        return Credit(self.leName.text(), self.cbRole.currentText(), primary, self.cbLanguage.currentText())
+        return Credit(
+            self.leName.text(), self.cbRole.currentText(), self.cbPrimary.isChecked(), self.cbLanguage.currentText()
+        )
 
     def accept(self) -> None:
         if self.leName.text() == "":

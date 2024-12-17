@@ -872,7 +872,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
             for row, credit in enumerate(md.credits):
                 # if the role-person pair already exists, just skip adding it to the list
-                if self.is_dupe_credit(credit.role.title(), credit.person):
+                if self.is_dupe_credit(None, credit.role.title(), credit.person):
                     continue
 
                 self.add_new_credit_entry(row, credit)
@@ -886,27 +886,33 @@ class TaggerWindow(QtWidgets.QMainWindow):
         item = QtWidgets.QTableWidgetItem(credit.role)
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.role)
-        self.twCredits.setItem(row, 1, item)
+        self.twCredits.setItem(row, self.md_attributes["credits.role"], item)
 
         language = utils.get_language_from_iso(credit.language) or credit.language
         item = QtWidgets.QTableWidgetItem(language)
         item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.language)
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-        self.twCredits.setItem(row, 2, item)
+        self.twCredits.setItem(row, self.md_attributes["credits.language"], item)
 
         item = QtWidgets.QTableWidgetItem(credit.person)
         item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.person)
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-        self.twCredits.setItem(row, 3, item)
+        self.twCredits.setItem(row, self.md_attributes["credits.person"], item)
 
         item = QtWidgets.QTableWidgetItem("")
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
-        self.twCredits.setItem(row, 0, item)
+        self.twCredits.setItem(row, self.md_attributes["credits.primary"], item)
         self.update_credit_primary_flag(row, credit.primary)
 
-    def is_dupe_credit(self, role: str, name: str) -> bool:
+    def is_dupe_credit(self, row: int | None, role: str, name: str) -> bool:
         for r in range(self.twCredits.rowCount()):
-            if self.twCredits.item(r, 1).text() == role and self.twCredits.item(r, 2).text() == name:
+            if r == row:
+                continue
+
+            if (
+                self.twCredits.item(r, self.md_attributes["credits.role"]).text() == role
+                and self.twCredits.item(r, self.md_attributes["credits.person"]).text() == name
+            ):
                 return True
 
         return False
@@ -961,11 +967,12 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         # get the credits from the table
         md.credits = []
+
         for row in range(self.twCredits.rowCount()):
-            role = self.twCredits.item(row, 1).text()
-            lang = self.twCredits.item(row, 2).text()
-            name = self.twCredits.item(row, 3).text()
-            primary_flag = self.twCredits.item(row, 0).text() != ""
+            role = self.twCredits.item(row, self.md_attributes["credits.role"]).text()
+            lang = self.twCredits.item(row, self.md_attributes["credits.language"]).text()
+            name = self.twCredits.item(row, self.md_attributes["credits.person"]).text()
+            primary_flag = self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != ""
 
             md.add_credit(name, role, bool(primary_flag), lang)
 
@@ -1240,21 +1247,21 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def update_credit_primary_flag(self, row: int, primary: bool) -> None:
         # if we're clearing a flag do it and quit
         if not primary:
-            self.twCredits.item(row, 0).setText("")
+            self.twCredits.item(row, self.md_attributes["credits.primary"]).setText("")
             return
 
         # otherwise, we need to check for, and clear, other primaries with same role
-        role = str(self.twCredits.item(row, 1).text())
+        role = str(self.twCredits.item(row, self.md_attributes["credits.role"]).text())
         r = 0
         for r in range(self.twCredits.rowCount()):
             if (
-                self.twCredits.item(r, 0).text() != ""
-                and str(self.twCredits.item(r, 1).text()).casefold() == role.casefold()
+                self.twCredits.item(r, self.md_attributes["credits.primary"]).text() != ""
+                and str(self.twCredits.item(r, self.md_attributes["credits.role"]).text()).casefold() == role.casefold()
             ):
-                self.twCredits.item(r, 0).setText("")
+                self.twCredits.item(r, self.md_attributes["credits.primary"]).setText("")
 
         # Now set our new primary
-        self.twCredits.item(row, 0).setText("Yes")
+        self.twCredits.item(row, self.md_attributes["credits.primary"]).setText("Yes")
 
     def modify_credits(self, edit: bool) -> None:
         row = self.twCredits.rowCount()
@@ -1262,10 +1269,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if edit:
             row = self.twCredits.currentRow()
             old = Credit(
-                self.twCredits.item(row, 3).text(),
-                self.twCredits.item(row, 1).text(),
-                self.twCredits.item(row, 0).text() != "",
-                self.twCredits.item(row, 2).text(),
+                self.twCredits.item(row, self.md_attributes["credits.person"]).text(),
+                self.twCredits.item(row, self.md_attributes["credits.role"]).text(),
+                self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != "",
+                self.twCredits.item(row, self.md_attributes["credits.language"]).text(),
             )
 
         editor = CreditEditorWindow(self, CreditEditorWindow.ModeEdit, old)
@@ -1278,14 +1285,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 # nothing has changed, just quit
                 return
 
-            # name and role is the same, but primary flag changed
-            if new.person == old.person and new.role == old.role:
-                self.update_credit_primary_flag(row, new.primary)
-                return
-
             # check for dupes
             ok_to_mod = True
-            if self.is_dupe_credit(new.role, new.person):
+            if self.is_dupe_credit(row, new.role, new.person):
                 # delete the dupe credit from list
                 qmsg = QtWidgets.QMessageBox()
                 qmsg.setText("Duplicate Credit!")
@@ -1307,9 +1309,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
             if ok_to_mod:
                 # modify it
                 if edit:
-                    self.twCredits.item(row, 1).setText(new.role)
-                    self.twCredits.item(row, 3).setText(new.person)
-                    self.twCredits.item(row, 2).setText(new.language)
+                    self.twCredits.item(row, self.md_attributes["credits.role"]).setText(new.role)
+                    self.twCredits.item(row, self.md_attributes["credits.person"]).setText(new.person)
+                    self.twCredits.item(row, self.md_attributes["credits.language"]).setText(new.language)
                     self.update_credit_primary_flag(row, new.primary)
                 else:
                     # add new entry
