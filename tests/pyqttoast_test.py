@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import os
 from unittest.mock import patch
 
 import pytest
+
+pytest.importorskip("PyQt5")
 from PyQt5.QtCore import QMargins, QRect, QSize, Qt
 from PyQt5.QtGui import QColor, QFont, QGuiApplication, QPixmap
 from PyQt5.QtWidgets import QMainWindow
 
-from .. import Toast, ToastButtonAlignment, ToastIcon, ToastPosition, ToastPreset
-from ..constants import DROP_SHADOW_SIZE
-from ..icons import icon_path
-
-ROOT_PATH = os.path.abspath(os.curdir)
+from comictaggerlib.ui.pyqttoast import Toast, ToastButtonAlignment, ToastIcon, ToastPosition, ToastPreset
+from comictaggerlib.ui.pyqttoast.constants import DROP_SHADOW_SIZE
+from comictaggerlib.ui.pyqttoast.icons import icon_path
 
 
 @pytest.fixture(autouse=True)
