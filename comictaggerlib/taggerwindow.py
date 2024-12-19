@@ -1215,7 +1215,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
         toast = Toast(self)
-        toast.setDuration(10000)
+        # Convert to milliseconds, make it end half a second before the ratelimit triggers again, make sure we have a positive time
+        toast.setDuration(abs(int(sleep_time * 1000) - 500))
         toast.setTitle("Rate Limit Hit!")
         toast.setText(
             f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
