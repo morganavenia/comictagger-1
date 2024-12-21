@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import platform
 from unittest.mock import patch
 
 import pytest
 
 pytest.importorskip("PyQt5")
+if platform.platform != "Darwin":
+    raise pytest.skip.Exception("GUI Testing sucks", allow_module_level=True)
 from PyQt5.QtCore import QMargins, QRect, QSize, Qt
 from PyQt5.QtGui import QColor, QFont, QGuiApplication, QPixmap
 from PyQt5.QtWidgets import QMainWindow
