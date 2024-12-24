@@ -125,6 +125,12 @@ if qt_available:
         # And the move call repositions the window
         window.move(hpos + main_window_size.left(), vpos + main_window_size.top())
 
+    def is_dark_mode() -> bool:
+        palette = QPalette()
+        text = palette.color(QPalette.WindowText)
+        window = palette.color(QPalette.Window)
+        return text.lightness() > window.lightness()
+
     def get_qimage_from_data(image_data: bytes) -> QtGui.QImage:
         img = QtGui.QImage()
 

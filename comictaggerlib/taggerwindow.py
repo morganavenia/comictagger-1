@@ -62,7 +62,7 @@ from comictaggerlib.renamewindow import RenameWindow
 from comictaggerlib.resulttypes import OnlineMatchResults
 from comictaggerlib.seriesselectionwindow import SeriesSelectionWindow
 from comictaggerlib.settingswindow import SettingsWindow
-from comictaggerlib.ui import ui_path
+from comictaggerlib.ui import qtutils, ui_path
 from comictaggerlib.ui.pyqttoast import Toast, ToastPreset
 from comictaggerlib.ui.qtutils import center_window_on_parent, enable_widget
 from comictaggerlib.versionchecker import VersionChecker
@@ -1221,7 +1221,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
         toast.setText(
             f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
         )
-        toast.applyPreset(ToastPreset.WARNING)
+        if qtutils.is_dark_mode():
+            toast.applyPreset(ToastPreset.WARNING_DARK)
+        else:
+            toast.applyPreset(ToastPreset.WARNING)
         toast.setPositionRelativeToWidget(self)
         toast.show()
 
