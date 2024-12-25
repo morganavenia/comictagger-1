@@ -331,7 +331,7 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         ):
             QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
             try:
-                series = self.talker.fetch_series(self.series_id, on_rate_limit=RLCallBack(self.ratelimit, 10))
+                series = self.talker.fetch_series(self.series_id, on_rate_limit=RLCallBack(self.on_ratelimit, 10))
             except TalkerError:
                 pass
         self.set_description(self.teDescription, series.description or "")

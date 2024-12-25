@@ -148,7 +148,7 @@ class IssueSelectionWindow(SeriesSelectionWindow):
             QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
             try:
                 issue = self.talker.fetch_comic_data(
-                    issue_id=self.issue_id, on_rate_limit=RLCallBack(self.ratelimit, 10)
+                    issue_id=self.issue_id, on_rate_limit=RLCallBack(self.on_ratelimit, 10)
                 )
             except TalkerError:
                 pass
