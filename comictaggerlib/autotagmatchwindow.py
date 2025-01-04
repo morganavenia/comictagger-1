@@ -22,7 +22,6 @@ import os
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive, tags
-from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.md import prepare_metadata
@@ -77,6 +76,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
         self.match_set_list = match_set_list
         self._tags = read_tags
+        self.talker = talker
 
         self.current_match_set_idx = 0
 
@@ -85,9 +85,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.skipButton.clicked.connect(self.skip_to_next)
 
         self.update_data()
-
-    def fetch(self, match: IssueResult) -> GenericMetadata:
-        return self.current_talker().fetch_comic_data(issue_id=match.issue_id)
 
     def update_data(self) -> None:
         self.current_match_set = self.match_set_list[self.current_match_set_idx]
@@ -227,9 +224,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
     def save_match(self) -> None:
         match = self.current_match()
-        ca = ComicArchive(
-            self.current_match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash
-        )
+        ca = ComicArchive(self.current_match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash)
         md, error = self.parent().read_selected_tags(self._tags, ca)
         if error is not None:
             logger.error("Failed to load tags for %s: %s", ca.path, error)
@@ -252,7 +247,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         # now get the particular issue data
 
         try:
-            self.current_match_set.md = ct_md = self.fetch(match)
+            self.current_match_set.md = ct_md = self.talker.fetch_comic_data(issue_id=match.issue_id)
         except TalkerError as e:
             QtWidgets.QApplication.restoreOverrideCursor()
             QtWidgets.QMessageBox.critical(self, f"{e.source} {e.code_name} Error", f"{e}")

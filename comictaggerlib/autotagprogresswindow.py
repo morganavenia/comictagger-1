@@ -27,6 +27,7 @@ from comicapi.comicarchive import ComicArchive, tags
 from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings.settngs_namespace import SettngsNS
+from comictaggerlib.issueidentifier import IssueIdentifierCancelled
 from comictaggerlib.md import read_selected_tags
 from comictaggerlib.resulttypes import Action, OnlineMatchResults, Result, Status
 from comictaggerlib.tag import identify_comic
@@ -88,6 +89,8 @@ class AutoTagThread(QtCore.QThread):
         self.autoTagComplete.emit(match_results, archives_to_remove)
 
     def on_rate_limit(self, full_time: float, sleep_time: float) -> None:
+        if self.canceled:
+            raise IssueIdentifierCancelled
         self.log_output(
             f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
         )
@@ -160,17 +163,28 @@ class AutoTagThread(QtCore.QThread):
                 ),
                 match_results,
             )
-        res, match_results = identify_comic(
-            ca,
-            md,
-            tags_used,
-            match_results,
-            self.config,
-            self.talker,
-            self.log_output,
-            on_rate_limit=ratelimit_callback,
-            on_progress=on_progress,
-        )
+
+        try:
+            res, match_results = identify_comic(
+                ca,
+                md,
+                tags_used,
+                match_results,
+                self.config,
+                self.talker,
+                self.log_output,
+                on_rate_limit=ratelimit_callback,
+                on_progress=on_progress,
+            )
+        except IssueIdentifierCancelled:
+            return (
+                Result(
+                    Action.save,
+                    original_path=ca.path,
+                    status=Status.fetch_data_failure,
+                ),
+                match_results,
+            )
         if self.canceled:
             return res, match_results
 

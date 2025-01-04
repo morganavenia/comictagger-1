@@ -86,19 +86,19 @@ class LimitContextDecorator:
                 self.try_acquire()
             except BucketFullException as err:
                 delay_time = full_delay_time = self.delay_or_reraise(err)
-
-                if self.on_rate_limit:
-                    if self.on_rate_limit.interval > 0 and delay_time > self.on_rate_limit.interval:
-                        delay_time = self.on_rate_limit.interval
-                    self.on_rate_limit.callback(full_delay_time, delay_time)
-                logger.warning(
-                    "Rate limit reached; %.0f seconds remaining before next request. Sleeping for %.0f seconds",
-                    full_delay_time,
-                    delay_time,
-                )
-                sleep(delay_time)
             else:
                 break
+
+            if self.on_rate_limit:
+                if self.on_rate_limit.interval > 0 and delay_time > self.on_rate_limit.interval:
+                    delay_time = self.on_rate_limit.interval
+                self.on_rate_limit.callback(full_delay_time, delay_time)
+            logger.warning(
+                "Rate limit reached; %.0f seconds remaining before next request. Sleeping for %.0f seconds",
+                full_delay_time,
+                delay_time,
+            )
+            sleep(delay_time)
 
     async def async_delayed_acquire(self):
         """Delay and retry until we can successfully acquire an available bucket item"""
