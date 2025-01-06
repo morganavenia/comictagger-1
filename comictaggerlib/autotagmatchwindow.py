@@ -182,7 +182,9 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             self.teDescription.setText(match.description)
 
     def set_cover_image(self) -> None:
-        ca = ComicArchive(self.current_match_set.original_path)
+        ca = ComicArchive(
+            self.current_match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash
+        )
         self.archiveCoverWidget.set_archive(ca)
 
     def current_match(self) -> IssueResult:
@@ -225,7 +227,9 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
     def save_match(self) -> None:
         match = self.current_match()
-        ca = ComicArchive(self.current_match_set.original_path)
+        ca = ComicArchive(
+            self.current_match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash
+        )
         md, error = self.parent().read_selected_tags(self._tags, ca)
         if error is not None:
             logger.error("Failed to load tags for %s: %s", ca.path, error)

@@ -21,6 +21,8 @@ class SettngsNS(settngs.TypedNS):
     Runtime_Options__config: comictaggerlib.ctsettings.types.ComicTaggerPaths
     Runtime_Options__verbose: int
     Runtime_Options__enable_quick_tag: bool
+    Runtime_Options__enable_embedding_hashes: bool
+    Runtime_Options__preferred_hash: str
     Runtime_Options__quiet: bool
     Runtime_Options__json: bool
     Runtime_Options__raw: bool
@@ -47,6 +49,7 @@ class SettngsNS(settngs.TypedNS):
     Quick_Tag__exact_only: bool
 
     internal__install_id: str
+    internal__embedded_hash_type: str
     internal__write_tags: list[str]
     internal__read_tags: list[str]
     internal__last_opened_folder: str
@@ -143,6 +146,8 @@ class Runtime_Options(typing.TypedDict):
     config: comictaggerlib.ctsettings.types.ComicTaggerPaths
     verbose: int
     enable_quick_tag: bool
+    enable_embedding_hashes: bool
+    preferred_hash: str
     quiet: bool
     json: bool
     raw: bool
@@ -173,6 +178,7 @@ class Quick_Tag(typing.TypedDict):
 
 class internal(typing.TypedDict):
     install_id: str
+    embedded_hash_type: str
     write_tags: list[str]
     read_tags: list[str]
     last_opened_folder: str

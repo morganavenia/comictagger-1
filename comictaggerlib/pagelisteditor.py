@@ -170,7 +170,7 @@ class PageListEditor(QtWidgets.QWidget):
             return
         md = GenericMetadata(pages=self.get_page_list())
         double_pages = [bool(x.double_page) for x in md.pages]
-        self.comic_archive.apply_archive_info_to_metadata(md, True, True)
+        self.comic_archive.apply_archive_info_to_metadata(md, True, True, hash_archive="")
         self.set_data(self.comic_archive, pages_list=md.pages)
         if double_pages != [bool(x.double_page) for x in md.pages]:
             self.modified.emit()

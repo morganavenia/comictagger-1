@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import hashlib
 import logging
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union, overload
@@ -144,6 +145,24 @@ class ImageHash(NamedTuple):
         return str(self.Hash) + ": " + self.Kind
 
 
+class FileHash(NamedTuple):
+    name: str
+    hash: str
+
+    def __str__(self) -> str:
+        return self.name + ":" + self.hash
+
+    @classmethod
+    def parse(cls, string: str) -> FileHash:
+        name, _, parsed_hash = string.partition(":")
+        if name in hashlib.algorithms_available:
+            return FileHash(name, parsed_hash)
+        return FileHash("", "")
+
+    def __bool__(self) -> bool:
+        return all(self)
+
+
 @dataclasses.dataclass
 class GenericMetadata:
     writer_synonyms = ("writer", "plotter", "scripter", "script")
@@ -159,6 +178,7 @@ class GenericMetadata:
     data_origin: MetadataOrigin | None = None
     issue_id: str | None = None
     series_id: str | None = None
+    original_hash: FileHash | None = None
 
     series: str | None = None
     series_aliases: set[str] = dataclasses.field(default_factory=set)
@@ -292,6 +312,9 @@ class GenericMetadata:
         self.data_origin = assign(self.data_origin, new_md.data_origin)  # TODO use and purpose now?
         self.issue_id = assign(self.issue_id, new_md.issue_id)
         self.series_id = assign(self.series_id, new_md.series_id)
+
+        # This should not usually be set by a talker or other online datasource
+        self.original_hash = assign(self.original_hash, new_md.original_hash)
 
         self.series = assign(self.series, new_md.series)
 
@@ -458,6 +481,7 @@ class GenericMetadata:
 
         add_string("data_origin", self.data_origin)
         add_string("series", self.series)
+        add_string("original_hash", self.original_hash)
         add_string("series_aliases", ",".join(self.series_aliases))
         add_string("issue", self.issue)
         add_string("issue_count", self.issue_count)

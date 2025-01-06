@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 class FolderArchiver(Archiver):
     """Folder implementation"""
 
+    hashable = False
+
     def __init__(self) -> None:
         super().__init__()
         self.comment_file_name = "ComicTaggerFolderComment.txt"

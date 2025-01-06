@@ -15,7 +15,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import hashlib
 import importlib.util
+import inspect
 import io
 import itertools
 import logging
@@ -27,7 +29,7 @@ from collections.abc import Iterable
 
 from comicapi import utils
 from comicapi.archivers import Archiver, UnknownArchiver, ZipArchiver
-from comicapi.genericmetadata import GenericMetadata
+from comicapi.genericmetadata import FileHash, GenericMetadata
 from comicapi.tags import Tag
 from comictaggerlib.ctversion import version
 
@@ -124,11 +126,15 @@ class ComicArchive:
     pil_available = True
 
     def __init__(
-        self, path: pathlib.Path | str | Archiver, default_image_path: pathlib.Path | str | None = None
+        self,
+        path: pathlib.Path | str | Archiver,
+        default_image_path: pathlib.Path | str | None = None,
+        hash_archive: str = "",
     ) -> None:
         self.md: dict[str, GenericMetadata] = {}
         self.page_count: int | None = None
         self.page_list: list[str] = []
+        self.hash_archive = hash_archive
 
         self.reset_cache()
         self.default_image_path = default_image_path
@@ -230,7 +236,7 @@ class ComicArchive:
         if not tags[tag_id].enabled:
             return False
 
-        self.apply_archive_info_to_metadata(metadata, True, True)
+        self.apply_archive_info_to_metadata(metadata, True, True, hash_archive=self.hash_archive)
         return tags[tag_id].write_tags(metadata, self.archiver)
 
     def has_tags(self, tag_id: str) -> bool:
@@ -333,11 +339,34 @@ class ComicArchive:
         return self.page_count
 
     def apply_archive_info_to_metadata(
-        self, md: GenericMetadata, calc_page_sizes: bool = False, detect_double_page: bool = False
+        self,
+        md: GenericMetadata,
+        calc_page_sizes: bool = False,
+        detect_double_page: bool = False,
+        *,
+        hash_archive: str = "",
     ) -> None:
+        hash_archive = hash_archive
         md.page_count = self.get_number_of_pages()
         md.apply_default_page_list(self.get_page_name_list())
-        if not calc_page_sizes or not self.seems_to_be_a_comic_archive():
+        if not self.seems_to_be_a_comic_archive():
+            return
+
+        if hash_archive in hashlib.algorithms_available and not md.original_hash:
+            hasher = getattr(hashlib, hash_archive, hash_archive)
+            try:
+                with self.archiver.path.open("b+r") as archive:
+                    digest = utils.file_digest(archive, hasher)
+                if len(inspect.signature(digest.hexdigest).parameters) > 0:
+                    length = digest.name.rpartition("_")[2]
+                    if not length.isdigit():
+                        length = "128"
+                    md.original_hash = FileHash(digest.name, digest.hexdigest(int(length) // 8))
+                else:
+                    md.original_hash = FileHash(digest.name, digest.hexdigest())
+            except Exception:
+                logger.exception("Failed to calculate original hash for '%s'", self.archiver.path)
+        if not calc_page_sizes:
             return
         for p in md.pages:
 

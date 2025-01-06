@@ -21,7 +21,7 @@ from typing import Any
 
 from comicapi import utils
 from comicapi.archivers import Archiver
-from comicapi.genericmetadata import GenericMetadata, PageMetadata
+from comicapi.genericmetadata import FileHash, GenericMetadata, PageMetadata
 from comicapi.tags import Tag
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,7 @@ class ComicRack(Tag):
 
         self.file = "ComicInfo.xml"
         self.supported_attributes = {
+            "original_hash",
             "series",
             "issue",
             "issue_count",
@@ -244,7 +245,11 @@ class ComicRack(Tag):
         assign("BlackAndWhite", "Yes" if md.black_and_white else None)
         assign("AgeRating", md.maturity_rating)
         assign("CommunityRating", md.critical_rating)
-        assign("ScanInformation", md.scan_info)
+
+        scan_info = md.scan_info or ""
+        if md.original_hash:
+            scan_info += f" {md.original_hash}"
+        assign("ScanInformation", scan_info)
 
         assign("PageCount", md.page_count)
 
@@ -326,7 +331,16 @@ class ComicRack(Tag):
         md.manga = utils.xlate(get("Manga"))
         md.maturity_rating = utils.xlate(get("AgeRating"))
         md.critical_rating = utils.xlate_float(get("CommunityRating"))
-        md.scan_info = utils.xlate(get("ScanInformation"))
+        scan_info_list = (utils.xlate(get("ScanInformation")) or "").split()
+        for word in scan_info_list.copy():
+            original_hash = FileHash.parse(word)
+            if original_hash:
+                md.original_hash = original_hash
+                scan_info_list.remove(word)
+                break
+        if scan_info_list:
+            md.scan_info = " ".join(scan_info_list)
+        md.is_empty = False
 
         md.page_count = utils.xlate_int(get("PageCount"))
 

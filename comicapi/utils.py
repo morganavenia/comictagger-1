@@ -15,6 +15,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -45,6 +46,45 @@ except ImportError:
 
 
 if sys.version_info < (3, 11):
+
+    def file_digest(fileobj, digest, /, *, _bufsize=2**18):
+        """Hash the contents of a file-like object. Returns a digest object.
+
+        *fileobj* must be a file-like object opened for reading in binary mode.
+        It accepts file objects from open(), io.BytesIO(), and SocketIO objects.
+        The function may bypass Python's I/O and use the file descriptor *fileno*
+        directly.
+
+        *digest* must either be a hash algorithm name as a *str*, a hash
+        constructor, or a callable that returns a hash object.
+        """
+        # On Linux we could use AF_ALG sockets and sendfile() to archive zero-copy
+        # hashing with hardware acceleration.
+        if isinstance(digest, str):
+            digestobj = hashlib.new(digest)
+        else:
+            digestobj = digest()
+
+        if hasattr(fileobj, "getbuffer"):
+            # io.BytesIO object, use zero-copy buffer
+            digestobj.update(fileobj.getbuffer())
+            return digestobj
+
+        # Only binary files implement readinto().
+        if not (hasattr(fileobj, "readinto") and hasattr(fileobj, "readable") and fileobj.readable()):
+            raise ValueError(f"'{fileobj!r}' is not a file-like object in binary reading mode.")
+
+        # binary file, socket.SocketIO object
+        # Note: socket I/O uses different syscalls than file I/O.
+        buf = bytearray(_bufsize)  # Reusable buffer to reduce allocations.
+        view = memoryview(buf)
+        while True:
+            size = fileobj.readinto(buf)
+            if size == 0:
+                break  # EOF
+            digestobj.update(view[:size])
+
+        return digestobj
 
     class StrEnum(str, Enum):
         """
@@ -91,9 +131,10 @@ if sys.version_info < (3, 11):
             return self.value
 
 else:
-    from enum import StrEnum as s
+    from enum import StrEnum as _StrEnum
+    from hashlib import file_digest
 
-    class StrEnum(s):
+    class StrEnum(_StrEnum):
         @classmethod
         def _missing_(cls, value: Any) -> str | None:
             if not isinstance(value, str):
@@ -618,3 +659,40 @@ def load_publishers() -> None:
         update_publishers(json.loads((comicapi.data.data_path / "publishers.json").read_text("utf-8")))
     except Exception:
         logger.exception("Failed to load publishers.json; The are no publishers or imprints loaded")
+
+
+__all__ = (
+    "load_publishers",
+    "file_digest",
+    "Parser",
+    "ImprintDict",
+    "os_sorted",
+    "parse_filename",
+    "norm_fold",
+    "combine_notes",
+    "parse_date_str",
+    "shorten_path",
+    "path_to_short_str",
+    "get_page_name_list",
+    "get_recursive_filelist",
+    "add_to_path",
+    "remove_from_path",
+    "xlate_int",
+    "xlate_float",
+    "xlate",
+    "split",
+    "split_urls",
+    "remove_articles",
+    "sanitize_title",
+    "titles_match",
+    "unique_file",
+    "parse_version",
+    "countries",
+    "languages",
+    "get_language_from_iso",
+    "get_language_iso",
+    "get_country_from_iso",
+    "get_publisher",
+    "update_publishers",
+    "load_publishers",
+)

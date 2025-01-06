@@ -955,7 +955,7 @@ Source</string>
                   <item>
                    <layout class="QFormLayout" name="formLayout_8">
                     <property name="fieldGrowthPolicy">
-                     <enum>QFormLayout::ExpandingFieldsGrow</enum>
+                     <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
                     </property>
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_20">
@@ -969,6 +969,30 @@ Source</string>
                     </item>
                     <item row="0" column="1">
                      <widget class="QLineEdit" name="leScanInfo"/>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLineEdit" name="leOriginalHash"/>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="lblOriginalHash">
+                      <property name="text">
+                       <string>Original Hash</string>
+                      </property>
+                      <property name="buddy">
+                       <cstring>leOriginalHash</cstring>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QComboBox" name="cbHashName">
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="lblHashName">
+                      <property name="text">
+                       <string>Hash Type</string>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </item>
@@ -1428,7 +1452,8 @@ Source</string>
     <addaction name="actionLiteralSearch"/>
     <addaction name="separator"/>
     <addaction name="actionApplyCBLTransform"/>
-    <addaction name="actionReCalcPageDims"/>
+    <addaction name="actionReCalcArchiveInfo"/>
+    <addaction name="actionEnableEmbeddingHashes"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -1717,9 +1742,12 @@ Source</string>
     <string>Ctrl+Shift+F</string>
    </property>
   </action>
-  <action name="actionReCalcPageDims">
+  <action name="actionReCalcArchiveInfo">
    <property name="text">
-    <string>Re-Calculate Page Dimensions</string>
+    <string>Re-Calculate Archive Information</string>
+   </property>
+   <property name="toolTip">
+    <string>Only includes page size info and original hash, original hash wil be overwritten</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+R</string>
@@ -1812,6 +1840,14 @@ Source</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionEnableEmbeddingHashes">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable Embedding Hashes</string>
    </property>
   </action>
  </widget>

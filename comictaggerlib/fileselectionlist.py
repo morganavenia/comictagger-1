@@ -274,7 +274,9 @@ class FileSelectionList(QtWidgets.QWidget):
         if self.is_list_dupe(path):
             return self.get_current_list_row(path)
 
-        ca = ComicArchive(path, str(graphics_path / "nocover.png"))
+        ca = ComicArchive(
+            path, str(graphics_path / "nocover.png"), hash_archive=self.config.Runtime_Options__preferred_hash
+        )
 
         if ca.seems_to_be_a_comic_archive():
             row: int = self.twList.rowCount()
