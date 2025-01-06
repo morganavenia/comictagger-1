@@ -330,6 +330,17 @@ class CLI:
                             self.output(md)
                     except Exception as e:
                         logger.error("Failed to read tags from %s: %s", ca.path, e)
+        if not self.config.Auto_Tag__metadata.is_empty and not self.config.Runtime_Options__raw:
+            try:
+                md, tags_read = self.create_local_metadata(
+                    ca, self.config.Runtime_Options__tags_read or list(tags.keys())
+                )
+                tags_read_names = ", ".join(["CLI"] + [tags[t].name() for t in tags_read])
+                self.output(f"--------- Combined {tags_read_names} tags ---------")
+                self.output(md)
+            except Exception as e:
+                logger.error("Failed to read tags from %s: %s", ca.path, e)
+
         return Result(Action.print, Status.success, ca.path, md=md)
 
     def delete_tags(self, ca: ComicArchive, tag_id: str) -> Status:
