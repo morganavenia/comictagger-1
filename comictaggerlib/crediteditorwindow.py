@@ -20,7 +20,7 @@ import logging
 import operator
 
 import natsort
-from PyQt5 import QtWidgets, uic
+from PyQt5 import QtCore, QtWidgets, uic
 
 from comicapi import utils
 from comicapi.genericmetadata import Credit
@@ -75,7 +75,9 @@ class CreditEditorWindow(QtWidgets.QDialog):
                 self.cbRole.setCurrentIndex(i)
 
         if credit.language != "":
-            i = self.cbLanguage.findText(credit.language)
+            i = self.cbLanguage.findData(credit.language, QtCore.Qt.ItemDataRole.UserRole) or self.cbLanguage.findText(
+                credit.language
+            )
             if i == -1:
                 self.cbLanguage.setEditText(credit.language)
             else:
@@ -84,9 +86,8 @@ class CreditEditorWindow(QtWidgets.QDialog):
         self.cbPrimary.setChecked(credit.primary)
 
     def get_credit(self) -> Credit:
-        return Credit(
-            self.leName.text(), self.cbRole.currentText(), self.cbPrimary.isChecked(), self.cbLanguage.currentText()
-        )
+        lang = self.cbLanguage.currentData() or self.cbLanguage.currentText()
+        return Credit(self.leName.text(), self.cbRole.currentText(), self.cbPrimary.isChecked(), lang)
 
     def accept(self) -> None:
         if self.leName.text() == "":
