@@ -75,8 +75,10 @@ class CreditEditorWindow(QtWidgets.QDialog):
                 self.cbRole.setCurrentIndex(i)
 
         if credit.language != "":
-            i = self.cbLanguage.findData(credit.language, QtCore.Qt.ItemDataRole.UserRole) or self.cbLanguage.findText(
-                credit.language
+            i = (
+                self.cbLanguage.findData(credit.language, QtCore.Qt.ItemDataRole.UserRole)
+                if self.cbLanguage.findData(credit.language, QtCore.Qt.ItemDataRole.UserRole) > -1
+                else self.cbLanguage.findText(credit.language)
             )
             if i == -1:
                 self.cbLanguage.setEditText(credit.language)
