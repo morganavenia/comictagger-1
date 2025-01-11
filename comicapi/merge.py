@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import dataclasses
-from collections import defaultdict
 from collections.abc import Collection
 from enum import auto
 from typing import Any
 
-from comicapi.utils import StrEnum, norm_fold
+from comicapi.utils import DefaultDict, StrEnum, norm_fold
 
 
 @dataclasses.dataclass
@@ -55,19 +54,19 @@ def overlay(old: Any, new: Any) -> Any:
     return new
 
 
-attribute = defaultdict(
-    lambda: overlay,
+attribute = DefaultDict(
     {
         Mode.OVERLAY: overlay,
         Mode.ADD_MISSING: lambda old, new: overlay(new, old),
     },
+    default=lambda x: overlay,
 )
 
 
-lists = defaultdict(
-    lambda: overlay,
+lists = DefaultDict(
     {
         Mode.OVERLAY: merge_lists,
         Mode.ADD_MISSING: lambda old, new: merge_lists(new, old),
     },
+    default=lambda x: overlay,
 )

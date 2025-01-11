@@ -22,7 +22,6 @@ import json
 import logging
 import pathlib
 import time
-from collections import defaultdict
 from typing import Any, Callable, Generic, TypeVar, cast
 from urllib.parse import parse_qsl, urljoin
 
@@ -186,7 +185,7 @@ class ComicVineTalker(ComicTalker):
         self.default_api_url = self.api_url = f"{self.website}/api/"
         self.default_api_key = self.api_key = "27431e6787042105bd3e47e169a624521f89f3a4"
         self.use_series_start_as_volume: bool = False
-        self.total_requests_made: dict[str, int] = defaultdict(int)
+        self.total_requests_made: dict[str, int] = utils.DefaultDict(default=lambda x: 0)
         self.custom_url_parameters: dict[str, str] = {}
 
     def _log_total_requests(self) -> None:

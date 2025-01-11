@@ -22,11 +22,10 @@ import pathlib
 import platform
 import sys
 import unicodedata
-from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from enum import Enum, auto
 from shutil import which  # noqa: F401
-from typing import Any, TypeVar, cast
+from typing import Any, Callable, TypeVar, cast
 
 from comicfn2dict import comicfn2dict
 
@@ -105,6 +104,17 @@ else:
 
 
 logger = logging.getLogger(__name__)
+
+
+class DefaultDict(dict):
+    def __init__(self, *args, default: Callable[[Any], Any] | None = None) -> None:
+        super().__init__(*args)
+        self.default = default
+
+    def __missing__(self, key: Any) -> Any:
+        if self.default is None:
+            return key
+        return self.default(key)
 
 
 class Parser(StrEnum):
@@ -360,7 +370,9 @@ def xlate_float(data: Any) -> float | None:
     if isinstance(data, (int, float)):
         i = data
     else:
-        i = str(data).translate(defaultdict(lambda: None, zip((ord(c) for c in "1234567890."), "1234567890.")))
+        i = str(data).translate(
+            DefaultDict(zip((ord(c) for c in "1234567890."), "1234567890."), default=lambda x: None)
+        )
     if i == "":
         return None
     try:
@@ -493,9 +505,9 @@ def parse_version(s: str) -> tuple[int, int, int]:
     return (parts[0], parts[1], parts[2])
 
 
-_languages: dict[str | None, str | None] = defaultdict(lambda: None)
+_languages: dict[str | None, str | None] = DefaultDict(default=lambda x: None)
 
-_countries: dict[str | None, str | None] = defaultdict(lambda: None)
+_countries: dict[str | None, str | None] = DefaultDict(default=lambda x: None)
 
 
 def countries() -> dict[str | None, str | None]:
@@ -517,6 +529,8 @@ def languages() -> dict[str | None, str | None]:
 
 
 def get_language_from_iso(iso: str | None) -> str | None:
+    if not _languages:
+        return languages()[iso]
     return _languages[iso]
 
 
@@ -529,10 +543,12 @@ def get_language_iso(string: str | None) -> str | None:
     lang = string.casefold()
 
     found = None
+
     for lng in isocodes.extendend_languages.items:
         for x in ("alpha_2", "alpha_3", "bibliographic", "common_name", "name"):
             if x in lng and lng[x].casefold() == lang:
                 found = lng
+                # break
         if found:
             break
 
@@ -542,6 +558,8 @@ def get_language_iso(string: str | None) -> str | None:
 
 
 def get_country_from_iso(iso: str | None) -> str | None:
+    if not _countries:
+        return countries()[iso]
     return _countries[iso]
 
 
