@@ -891,6 +891,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         language = utils.get_language_from_iso(credit.language) or credit.language
         item = QtWidgets.QTableWidgetItem(language)
         item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, credit.language)
+        item.setData(QtCore.Qt.ItemDataRole.UserRole, credit.language)
         item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         self.twCredits.setItem(row, self.md_attributes["credits.language"], item)
 
@@ -970,7 +971,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         for row in range(self.twCredits.rowCount()):
             role = self.twCredits.item(row, self.md_attributes["credits.role"]).text()
-            lang = self.twCredits.item(row, self.md_attributes["credits.language"]).text()
+            lang = (
+                self.twCredits.item(row, self.md_attributes["credits.language"]).data(QtCore.Qt.ItemDataRole.UserRole)
+                or self.twCredits.item(row, self.md_attributes["credits.language"]).text()
+            )
             name = self.twCredits.item(row, self.md_attributes["credits.person"]).text()
             primary_flag = self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != ""
 
@@ -1268,11 +1272,15 @@ class TaggerWindow(QtWidgets.QMainWindow):
         old = Credit()
         if edit:
             row = self.twCredits.currentRow()
+            lang = str(
+                self.twCredits.item(row, self.md_attributes["credits.language"]).data(QtCore.Qt.ItemDataRole.UserRole)
+                or utils.get_language_iso(self.twCredits.item(row, self.md_attributes["credits.language"]).text())
+            )
             old = Credit(
                 self.twCredits.item(row, self.md_attributes["credits.person"]).text(),
                 self.twCredits.item(row, self.md_attributes["credits.role"]).text(),
                 self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != "",
-                self.twCredits.item(row, self.md_attributes["credits.language"]).text(),
+                lang,
             )
 
         editor = CreditEditorWindow(self, CreditEditorWindow.ModeEdit, old)
@@ -1309,9 +1317,13 @@ class TaggerWindow(QtWidgets.QMainWindow):
             if ok_to_mod:
                 # modify it
                 if edit:
+                    lang = utils.get_language_from_iso(new.language) or new.language
                     self.twCredits.item(row, self.md_attributes["credits.role"]).setText(new.role)
                     self.twCredits.item(row, self.md_attributes["credits.person"]).setText(new.person)
-                    self.twCredits.item(row, self.md_attributes["credits.language"]).setText(new.language)
+                    self.twCredits.item(row, self.md_attributes["credits.language"]).setText(lang)
+                    self.twCredits.item(row, self.md_attributes["credits.language"]).setData(
+                        QtCore.Qt.ItemDataRole.UserRole, new.language
+                    )
                     self.update_credit_primary_flag(row, new.primary)
                 else:
                     # add new entry
