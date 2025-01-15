@@ -19,6 +19,7 @@ from __future__ import annotations
 import difflib
 import itertools
 import logging
+from abc import ABCMeta, abstractmethod
 
 import natsort
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
@@ -128,9 +129,11 @@ class IdentifyThread(QtCore.QThread):
         self.ratelimit.emit(full_time, sleep_time)
 
 
-class SeriesSelectionWindow(QtWidgets.QDialog):
+class SelectionWindow(QtWidgets.QDialog):
+    __metaclass__ = ABCMeta
     ui_file = ui_path / "seriesselectionwindow.ui"
     CoverImageMode = CoverImageWidget.URLMode
+    ratelimit = pyqtSignal(float, float)
 
     def __init__(
         self,
@@ -203,31 +206,107 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         self.leFilter.textChanged.connect(self.filter)
         self.twList.selectRow(0)
 
-        if series_name:
-            self.series_name = series_name
-            self.issue_number = issue_number
-            self.year = year
-            self.issue_count = issue_count
-            self.series_id: str = ""
-            self.comic_archive = comic_archive
-            self.immediate_autoselect = autoselect
-            self.series_list: dict[str, ComicSeries] = {}
-            self.literal = literal
-            self.iddialog: IDProgressWindow | None = None
-            self.id_thread: IdentifyThread | None = None
-            self.progdialog: QtWidgets.QProgressDialog | None = None
-            self.search_thread: SearchThread | None = None
+    @abstractmethod
+    def perform_query(self, refresh: bool = False) -> None: ...
 
-            self.use_publisher_filter = self.config.Auto_Tag__use_publisher_filter
+    @abstractmethod
+    def cell_double_clicked(self, r: int, c: int) -> None: ...
 
-            self.btnRequery.clicked.connect(self.requery)
-            self.btnIssues.clicked.connect(self.show_issues)
-            self.btnAutoSelect.clicked.connect(self.auto_select)
+    @abstractmethod
+    def update_row(self, row: int, series: ComicSeries) -> None: ...
 
-            self.cbxPublisherFilter.setChecked(self.use_publisher_filter)
-            self.cbxPublisherFilter.toggled.connect(self.publisher_filter_toggled)
+    def set_description(self, widget: QtWidgets.QWidget, text: str) -> None:
+        if isinstance(widget, QtWidgets.QTextEdit):
+            widget.setText(text.replace("</figure>", "</div>").replace("<figure", "<div"))
+        else:
+            html = text
+            widget.setHtml(html, QUrl(self.talker.website))
 
-            self.update_buttons()
+    def filter(self, text: str) -> None:
+        rows = set(range(self.twList.rowCount()))
+        for r in rows:
+            self.twList.showRow(r)
+        if text.strip():
+            shown_rows = {x.row() for x in self.twList.findItems(text, QtCore.Qt.MatchFlag.MatchContains)}
+            for r in rows - shown_rows:
+                self.twList.hideRow(r)
+
+    @abstractmethod
+    def _fetch(self, row: int) -> ComicSeries: ...
+
+    def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
+        self.ratelimit.emit(full_time, sleep_time)
+
+    def current_item_changed(self, curr: QtCore.QModelIndex | None, prev: QtCore.QModelIndex | None) -> None:
+        if curr is None:
+            return
+        if prev is not None and prev.row() == curr.row():
+            return
+
+        row = curr.row()
+
+        item = self._fetch(row)
+        QtWidgets.QApplication.restoreOverrideCursor()
+
+        # Update current record information
+        self.update_row(row, item)
+
+
+class SeriesSelectionWindow(SelectionWindow):
+    ui_file = ui_path / "seriesselectionwindow.ui"
+    CoverImageMode = CoverImageWidget.URLMode
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget,
+        config: ct_ns,
+        talker: ComicTalker,
+        series_name: str = "",
+        issue_number: str = "",
+        comic_archive: ComicArchive | None = None,
+        year: int | None = None,
+        issue_count: int | None = None,
+        autoselect: bool = False,
+        literal: bool = False,
+    ) -> None:
+        super().__init__(
+            parent,
+            config,
+            talker,
+            series_name,
+            issue_number,
+            comic_archive,
+            year,
+            issue_count,
+            autoselect,
+            literal,
+        )
+        self.series_name = series_name
+        self.issue_number = issue_number
+        self.year = year
+        self.issue_count = issue_count
+        self.series_id: str = ""
+        self.comic_archive = comic_archive
+        self.immediate_autoselect = autoselect
+        self.series_list: dict[str, ComicSeries] = {}
+        self.literal = literal
+        self.iddialog: IDProgressWindow | None = None
+        self.id_thread: IdentifyThread | None = None
+        self.progdialog: QtWidgets.QProgressDialog | None = None
+        self.search_thread: SearchThread | None = None
+
+        self.use_publisher_filter = self.config.Auto_Tag__use_publisher_filter
+
+        self.btnRequery.clicked.connect(self.requery)
+        self.btnIssues.clicked.connect(self.show_issues)
+        self.btnAutoSelect.clicked.connect(self.auto_select)
+
+        self.cbxPublisherFilter.setChecked(self.use_publisher_filter)
+        self.cbxPublisherFilter.toggled.connect(self.publisher_filter_toggled)
+
+        self.ratelimit.connect(self.ratelimit_message)
+
+        self.update_buttons()
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         self.perform_query()
@@ -250,8 +329,7 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         )
         self.search_thread.searchComplete.connect(self.search_complete)
         self.search_thread.progressUpdate.connect(self.search_progress_update)
-        self.search_thread.ratelimit.connect(self.on_ratelimit)
-        self.search_thread.ratelimit.connect(self.parent().on_ratelimit)
+        self.search_thread.ratelimit.connect(self.ratelimit)
         self.search_thread.start()
 
         self.progdialog = QtWidgets.QProgressDialog("Searching Online", "Cancel", 0, 100, self)
@@ -267,11 +345,6 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
 
     def cell_double_clicked(self, r: int, c: int) -> None:
         self.show_issues()
-
-    def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
-        self.log_output(
-            f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
-        )
 
     def update_row(self, row: int, series: ComicSeries) -> None:
         item_text = series.name
@@ -379,13 +452,13 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
         self.id_thread.identifyComplete.connect(self.identify_complete)
         self.id_thread.identifyLogMsg.connect(self.log_output)
         self.id_thread.identifyProgress.connect(self.identify_progress)
-        self.id_thread.ratelimit.connect(self.on_ratelimit)
-        self.id_thread.ratelimit.connect(self.parent().on_ratelimit)
+        self.id_thread.ratelimit.connect(self.ratelimit)
         self.iddialog.rejected.connect(self.id_thread.cancel)
 
         self.id_thread.start()
 
         self.iddialog.exec()
+        self.selector = None
 
     def log_output(self, text: str) -> None:
         if self.iddialog is not None:
@@ -446,20 +519,24 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
     def show_issues(self) -> None:
         from comictaggerlib.issueselectionwindow import IssueSelectionWindow
 
-        selector = IssueSelectionWindow(self, self.config, self.talker, self.series_id, self.issue_number)
+        self.selector = IssueSelectionWindow(self, self.config, self.talker, self.series_id, self.issue_number)
+        self.selector.ratelimit.connect(self.ratelimit)
         title = ""
         for series in self.series_list.values():
             if series.id == self.series_id:
                 title = f"{series.name} ({series.start_year:04}) - " if series.start_year else f"{series.name} - "
                 break
 
-        selector.setWindowTitle(title + "Select Issue")
-        selector.setModal(True)
-        selector.exec()
-        if selector.result():
+        self.selector.setWindowTitle(title + "Select Issue")
+        self.selector.setModal(True)
+        self.selector.finished.connect(self.issue_selected)
+        self.selector.open()
+
+    def issue_selected(self, result) -> None:
+        if result and self.selector:
             # we should now have a series ID
-            self.issue_number = selector.issue_number
-            self.issue_id = selector.issue_id
+            self.issue_number = self.selector.issue_number
+            self.issue_id = self.selector.issue_id
             self.accept()
         else:
             self.cover_widget.update_content()
@@ -618,3 +695,16 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
 
         # Update current record information
         self.update_row(row, item)
+
+    def ratelimit_message(self, full_time: float, sleep_time: float) -> None:
+        self.log_output(
+            f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
+        )
+
+    def log_output(self, text: str) -> None:
+        if self.iddialog is not None:
+            self.iddialog.textEdit.append(text.rstrip())
+            self.iddialog.textEdit.ensureCursorVisible()
+            QtCore.QCoreApplication.processEvents()
+            QtCore.QCoreApplication.processEvents()
+            QtCore.QCoreApplication.processEvents()

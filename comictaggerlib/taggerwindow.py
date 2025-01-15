@@ -79,7 +79,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     appName = "ComicTagger"
     version = ctversion.version
     ratelimit = QtCore.pyqtSignal(float, float)
-    finish = QtCore.pyqtSignal(GenericMetadata, str)
+    query_finished = QtCore.pyqtSignal(GenericMetadata, str)
 
     def __init__(
         self,
@@ -297,7 +297,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.page_list_editor.set_blur(self.config[0].General__blur)
 
         self.ratelimit.connect(self.on_ratelimit)
-        self.finish.connect(self.finish_query)
+        self.query_finished.connect(self.apply_query_metadata)
 
         def _sync_blur(*args: Any) -> None:
             self.config[0].General__blur = self.page_list_editor.blur
@@ -1136,7 +1136,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         issue_count = utils.xlate_int(self.leIssueCount.text())
 
-        selector = SeriesSelectionWindow(
+        self.selector = SeriesSelectionWindow(
             self,
             self.config[0],
             self.current_talker(),
@@ -1148,13 +1148,16 @@ class TaggerWindow(QtWidgets.QMainWindow):
             autoselect,
             literal,
         )
+        self.selector.ratelimit.connect(self.on_ratelimit)
 
-        selector.setWindowTitle(f"Search: '{series_name}' - Select Series")
+        self.selector.setWindowTitle(f"Search: '{series_name}' - Select Series")
+        self.selector.finished.connect(self.finish_query)
 
-        selector.setModal(True)
-        selector.exec()
+        self.selector.setModal(True)
+        self.selector.open()
 
-        if selector.result():
+    def finish_query(self, result) -> None:
+        if result and self.selector:
 
             class QueryThread(QtCore.QThread):
                 def __init__(
@@ -1189,15 +1192,15 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
             self.querythread = QueryThread(
                 self.current_talker(),
-                selector.issue_id,
-                selector.series_id,
-                selector.issue_number,
-                self.finish,
+                self.selector.issue_id,
+                self.selector.series_id,
+                self.selector.issue_number,
+                self.query_finished,
                 self.ratelimit,
             )
             self.querythread.start()
 
-    def finish_query(self, new_metadata: GenericMetadata, issue_number: str) -> None:
+    def apply_query_metadata(self, new_metadata: GenericMetadata, issue_number: str) -> None:
         # we should now have a series ID
         # QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
         QtWidgets.QApplication.restoreOverrideCursor()

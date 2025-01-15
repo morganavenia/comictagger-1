@@ -24,7 +24,7 @@ from comicapi.genericmetadata import GenericMetadata
 from comicapi.issuestring import IssueString
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
-from comictaggerlib.seriesselectionwindow import SeriesSelectionWindow
+from comictaggerlib.seriesselectionwindow import SelectionWindow
 from comictaggerlib.ui import ui_path
 from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 
@@ -39,9 +39,44 @@ class IssueNumberTableWidgetItem(QtWidgets.QTableWidgetItem):
         return (IssueString(self_str).as_float() or 0) < (IssueString(other_str).as_float() or 0)
 
 
-class IssueSelectionWindow(SeriesSelectionWindow):
+class QueryThread(QtCore.QThread):
+    def __init__(
+        self,
+        talker: ComicTalker,
+        series_id: str,
+        finish: QtCore.pyqtSignal,
+        on_ratelimit: QtCore.pyqtSignal,
+    ) -> None:
+        super().__init__()
+        self.series_id = series_id
+        self.talker = talker
+        self.finish = finish
+        self.on_ratelimit = on_ratelimit
+
+    def run(self) -> None:
+        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+
+        try:
+            issue_list = [
+                x
+                for x in self.talker.fetch_issues_in_series(
+                    self.series_id, on_rate_limit=RLCallBack(lambda x, y: self.on_ratelimit.emit(x, y), 10)
+                )
+                if x.issue_id is not None
+            ]
+        except TalkerError as e:
+            QtWidgets.QApplication.restoreOverrideCursor()
+            QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
+            return
+
+        QtWidgets.QApplication.restoreOverrideCursor()
+        self.finish.emit(issue_list)
+
+
+class IssueSelectionWindow(SelectionWindow):
     ui_file = ui_path / "issueselectionwindow.ui"
     CoverImageMode = CoverImageWidget.AltCoverMode
+    finish = QtCore.pyqtSignal(list)
 
     def __init__(
         self,
@@ -60,42 +95,28 @@ class IssueSelectionWindow(SeriesSelectionWindow):
             self.issue_number = "1"
 
         self.initial_id: str = ""
-        self.perform_query()
-
-        # now that the list has been sorted, find the initial record, and
-        # select it
-        if self.initial_id:
-            for r in range(0, self.twList.rowCount()):
-                issue_id = self.twList.item(r, 0).data(QtCore.Qt.ItemDataRole.UserRole)
-                if issue_id == self.initial_id:
-                    self.twList.selectRow(r)
-                    break
         self.leFilter.textChanged.connect(self.filter)
+        self.finish.connect(self.query_finished)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
-        return
+        self.perform_query()
 
     def perform_query(self) -> None:  # type: ignore[override]
-        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+        self.querythread = QueryThread(
+            self.talker,
+            self.series_id,
+            self.finish,
+            self.ratelimit,
+        )
+        self.querythread.start()
 
-        try:
-            self.issue_list = {
-                x.issue_id: x
-                for x in self.talker.fetch_issues_in_series(
-                    self.series_id, on_rate_limit=RLCallBack(self.on_ratelimit, 10)
-                )
-                if x.issue_id is not None
-            }
-        except TalkerError as e:
-            QtWidgets.QApplication.restoreOverrideCursor()
-            QtWidgets.QMessageBox.critical(self, f"{e.source} {e.code_name} Error", f"{e}")
-            return
-
+    def query_finished(self, issues: list[GenericMetadata]) -> None:
         self.twList.setRowCount(0)
 
         self.twList.setSortingEnabled(False)
-
-        for row, issue in enumerate(self.issue_list.values()):
+        self.issue_list = {i.issue_id: i for i in issues if i.issue_id is not None}
+        self.twList.clear()
+        for row, issue in enumerate(issues):
             self.twList.insertRow(row)
             self.twList.setItem(row, 0, IssueNumberTableWidgetItem())
             self.twList.setItem(row, 1, QtWidgets.QTableWidgetItem())
@@ -108,8 +129,15 @@ class IssueSelectionWindow(SeriesSelectionWindow):
 
         self.twList.setSortingEnabled(True)
         self.twList.sortItems(0, QtCore.Qt.SortOrder.AscendingOrder)
-
-        QtWidgets.QApplication.restoreOverrideCursor()
+        self.twList: QtWidgets.QTableWidget
+        if self.initial_id:
+            for r in range(0, self.twList.rowCount()):
+                item = self.twList.item(r, 0)
+                issue_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
+                if issue_id == self.initial_id:
+                    self.twList.selectRow(r)
+                    self.twList.scrollToItem(item, QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible)
+                    break
 
     def cell_double_clicked(self, r: int, c: int) -> None:
         self.accept()
