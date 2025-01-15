@@ -23,7 +23,7 @@ from abc import ABCMeta, abstractmethod
 
 import natsort
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
-from PyQt6.QtCore import QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QUrl, pyqtSignal
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive
@@ -149,6 +149,7 @@ class SelectionWindow(QtWidgets.QDialog):
         literal: bool = False,
     ) -> None:
         super().__init__(parent)
+        self.setWindowModality(Qt.WindowModality.WindowModal)
 
         with self.ui_file.open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
@@ -502,7 +503,6 @@ class SeriesSelectionWindow(SelectionWindow):
                 selector = MatchSelectionWindow(
                     self, issues, self.comic_archive, talker=self.talker, config=self.config
                 )
-                selector.setModal(True)
                 selector.exec()
                 if selector.result():
                     # we should now have a list index
@@ -528,9 +528,8 @@ class SeriesSelectionWindow(SelectionWindow):
                 break
 
         self.selector.setWindowTitle(title + "Select Issue")
-        self.selector.setModal(True)
         self.selector.finished.connect(self.issue_selected)
-        self.selector.open()
+        self.selector.show()
 
     def issue_selected(self, result) -> None:
         if result and self.selector:

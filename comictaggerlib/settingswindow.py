@@ -685,7 +685,6 @@ class SettingsWindow(QtWidgets.QDialog):
 
     def show_template_help(self) -> None:
         template_help_win = TemplateHelpWindow(self)
-        template_help_win.setModal(False)
         template_help_win.show()
 
 

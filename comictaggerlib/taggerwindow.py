@@ -1153,8 +1153,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.selector.setWindowTitle(f"Search: '{series_name}' - Select Series")
         self.selector.finished.connect(self.finish_query)
 
-        self.selector.setModal(True)
-        self.selector.open()
+        self.selector.show()
 
     def finish_query(self, result) -> None:
         if result and self.selector:
@@ -1217,20 +1216,22 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.metadata_to_form()
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
-        toast = Toast(self)
-        # Convert to milliseconds, make it end half a second before the ratelimit triggers again, make sure we have a positive time
-        toast.setDuration(abs(int(sleep_time * 1000) - 500))
-        toast.setResetDurationOnHover(False)
-        toast.setTitle("Rate Limit Hit!")
-        toast.setText(
+        self.toast = Toast(self)
+        if qtutils.is_dark_mode():
+            self.toast.applyPreset(ToastPreset.WARNING_DARK)
+        else:
+            self.toast.applyPreset(ToastPreset.WARNING)
+
+        # Convert to milliseconds, add 200ms because python is slow
+        self.toast.setDuration(abs(int(sleep_time * 1000) + 200))
+        self.toast.setResetDurationOnHover(False)
+        self.toast.setFadeOutDuration(50)
+        self.toast.setTitle("Rate Limit Hit!")
+        self.toast.setText(
             f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
         )
-        if qtutils.is_dark_mode():
-            toast.applyPreset(ToastPreset.WARNING_DARK)
-        else:
-            toast.applyPreset(ToastPreset.WARNING)
-        toast.setPositionRelativeToWidget(self)
-        toast.show()
+        self.toast.setPositionRelativeToWidget(self)
+        self.toast.show()
 
     def write_tags(self) -> None:
         if self.metadata is not None and self.comic_archive is not None:
@@ -1462,7 +1463,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def show_settings(self) -> None:
         settingswin = SettingsWindow(self, self.config, self.talkers)
-        settingswin.setModal(True)
         settingswin.exec()
         settingswin.result()
         self.adjust_source_combo()
@@ -1846,8 +1846,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             return
 
         self.atprogdialog = AutoTagProgressWindow(self, self.current_talker())
-        self.atprogdialog.setModal(True)
-        self.atprogdialog.show()
+        self.atprogdialog.open()
         self.atprogdialog.progressBar.setMaximum(len(ca_list))
         self.atprogdialog.setWindowTitle("Auto-Tagging")
 
@@ -1929,7 +1928,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     self.config[0],
                     self.current_talker(),
                 )
-                matchdlg.setModal(True)
                 matchdlg.exec()
                 self.fileSelectionList.update_selected_rows()
                 new_ca = self.fileSelectionList.get_current_archive()
@@ -2057,7 +2055,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
             "File Rename", "If you rename files now, unsaved data in the form will be lost.  Are you sure?"
         ):
             dlg = RenameWindow(self, ca_list, self.selected_read_tags, self.config, self.talkers)
-            dlg.setModal(True)
             if dlg.exec() and self.comic_archive is not None:
                 self.fileSelectionList.update_selected_rows()
                 self.load_archive(self.comic_archive)

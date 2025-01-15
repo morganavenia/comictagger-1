@@ -2,7 +2,18 @@ from __future__ import annotations
 
 import math
 
-from PyQt5.QtCore import QEvent, QMargins, QPoint, QPropertyAnimation, QRect, QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import (
+    QAbstractAnimation,
+    QEvent,
+    QMargins,
+    QPoint,
+    QPropertyAnimation,
+    QRect,
+    QSize,
+    Qt,
+    QTimer,
+    pyqtSignal,
+)
 from PyQt5.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QPixmap, QScreen
 from PyQt5.QtWidgets import QDialog, QGraphicsOpacityEffect, QLabel, QPushButton, QWidget
 
@@ -19,7 +30,6 @@ from .constants import (
     DEFAULT_TITLE_COLOR,
     DEFAULT_TITLE_COLOR_DARK,
     DROP_SHADOW_SIZE,
-    DURATION_BAR_UPDATE_INTERVAL,
     ERROR_ACCENT_COLOR,
     INFORMATION_ACCENT_COLOR,
     SUCCESS_ACCENT_COLOR,
@@ -95,7 +105,6 @@ class Toast(QDialog):
         self.__close_button_margins = QMargins(0, -8, 0, -8)
         self.__text_section_spacing = 8
 
-        self.__elapsed_time = 0
         self.__fading_out = False
         self.__used = False
 
@@ -145,7 +154,6 @@ class Toast(QDialog):
 
         # Duration bar chunk
         self.__duration_bar_chunk = QWidget(self.__duration_bar_container)
-        self.__duration_bar_chunk.setFixedHeight(20)
         self.__duration_bar_chunk.move(0, -16)
 
         # Set defaults
@@ -172,10 +180,6 @@ class Toast(QDialog):
         self.__duration_timer = QTimer(self)
         self.__duration_timer.setSingleShot(True)
         self.__duration_timer.timeout.connect(self.hide)
-
-        # Timer for updating the duration bar
-        self.__duration_bar_timer = QTimer(self)
-        self.__duration_bar_timer.timeout.connect(self.__update_duration_bar)
 
         # Apply stylesheet
         self.setStyleSheet((css_path / "toast.css").read_text(encoding="utf-8"))
@@ -205,14 +209,13 @@ class Toast(QDialog):
         """
 
         # Reset timer if hovered and resetting is enabled
-        if self.__duration != 0 and self.__duration_timer.isActive() and self.__reset_duration_on_hover:
+        if self.__reset_duration_on_hover and self.__duration != 0 and self.__duration_timer.isActive():
             self.__duration_timer.stop()
 
             # Reset duration bar if enabled
             if self.__show_duration_bar:
-                self.__duration_bar_timer.stop()
-                self.__duration_bar_chunk.setFixedWidth(self.width())
-                self.__elapsed_time = 0
+                self.__bar_animation.stop()
+                self.__duration_bar_chunk.setGeometry(QRect(0, 0, self.__duration_bar_container.width(), 4))
 
     def leaveEvent(self, event: QEvent) -> None:
         """Event that happens every time the mouse leaves this widget.
@@ -222,12 +225,21 @@ class Toast(QDialog):
         """
 
         # Start timer again when leaving notification and reset is enabled
-        if self.__duration != 0 and not self.__duration_timer.isActive() and self.__reset_duration_on_hover:
+        if self.__reset_duration_on_hover and self.__duration != 0 and not self.__duration_timer.isActive():
             self.__duration_timer.start(self.__duration)
 
             # Restart duration bar animation if enabled
             if self.__show_duration_bar:
-                self.__duration_bar_timer.start(DURATION_BAR_UPDATE_INTERVAL)
+                self.__start_duration_bar_animation()
+
+    def __start_duration_bar_animation(self) -> None:
+        self.__bar_animation = QPropertyAnimation(self.__duration_bar_chunk, b"geometry")
+        self.__bar_animation.setDuration(self.__duration)
+        self.__bar_animation.setStartValue(QRect(0, 0, self.__duration_bar.width(), 4))
+        self.__bar_animation.setEndValue(QRect(0, 0, 0, 4))
+        self.__bar_animation.setDirection(QAbstractAnimation.Direction.Forward)
+
+        self.__bar_animation.start()
 
     def show(self) -> None:
         """Show the toast notification"""
@@ -244,16 +256,12 @@ class Toast(QDialog):
             # Setup UI
             self.__setup_ui()
 
+            # Calculate position and show (animate position too if not first notification)
+            x, y = self.__calculate_position()
             # Start duration timer
             if self.__duration != 0:
                 self.__duration_timer.start(self.__duration)
-
-            # Start duration bar update timer
-            if self.__duration != 0 and self.__show_duration_bar:
-                self.__duration_bar_timer.start(DURATION_BAR_UPDATE_INTERVAL)
-
-            # Calculate position and show (animate position too if not first notification)
-            x, y = self.__calculate_position()
+                self.__start_duration_bar_animation()
 
             # If not first toast on screen, also do a fade down/up animation
             if len(Toast.__currently_shown) > 1:
@@ -327,7 +335,6 @@ class Toast(QDialog):
 
         if self in Toast.__currently_shown:
             Toast.__currently_shown.remove(self)
-            self.__elapsed_time = 0
             self.__fading_out = False
 
             # Emit signal
@@ -342,21 +349,6 @@ class Toast(QDialog):
             timer.setSingleShot(True)
             timer.timeout.connect(Toast.__show_next_in_queue)
             timer.start(self.__fade_in_duration)
-
-    def __update_duration_bar(self) -> None:
-        """Update the duration bar chunk with the elapsed time"""
-
-        self.__elapsed_time += DURATION_BAR_UPDATE_INTERVAL
-
-        if self.__elapsed_time >= self.__duration:
-            self.__duration_bar_timer.stop()
-            return
-
-        new_chunk_width = math.floor(
-            self.__duration_bar_container.width()
-            - self.__elapsed_time / self.__duration * self.__duration_bar_container.width()
-        )
-        self.__duration_bar_chunk.setFixedWidth(new_chunk_width)
 
     def __update_position_xy(self, animate: bool = True) -> None:
         """Update the x and y position of the toast with an optional animation
@@ -893,14 +885,11 @@ class Toast(QDialog):
             self.__close_button.setVisible(False)
 
         # Resize, move, and show duration bar if enabled
-        if self.__show_duration_bar:
-            self.__duration_bar_container.setFixedWidth(width)
-            self.__duration_bar_container.move(0, height - duration_bar_height)
-            self.__duration_bar.setFixedWidth(width)
-            self.__duration_bar_chunk.setFixedWidth(width)
-            self.__duration_bar_container.setVisible(True)
-        else:
-            self.__duration_bar_container.setVisible(False)
+        self.__duration_bar_container.setFixedWidth(width)
+        self.__duration_bar_container.move(0, height - duration_bar_height)
+        self.__duration_bar.setFixedWidth(width)
+
+        self.__duration_bar_container.setVisible(self.__show_duration_bar)
 
     def __install_widget_event_filter(self) -> None:
         """Install an event filter on parent"""

@@ -49,6 +49,15 @@
             <verstretch>7</verstretch>
            </sizepolicy>
           </property>
+          <property name="styleSheet">
+           <string notr="true">QTableWidget[rowCount=&quot;0&quot;] {
+	background-image: url(&quot;:/graphics/about.png&quot;);
+	background-attachment: fixed;
+	background-position: top center;
+	background-repeat: no-repeat;
+	background-color: white;
+}</string>
+          </property>
           <property name="selectionMode">
            <enum>QAbstractItemView::SingleSelection</enum>
           </property>

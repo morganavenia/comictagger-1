@@ -143,6 +143,7 @@ class IssueSelectionWindow(SelectionWindow):
         self.accept()
 
     def update_row(self, row: int, issue: GenericMetadata) -> None:  # type: ignore[override]
+        self.twList.setStyleSheet(self.twList.styleSheet())
         item_text = issue.issue or ""
         item = self.twList.item(row, 0)
         item.setText(item_text)
