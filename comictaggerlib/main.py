@@ -33,7 +33,7 @@ import settngs
 import comicapi.comicarchive
 import comicapi.utils
 import comictalker
-from comictaggerlib import cli, ctsettings
+from comictaggerlib import cli, ctsettings, pillow_plugins
 from comictaggerlib.ctsettings import ct_ns, plugin_finder
 from comictaggerlib.ctversion import version
 from comictaggerlib.log import setup_logging
@@ -48,6 +48,7 @@ logger = logging.getLogger("comictagger")
 
 
 logger.setLevel(logging.DEBUG)
+assert pillow_plugins
 
 
 def _lang_code_mac() -> str:

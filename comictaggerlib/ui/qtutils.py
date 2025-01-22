@@ -130,11 +130,10 @@ if qt_available:
                 if pil_available:
                     # Qt doesn't understand the format, but maybe PIL does
                     buffer = io.BytesIO()
-                    Image.open(io.BytesIO(image_data)).save(buffer, format='ppm')
+                    Image.open(io.BytesIO(image_data)).save(buffer, format="ppm")
                     success = img.loadFromData(buffer.getvalue())
             except Exception:
                 logger.exception("Failed to load the image")
-                pass
         # if still nothing, go with default image
         if not success:
             img.load(":/graphics/nocover.png")
