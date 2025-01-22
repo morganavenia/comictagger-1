@@ -23,7 +23,7 @@ except ImportError:
 
 if qt_available:
     try:
-        from PIL import Image, ImageQt
+        from PIL import Image
 
         pil_available = True
     except ImportError:
@@ -129,9 +129,11 @@ if qt_available:
             try:
                 if pil_available:
                     # Qt doesn't understand the format, but maybe PIL does
-                    img = ImageQt.ImageQt(Image.open(io.BytesIO(image_data)))
-                    success = True
+                    buffer = io.BytesIO()
+                    Image.open(io.BytesIO(image_data)).save(buffer, format='ppm')
+                    success = img.loadFromData(buffer.getvalue())
             except Exception:
+                logger.exception("Failed to load the image")
                 pass
         # if still nothing, go with default image
         if not success:
