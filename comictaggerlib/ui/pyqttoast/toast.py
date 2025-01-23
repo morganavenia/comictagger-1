@@ -87,7 +87,7 @@ class Toast(QDialog):
         self.__fade_in_duration = 250
         self.__fade_out_duration = 250
         self.__reset_duration_on_hover = True
-        self.__stay_on_top = True
+        self.__stay_on_top = False
         self.__border_radius = 0
         self.__background_color = DEFAULT_BACKGROUND_COLOR
         self.__title_color = DEFAULT_TITLE_COLOR
@@ -1324,14 +1324,14 @@ class Toast(QDialog):
 
         if on:
             self.setWindowFlags(
-                Qt.WindowType.Tool
+                Qt.WindowType.Popup
                 | Qt.WindowType.CustomizeWindowHint
                 | Qt.WindowType.FramelessWindowHint
                 | Qt.WindowType.WindowStaysOnTopHint
             )
         else:
             self.setWindowFlags(
-                Qt.WindowType.Tool | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.FramelessWindowHint
+                Qt.WindowType.Popup | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.FramelessWindowHint
             )
 
     def getBorderRadius(self) -> int:
