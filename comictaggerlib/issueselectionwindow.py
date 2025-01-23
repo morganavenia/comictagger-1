@@ -54,7 +54,7 @@ class QueryThread(QtCore.QThread):
         self.on_ratelimit = on_ratelimit
 
     def run(self) -> None:
-        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+        # QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
 
         try:
             issue_list = [
@@ -65,11 +65,11 @@ class QueryThread(QtCore.QThread):
                 if x.issue_id is not None
             ]
         except TalkerError as e:
-            QtWidgets.QApplication.restoreOverrideCursor()
-            QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
+            # QtWidgets.QApplication.restoreOverrideCursor()
+            # QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
             return
 
-        QtWidgets.QApplication.restoreOverrideCursor()
+        # QtWidgets.QApplication.restoreOverrideCursor()
         self.finish.emit(issue_list)
 
 
