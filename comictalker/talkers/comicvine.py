@@ -485,7 +485,7 @@ class ComicVineTalker(ComicTalker):
         for issue_id in issue_ids:
             cached_issue = cvc.get_issue_info(issue_id, self.id)
 
-            if cached_issue and cached_issue[1]:
+            if cached_issue is not None:
                 cached_results.append(
                     self._map_comic_issue_to_metadata(
                         json.loads(cached_issue[0].data),
@@ -531,21 +531,26 @@ class ComicVineTalker(ComicTalker):
 
         series_info = {s[0].id: s[0] for s in self._fetch_series([int(i["volume"]["id"]) for i in issue_results])}
 
+        cache_issue: list[Issue] = []
         for issue in issue_results:
-            cvc.add_issues_info(
-                self.id,
-                [
-                    Issue(
-                        id=str(issue["id"]),
-                        series_id=str(issue["volume"]["id"]),
-                        data=json.dumps(issue).encode("utf-8"),
-                    ),
-                ],
-                False,  # The /issues/ endpoint never provides credits
+            cache_issue.append(
+                Issue(
+                    id=str(issue["id"]),
+                    series_id=str(issue["volume"]["id"]),
+                    data=json.dumps(issue).encode("utf-8"),
+                )
             )
             cached_results.append(
                 self._map_comic_issue_to_metadata(issue, series_info[str(issue["volume"]["id"])]),
             )
+        from pprint import pp
+
+        pp(cache_issue, indent=2)
+        cvc.add_issues_info(
+            self.id,
+            cache_issue,
+            False,  # The /issues/ endpoint never provides credits
+        )
 
         return cached_results
 
@@ -820,7 +825,7 @@ class ComicVineTalker(ComicTalker):
         cached_issue = cvc.get_issue_info(issue_id, self.id)
 
         logger.debug("Issue cached: %s", bool(cached_issue and cached_issue[1]))
-        if cached_issue and cached_issue[1]:
+        if cached_issue and cached_issue.complete:
             return self._map_comic_issue_to_metadata(
                 json.loads(cached_issue[0].data), self._fetch_series_data(int(cached_issue[0].series_id))[0]
             )

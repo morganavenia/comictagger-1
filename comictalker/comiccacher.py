@@ -21,7 +21,7 @@ import logging
 import os
 import pathlib
 import sqlite3
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from typing_extensions import NamedTuple
 
@@ -37,6 +37,14 @@ class Issue(NamedTuple):
     id: str
     series_id: str
     data: bytes
+
+
+T = TypeVar("T", Issue, Series)
+
+
+class CacheResult(NamedTuple, Generic[T]):
+    data: T
+    complete: bool
 
 
 class ComicCacher:
@@ -174,7 +182,7 @@ class ComicCacher:
                 }
                 self.upsert(cur, "issues", data)
 
-    def get_search_results(self, source: str, search_term: str, expire_stale: bool = True) -> list[tuple[Series, bool]]:
+    def get_search_results(self, source: str, search_term: str, expire_stale: bool = True) -> list[CacheResult[Series]]:
         results = []
         with sqlite3.connect(self.db_file) as con:
             con.row_factory = sqlite3.Row
@@ -197,11 +205,11 @@ class ComicCacher:
             for record in rows:
                 result = Series(id=record["id"], data=record["data"])
 
-                results.append((result, record["complete"]))
+                results.append(CacheResult(result, record["complete"]))
 
         return results
 
-    def get_series_info(self, series_id: str, source: str, expire_stale: bool = True) -> tuple[Series, bool] | None:
+    def get_series_info(self, series_id: str, source: str, expire_stale: bool = True) -> CacheResult[Series] | None:
         with sqlite3.connect(self.db_file) as con:
             con.row_factory = sqlite3.Row
             cur = con.cursor()
@@ -220,11 +228,11 @@ class ComicCacher:
 
             result = Series(id=row["id"], data=row["data"])
 
-            return (result, row["complete"])
+            return CacheResult(result, row["complete"])
 
     def get_series_issues_info(
         self, series_id: str, source: str, expire_stale: bool = True
-    ) -> list[tuple[Issue, bool]]:
+    ) -> list[CacheResult[Issue]]:
         with sqlite3.connect(self.db_file) as con:
             con.row_factory = sqlite3.Row
             cur = con.cursor()
@@ -234,20 +242,20 @@ class ComicCacher:
                 self.expire_stale_records(cur, "Issues")
 
             # fetch
-            results: list[tuple[Issue, bool]] = []
+            results: list[CacheResult[Issue]] = []
 
             cur.execute("SELECT * FROM Issues WHERE series_id=? AND source=?", [series_id, source])
             rows = cur.fetchall()
 
             # now process the results
             for row in rows:
-                record = (Issue(id=row["id"], series_id=row["series_id"], data=row["data"]), row["complete"])
+                record = CacheResult(Issue(id=row["id"], series_id=row["series_id"], data=row["data"]), row["complete"])
 
                 results.append(record)
 
         return results
 
-    def get_issue_info(self, issue_id: str, source: str, expire_stale: bool = True) -> tuple[Issue, bool] | None:
+    def get_issue_info(self, issue_id: str, source: str, expire_stale: bool = True) -> CacheResult[Issue] | None:
         with sqlite3.connect(self.db_file) as con:
             con.row_factory = sqlite3.Row
             cur = con.cursor()
@@ -262,7 +270,7 @@ class ComicCacher:
             record = None
 
             if row:
-                record = (Issue(id=row["id"], series_id=row["series_id"], data=row["data"]), row["complete"])
+                record = CacheResult(Issue(id=row["id"], series_id=row["series_id"], data=row["data"]), row["complete"])
 
             return record
 
@@ -297,7 +305,7 @@ class ComicCacher:
         sql_ins = f"INSERT OR REPLACE INTO {tablename} ({keys}) VALUES ({ins_slots})"
         if not data.get("complete", True):
             sql_ins += f" ON CONFLICT DO UPDATE SET {set_slots} WHERE complete != ?"
-            vals.extend(vals)
+            vals.extend(vals.copy())
             vals.append(True)  # If the cache is complete and this isn't complete we don't update it
 
         cur.execute(sql_ins, vals)
