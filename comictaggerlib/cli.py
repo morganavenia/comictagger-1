@@ -121,7 +121,7 @@ class CLI:
 
         self.post_process_matches(match_results)
 
-        if self.config.Auto_Tag__online and results[-1].online_results != []:
+        if self.config.Auto_Tag__online and results and results[-1].online_results != []:
             self.output(
                 f"\nFiles tagged with metadata provided by {self.current_talker().name} {self.current_talker().website}",
             )
