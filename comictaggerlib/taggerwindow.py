@@ -1974,7 +1974,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.load_archive(new_ca)
         self.atprogdialog = None
 
-        summary = ""
+        summary = f"<p>{self.current_talker().attribution}</p>"
         summary += f"Successfully added {tag_names} tags to {len(match_results.good_matches)} archive(s)\n"
 
         if len(match_results.multiple_matches) > 0:
