@@ -221,7 +221,10 @@ class IssueSelectionWindow(QtWidgets.QDialog):
         QtWidgets.QApplication.restoreOverrideCursor()
 
         self.issue_number = issue.issue or ""
-        self.coverWidget.set_issue_details(self.issue_id, [issue._cover_image or "", *issue._alternate_images])
+        cover_image = ""
+        if isinstance(issue._cover_image, str):
+            cover_image = issue._cover_image
+        self.coverWidget.set_issue_details(self.issue_id, [cover_image, *issue._alternate_images])
         if issue.description is None:
             self.set_description(self.teDescription, "")
         else:

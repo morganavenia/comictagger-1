@@ -639,7 +639,7 @@ class CLI:
                             month=ct_md.month,
                             year=ct_md.year,
                             publisher=None,
-                            image_url=ct_md._cover_image or "",
+                            image_url=str(ct_md._cover_image) or "",
                             alt_image_urls=[],
                             description=ct_md.description or "",
                         )
