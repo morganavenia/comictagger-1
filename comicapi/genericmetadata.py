@@ -211,7 +211,7 @@ class GenericMetadata:
 
     # urls to cover image, not generally part of the metadata
     _cover_image: str | ImageHash | None = None
-    _alternate_images: list[str] = dataclasses.field(default_factory=list)
+    _alternate_images: list[str | ImageHash] = dataclasses.field(default_factory=list)
 
     def __post_init__(self) -> None:
         for key, value in self.__dict__.items():

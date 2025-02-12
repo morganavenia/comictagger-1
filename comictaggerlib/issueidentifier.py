@@ -307,7 +307,7 @@ class IssueIdentifier:
     def _get_issue_cover_match_score(
         self,
         primary_img_url: str | ImageHash,
-        alt_urls: list[str],
+        alt_urls: list[str | ImageHash],
         local_hashes: list[tuple[str, int]],
         use_alt_urls: bool = False,
     ) -> Score:
@@ -316,17 +316,23 @@ class IssueIdentifier:
 
         # If there is no URL return 100
         if not primary_img_url:
-            return Score(score=100, url="", remote_hash=0)
+            return Score(score=100, url="", remote_hash=0, local_hash=0, local_hash_name="0")
 
         self._user_canceled()
 
+        remote_hashes = []
+        # If the cover is ImageHash and the alternate covers are URLs, the alts will not be hashed/checked currently
         if isinstance(primary_img_url, ImageHash):
-            remote_hashes = [("0", primary_img_url.Hash)]
+            # ImageHash doesn't have a url so we just give it an empty string
+            remote_hashes.append(("", primary_img_url.Hash))
+            if use_alt_urls and alt_urls:
+                remote_hashes.extend(("", alt_hash.Hash) for alt_hash in alt_urls if isinstance(alt_hash, ImageHash))
         else:
             urls = [primary_img_url]
             if use_alt_urls:
-                urls.extend(alt_urls)
-                self.log_msg(f"[{len(alt_urls)} alt. covers]")
+                only_urls = [url for url in alt_urls if isinstance(url, str)]
+                urls.extend(only_urls)
+                self.log_msg(f"[{len(only_urls)} alt. covers]")
 
             remote_hashes = self._get_remote_hashes(urls)
 
@@ -519,10 +525,14 @@ class IssueIdentifier:
             )
 
             try:
-                image_url = issue._cover_image or ""
-                alt_urls = issue._alternate_images
+                image_url = issue._cover_image if isinstance(issue._cover_image, str) else ""
+                # We only include urls in the IssueResult so we don't have to deal with it down the line
+                # TODO: display the hash to the user so they know a direct hash was used instead of downloading an image
+                alt_urls: list[str] = [url for url in issue._alternate_images if isinstance(url, str)]
 
-                score_item = self._get_issue_cover_match_score(image_url, alt_urls, hashes, use_alt_urls=use_alternates)
+                score_item = self._get_issue_cover_match_score(
+                    image_url, issue._alternate_images, hashes, use_alt_urls=use_alternates
+                )
             except Exception:
                 logger.exception(f"Scoring series{alternate} covers failed")
                 return []
@@ -539,7 +549,7 @@ class IssueIdentifier:
                 month=issue.month,
                 year=issue.year,
                 publisher=None,
-                image_url=str(image_url),
+                image_url=image_url,
                 alt_image_urls=alt_urls,
                 description=issue.description or "",
             )
@@ -629,7 +639,7 @@ class IssueIdentifier:
                 if issue._cover_image.Kind == "phash":
                     self.image_hasher = 3
                     break
-                elif issue._cover_image == "ahash":
+                elif issue._cover_image.Kind == "ahash":
                     self.image_hasher = 1  # Set to 1 on init but might as well be sure
                     break
 
