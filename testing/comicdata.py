@@ -288,3 +288,76 @@ metadata_prepared = (
         ),
     ),
 )
+
+issueidentifier_score = (
+    (
+        (
+            comicapi.genericmetadata.ImageHash(
+                Hash=0,  # Force using the alternate, since the alternate is a url it will be ignored
+                Kind="ahash",
+            ),
+            ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
+            True,
+        ),
+        {
+            "remote_hash": 0,
+            "score": 31,
+            "url": "",
+            "local_hash": 212201432349720,
+            "local_hash_name": "Cover 1",
+        },
+    ),
+    (
+        (
+            comicapi.genericmetadata.ImageHash(
+                Hash=0,
+                Kind="ahash",
+            ),
+            [
+                comicapi.genericmetadata.ImageHash(
+                    Hash=212201432349720,
+                    Kind="ahash",
+                ),
+            ],
+            True,
+        ),
+        {
+            "remote_hash": 212201432349720,
+            "score": 0,
+            "url": "",
+            "local_hash": 212201432349720,
+            "local_hash_name": "Cover 1",
+        },
+    ),
+    (
+        (
+            comicapi.genericmetadata.ImageHash(
+                Hash=212201432349720,
+                Kind="ahash",
+            ),
+            ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
+            False,
+        ),
+        {
+            "remote_hash": 212201432349720,
+            "score": 0,
+            "url": "",
+            "local_hash": 212201432349720,
+            "local_hash_name": "Cover 1",
+        },
+    ),
+    (
+        (
+            "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
+            ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
+            False,
+        ),
+        {
+            "remote_hash": 212201432349720,
+            "score": 0,
+            "url": "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
+            "local_hash": 212201432349720,
+            "local_hash_name": "Cover 1",
+        },
+    ),
+)
