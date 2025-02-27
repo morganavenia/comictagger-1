@@ -25,7 +25,7 @@ from typing_extensions import NotRequired, TypedDict
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive
-from comicapi.genericmetadata import ComicSeries, GenericMetadata
+from comicapi.genericmetadata import ComicSeries, GenericMetadata, ImageHash
 from comicapi.issuestring import IssueString
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.imagefetcher import ImageFetcher, ImageFetcherException
@@ -132,13 +132,13 @@ class IssueIdentifier:
     def set_cover_url_callback(self, cb_func: Callable[[bytes], None]) -> None:
         self.cover_url_callback = cb_func
 
-    def calculate_hash(self, image_data: bytes) -> int:
+    def calculate_hash(self, image_data: bytes = b"", image: Image = None) -> int:
         if self.image_hasher == 3:
-            return ImageHasher(data=image_data).p_hash()
+            return ImageHasher(data=image_data, image=image).p_hash()
         if self.image_hasher == 2:
-            return -1  # ImageHasher(data=image_data).average_hash2()
+            return -1  # ImageHasher(data=image_data, image=image).average_hash2()
 
-        return ImageHasher(data=image_data).average_hash()
+        return ImageHasher(data=image_data, image=image).average_hash()
 
     def log_msg(self, msg: Any) -> None:
         msg = str(msg)
@@ -306,8 +306,8 @@ class IssueIdentifier:
 
     def _get_issue_cover_match_score(
         self,
-        primary_img_url: str,
-        alt_urls: list[str],
+        primary_img_url: str | ImageHash,
+        alt_urls: list[str | ImageHash],
         local_hashes: list[tuple[str, int]],
         use_alt_urls: bool = False,
     ) -> Score:
@@ -316,16 +316,25 @@ class IssueIdentifier:
 
         # If there is no URL return 100
         if not primary_img_url:
-            return Score(score=100, url="", remote_hash=0)
+            return Score(score=100, url="", remote_hash=0, local_hash=0, local_hash_name="0")
 
         self._user_canceled()
 
-        urls = [primary_img_url]
-        if use_alt_urls:
-            urls.extend(alt_urls)
-            self.log_msg(f"[{len(alt_urls)} alt. covers]")
+        remote_hashes = []
+        # If the cover is ImageHash and the alternate covers are URLs, the alts will not be hashed/checked currently
+        if isinstance(primary_img_url, ImageHash):
+            # ImageHash doesn't have a url so we just give it an empty string
+            remote_hashes.append(("", primary_img_url.Hash))
+            if use_alt_urls and alt_urls:
+                remote_hashes.extend(("", alt_hash.Hash) for alt_hash in alt_urls if isinstance(alt_hash, ImageHash))
+        else:
+            urls = [primary_img_url]
+            if use_alt_urls:
+                only_urls = [url for url in alt_urls if isinstance(url, str)]
+                urls.extend(only_urls)
+                self.log_msg(f"[{len(only_urls)} alt. covers]")
 
-        remote_hashes = self._get_remote_hashes(urls)
+            remote_hashes = self._get_remote_hashes(urls)
 
         score_list = []
         done = False
@@ -490,7 +499,7 @@ class IssueIdentifier:
     def _calculate_hashes(self, images: list[tuple[str, Image.Image]]) -> list[tuple[str, int]]:
         hashes = []
         for name, image in images:
-            hashes.append((name, ImageHasher(image=image).average_hash()))
+            hashes.append((name, self.calculate_hash(image=image)))
         return hashes
 
     def _match_covers(
@@ -516,10 +525,14 @@ class IssueIdentifier:
             )
 
             try:
-                image_url = issue._cover_image or ""
-                alt_urls = issue._alternate_images
+                image_url = issue._cover_image if isinstance(issue._cover_image, str) else ""
+                # We only include urls in the IssueResult so we don't have to deal with it down the line
+                # TODO: display the hash to the user so they know a direct hash was used instead of downloading an image
+                alt_urls: list[str] = [url for url in issue._alternate_images if isinstance(url, str)]
 
-                score_item = self._get_issue_cover_match_score(image_url, alt_urls, hashes, use_alt_urls=use_alternates)
+                score_item = self._get_issue_cover_match_score(
+                    image_url, issue._alternate_images, hashes, use_alt_urls=use_alternates
+                )
             except Exception:
                 logger.exception(f"Scoring series{alternate} covers failed")
                 return []
@@ -620,6 +633,16 @@ class IssueIdentifier:
         extra_images: list[tuple[str, Image.Image]],
         issues: list[tuple[ComicSeries, GenericMetadata]],
     ) -> list[IssueResult]:
+        # Set hashing kind, will presume all hashes are of the same kind
+        for series, issue in issues:
+            if isinstance(issue._cover_image, ImageHash):
+                if issue._cover_image.Kind == "phash":
+                    self.image_hasher = 3
+                    break
+                elif issue._cover_image.Kind == "ahash":
+                    self.image_hasher = 1  # Set to 1 on init but might as well be sure
+                    break
+
         cover_matching_1 = self._match_covers(terms, images, issues, use_alternates=False)
 
         if len(cover_matching_1) == 0:

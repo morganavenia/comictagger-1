@@ -136,6 +136,14 @@ class MetadataOrigin(NamedTuple):
         return self.name
 
 
+class ImageHash(NamedTuple):
+    Hash: int
+    Kind: str  # ahash, phash
+
+    def __str__(self) -> str:
+        return str(self.Hash) + ": " + self.Kind
+
+
 @dataclasses.dataclass
 class GenericMetadata:
     writer_synonyms = ("writer", "plotter", "scripter", "script")
@@ -202,8 +210,8 @@ class GenericMetadata:
     last_mark: str | None = None
 
     # urls to cover image, not generally part of the metadata
-    _cover_image: str | None = None
-    _alternate_images: list[str] = dataclasses.field(default_factory=list)
+    _cover_image: str | ImageHash | None = None
+    _alternate_images: list[str | ImageHash] = dataclasses.field(default_factory=list)
 
     def __post_init__(self) -> None:
         for key, value in self.__dict__.items():

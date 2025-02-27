@@ -9,6 +9,7 @@ import comictaggerlib.imagehasher
 import comictaggerlib.issueidentifier
 import testing.comicdata
 import testing.comicvine
+from comicapi.genericmetadata import ImageHash
 from comictaggerlib.resulttypes import IssueResult
 
 
@@ -36,21 +37,22 @@ def test_get_search_keys(cbz, config, additional_md, expected, comicvine_api):
     assert expected == ii._get_search_keys(additional_md)
 
 
-def test_get_issue_cover_match_score(cbz, config, comicvine_api):
+@pytest.mark.parametrize("data, expected", testing.comicdata.issueidentifier_score)
+def test_get_issue_cover_match_score(
+    cbz,
+    config,
+    comicvine_api,
+    data: tuple[str | ImageHash, list[str | ImageHash], bool],
+    expected: comictaggerlib.issueidentifier.Score,
+):
     config, definitions = config
     ii = comictaggerlib.issueidentifier.IssueIdentifier(cbz, config, comicvine_api)
     score = ii._get_issue_cover_match_score(
-        "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
-        ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
-        [("Cover 1", ii.calculate_hash(cbz.get_page(0)))],
+        primary_img_url=data[0],
+        alt_urls=data[1],
+        local_hashes=[("Cover 1", ii.calculate_hash(cbz.get_page(0)))],
+        use_alt_urls=data[2],
     )
-    expected = {
-        "remote_hash": 212201432349720,
-        "score": 0,
-        "url": "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
-        "local_hash": 212201432349720,
-        "local_hash_name": "Cover 1",
-    }
     assert expected == score
 
 
