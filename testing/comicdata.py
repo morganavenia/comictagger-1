@@ -295,6 +295,7 @@ issueidentifier_score = (
             comicapi.genericmetadata.ImageHash(
                 Hash=0,  # Force using the alternate, since the alternate is a url it will be ignored
                 Kind="ahash",
+                URL="",
             ),
             ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
             True,
@@ -312,11 +313,13 @@ issueidentifier_score = (
             comicapi.genericmetadata.ImageHash(
                 Hash=0,
                 Kind="ahash",
+                URL="",
             ),
             [
                 comicapi.genericmetadata.ImageHash(
                     Hash=212201432349720,
                     Kind="ahash",
+                    URL="",
                 ),
             ],
             True,
@@ -334,6 +337,7 @@ issueidentifier_score = (
             comicapi.genericmetadata.ImageHash(
                 Hash=212201432349720,
                 Kind="ahash",
+                URL="",
             ),
             ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
             False,

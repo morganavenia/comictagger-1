@@ -139,9 +139,10 @@ class MetadataOrigin(NamedTuple):
 class ImageHash(NamedTuple):
     Hash: int
     Kind: str  # ahash, phash
+    URL: str | None = None
 
     def __str__(self) -> str:
-        return str(self.Hash) + ": " + self.Kind
+        return self.URL or ""
 
 
 @dataclasses.dataclass

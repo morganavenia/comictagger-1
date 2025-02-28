@@ -223,7 +223,7 @@ class IssueSelectionWindow(QtWidgets.QDialog):
         self.issue_number = issue.issue or ""
         # We don't currently have a way to display hashes to the user
         # TODO: display the hash to the user so they know it will be used for cover matching
-        alt_images = [url for url in issue._alternate_images if isinstance(url, str)]
+        alt_images = [str(url) for url in issue._alternate_images]
         self.coverWidget.set_issue_details(self.issue_id, [str(issue._cover_image) or "", *alt_images])
         if issue.description is None:
             self.set_description(self.teDescription, "")
