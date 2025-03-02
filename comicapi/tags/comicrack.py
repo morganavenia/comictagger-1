@@ -248,7 +248,7 @@ class ComicRack(Tag):
 
         scan_info = md.scan_info or ""
         if md.original_hash:
-            scan_info += f" {md.original_hash}"
+            scan_info += f" sum:{md.original_hash}"
         assign("ScanInformation", scan_info)
 
         assign("PageCount", md.page_count)
@@ -333,7 +333,9 @@ class ComicRack(Tag):
         md.critical_rating = utils.xlate_float(get("CommunityRating"))
         scan_info_list = (utils.xlate(get("ScanInformation")) or "").split()
         for word in scan_info_list.copy():
-            original_hash = FileHash.parse(word)
+            if not word.startswith("sum:"):
+                continue
+            original_hash = FileHash.parse(word[4:])
             if original_hash:
                 md.original_hash = original_hash
                 scan_info_list.remove(word)
