@@ -26,7 +26,7 @@ import subprocess
 
 import settngs
 
-from comicapi import utils
+from comicapi import comicarchive, utils
 from comicapi.comicarchive import tags
 from comictaggerlib import ctversion, quick_tag
 from comictaggerlib.ctsettings.settngs_namespace import SettngsNS as ct_ns
@@ -283,6 +283,9 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
             + "Distributed under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)\n",
         )
 
+    if not config[0].Metadata_Options__cr and "cr" in comicarchive.tags and comicarchive.tags["cr"].enabled:
+        comicarchive.tags["cr"].enabled = False
+
     config[0].Runtime_Options__no_gui = any(
         (config[0].Commands__command != Action.gui, config[0].Runtime_Options__no_gui, config[0].Commands__copy)
     )
@@ -301,6 +304,26 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
 
     if config[0].Runtime_Options__tags_read and not config[0].Runtime_Options__tags_write:
         config[0].Runtime_Options__tags_write = config[0].Runtime_Options__tags_read
+
+    disabled_tags = {tag for tag in comicarchive.tags if not comicarchive.tags[tag].enabled}
+    to_be_removed = (
+        set(config[0].Runtime_Options__tags_read).union(config[0].Runtime_Options__tags_write).union(disabled_tags)
+    )
+    if to_be_removed:
+        logger.debug("Removing disabled tags: %s", to_be_removed)
+        config[0].Runtime_Options__tags_read = [
+            tag for tag in config[0].Runtime_Options__tags_read if tag not in to_be_removed
+        ]
+        config[0].Runtime_Options__tags_write = [
+            tag for tag in config[0].Runtime_Options__tags_write if tag not in to_be_removed
+        ]
+
+    if (
+        config[0].Runtime_Options__no_gui
+        and not [tag.id for tag in tags.values() if tag.enabled]
+        and config[0].Commands__command != Action.list_plugins
+    ):
+        parser.exit(status=1, message="There are no tags enabled see --list-plugins\n")
 
     if config[0].Runtime_Options__no_gui and not config[0].Runtime_Options__files:
         if config[0].Commands__command == Action.print and not config[0].Auto_Tag__metadata.is_empty:

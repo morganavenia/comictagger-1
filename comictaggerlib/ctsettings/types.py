@@ -152,11 +152,12 @@ class ComicTaggerPaths(AppDirs):
 
 
 def tag(types: str) -> list[str]:
+    enabled_tags = [tag for tag in tags if tags[tag].enabled]
     result = []
     types = types.casefold()
     for typ in utils.split(types, ","):
-        if typ not in tags:
-            choices = ", ".join(tags)
+        if typ not in enabled_tags:
+            choices = ", ".join(enabled_tags)
             raise argparse.ArgumentTypeError(f"invalid choice: {typ} (choose from {choices.upper()})")
         result.append(tags[typ].id)
     return result

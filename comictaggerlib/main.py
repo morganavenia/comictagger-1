@@ -246,13 +246,6 @@ class App:
         # config already loaded
         error = None
 
-        if (
-            not self.config[0].Metadata_Options__cr
-            and "cr" in comicapi.comicarchive.tags
-            and comicapi.comicarchive.tags["cr"].enabled
-        ):
-            comicapi.comicarchive.tags["cr"].enabled = False
-
         if len(self.talkers) < 1:
             error = (
                 "Failed to load any talkers, please re-install and check the log located in '"

@@ -234,6 +234,7 @@ class ComicArchive:
         if tag_id in self.md:
             del self.md[tag_id]
         if not tags[tag_id].enabled:
+            logger.warning("%s tags not enabled", tags[tag_id].name())
             return False
 
         self.apply_archive_info_to_metadata(metadata, True, True, hash_archive=self.hash_archive)

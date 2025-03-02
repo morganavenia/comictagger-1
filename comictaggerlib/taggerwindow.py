@@ -234,8 +234,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if self.config[0].Runtime_Options__preferred_hash:
             self.config[0].internal__embedded_hash_type = self.config[0].Runtime_Options__preferred_hash
 
-        self.selected_write_tags: list[str] = config[0].internal__write_tags or [self.enabled_tags()[0]]
-        self.selected_read_tags: list[str] = config[0].internal__read_tags or [self.enabled_tags()[0]]
+        self.selected_write_tags: list[str] = config[0].internal__write_tags
+        self.selected_read_tags: list[str] = config[0].internal__read_tags
 
         self.setAcceptDrops(True)
         self.view_tag_actions, self.remove_tag_actions = self.tag_actions()
@@ -352,7 +352,18 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 """,
             )
             self.config[0].Dialog_Flags__notify_plugin_changes = not checked
-
+        if self.enabled_tags():
+            self.selected_write_tags = [self.enabled_tags()[0]]
+            self.selected_read_tags = [self.enabled_tags()[0]]
+        else:
+            checked = OptionalMessageDialog.msg_no_checkbox(
+                self,
+                "No tags enabled",
+                """
+                There are no tags enabled!<br/><br/>
+                Go to the "Metadata Options" tab in settings to enable the builtin "Comic Rack" tags
+                """,
+            )
         if self.config[0].General__check_for_new_version:
             self.check_latest_version_online()
 

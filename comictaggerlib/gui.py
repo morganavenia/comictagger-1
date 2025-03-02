@@ -82,7 +82,7 @@ try:
         # Handles "Open With" from Finder on macOS
         def event(self, event: QtCore.QEvent) -> bool:
             if event.type() == QtCore.QEvent.FileOpen:
-                logger.info(event.url().toLocalFile())
+                logger.info("file open recieved: %s", event.url().toLocalFile())
                 self.openFileRequest.emit(event.url())
                 return True
             return super().event(event)
