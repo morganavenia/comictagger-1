@@ -24,6 +24,12 @@ class Archiver(Protocol):
     """
     enabled: bool = True
 
+    """
+    If self.path is a single file that can be hashed.
+    For example directories cannot be hashed.
+    """
+    hashable: bool = True
+
     def __init__(self) -> None:
         self.path = pathlib.Path()
 

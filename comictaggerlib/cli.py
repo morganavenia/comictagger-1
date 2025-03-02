@@ -184,7 +184,7 @@ class CLI:
             if i != "s":
                 # save the data!
                 # we know at this point, that the file is all good to go
-                ca = ComicArchive(match_set.original_path)
+                ca = ComicArchive(match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash)
                 md, match_set.tags_read = self.create_local_metadata(ca, self.config.Runtime_Options__tags_read)
                 ct_md = self.fetch_metadata(match_set.online_results[int(i) - 1].issue_id)
 
@@ -330,6 +330,17 @@ class CLI:
                             self.output(md)
                     except Exception as e:
                         logger.error("Failed to read tags from %s: %s", ca.path, e)
+        if not self.config.Auto_Tag__metadata.is_empty and not self.config.Runtime_Options__raw:
+            try:
+                md, tags_read = self.create_local_metadata(
+                    ca, self.config.Runtime_Options__tags_read or list(tags.keys())
+                )
+                tags_read_names = ", ".join(["CLI"] + [tags[t].name() for t in tags_read])
+                self.output(f"--------- Combined {tags_read_names} tags ---------")
+                self.output(md)
+            except Exception as e:
+                logger.error("Failed to read tags from %s: %s", ca.path, e)
+
         return Result(Action.print, Status.success, ca.path, md=md)
 
     def delete_tags(self, ca: ComicArchive, tag_id: str) -> Status:
@@ -790,7 +801,9 @@ class CLI:
             logger.error("Cannot find %s", filename)
             return Result(command, Status.read_failure, pathlib.Path(filename)), match_results
 
-        ca = ComicArchive(filename, str(graphics_path / "nocover.png"))
+        ca = ComicArchive(
+            filename, str(graphics_path / "nocover.png"), hash_archive=self.config.Runtime_Options__preferred_hash
+        )
 
         if not ca.seems_to_be_a_comic_archive():
             logger.error("Sorry, but %s is not a comic archive!", filename)

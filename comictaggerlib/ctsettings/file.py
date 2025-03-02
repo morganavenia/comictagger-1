@@ -27,6 +27,7 @@ def general(parser: settngs.Manager) -> None:
 def internal(parser: settngs.Manager) -> None:
     # automatic settings
     parser.add_setting("install_id", default=uuid.uuid4().hex, cmdline=False)
+    parser.add_setting("embedded_hash_type", default="shake_256", cmdline=False)
     parser.add_setting("write_tags", default=["cr"], cmdline=False)
     parser.add_setting("read_tags", default=["cr"], cmdline=False)
     parser.add_setting("last_opened_folder", default="", cmdline=False)

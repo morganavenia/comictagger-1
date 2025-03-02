@@ -6,7 +6,7 @@ import io
 import logging
 import traceback
 import webbrowser
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtWidgets import QWidget
@@ -148,7 +148,7 @@ if qt_available:
 
     active_palette = None
 
-    def enable_widget(widget: QtWidgets.QWidget | list[QtWidgets.QWidget], enable: bool) -> None:
+    def enable_widget(widget: QtWidgets.QWidget | Collection[QtWidgets.QWidget], enable: bool) -> None:
         if isinstance(widget, Sequence):
             for w in widget:
                 _enable_widget(w, enable)

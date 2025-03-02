@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import logging
 import operator
 import os
@@ -38,7 +39,7 @@ import comictaggerlib.ui
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive, tags
 from comicapi.filenameparser import FileNameParser
-from comicapi.genericmetadata import Credit, GenericMetadata
+from comicapi.genericmetadata import Credit, FileHash, GenericMetadata
 from comicapi.issuestring import IssueString
 from comictaggerlib import ctsettings, ctversion
 from comictaggerlib.applicationlogwindow import ApplicationLogWindow, QTextEditLogger
@@ -93,6 +94,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.md_attributes = {
             "data_origin": None,
             "issue_id": None,
+            "original_hash": (self.cbHashName, self.leOriginalHash),
             "series": self.leSeries,
             "issue": self.leIssueNum,
             "title": self.leTitle,
@@ -229,6 +231,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         for tag_id in config[0].internal__read_tags.copy():
             if tag_id not in self.enabled_tags():
                 config[0].internal__read_tags.remove(tag_id)
+        if self.config[0].Runtime_Options__preferred_hash:
+            self.config[0].internal__embedded_hash_type = self.config[0].Runtime_Options__preferred_hash
 
         self.selected_write_tags: list[str] = config[0].internal__write_tags or [self.enabled_tags()[0]]
         self.selected_read_tags: list[str] = config[0].internal__read_tags or [self.enabled_tags()[0]]
@@ -432,6 +436,16 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
             self.setWindowTitle(f"{self.appName} - {self.comic_archive.path}{mod_str}{ro_str}")
 
+    def toggle_enable_embedding_hashes(self) -> None:
+        self.config[0].Runtime_Options__enable_embedding_hashes = self.actionEnableEmbeddingHashes.isChecked()
+        enable_widget(self.md_attributes["original_hash"], self.config[0].Runtime_Options__enable_embedding_hashes)
+        if not self.leOriginalHash.text().strip():
+            self.cbHashName.setCurrentText(self.config[0].internal__embedded_hash_type)
+        if self.config[0].Runtime_Options__enable_embedding_hashes:
+            self.config[0].Runtime_Options__preferred_hash = self.config[0].internal__embedded_hash_type
+        else:
+            self.config[0].Runtime_Options__preferred_hash = ""
+
     def config_menus(self) -> None:
         # File Menu
         self.actionAutoTag.triggered.connect(self.auto_tag)
@@ -453,8 +467,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.actionLiteralSearch.triggered.connect(self.literal_search)
         self.actionParse_Filename.triggered.connect(self.use_filename)
         self.actionParse_Filename_split_words.triggered.connect(self.use_filename_split)
-        self.actionReCalcPageDims.triggered.connect(self.recalc_page_dimensions)
+        self.actionReCalcArchiveInfo.triggered.connect(self.recalc_archive_info)
         self.actionSearchOnline.triggered.connect(self.query_online)
+        self.actionEnableEmbeddingHashes: QtWidgets.QAction
+        self.actionEnableEmbeddingHashes.triggered.connect(self.toggle_enable_embedding_hashes)
+        self.actionEnableEmbeddingHashes.setChecked(self.config[0].Runtime_Options__enable_embedding_hashes)
         # Window Menu
         self.actionLogWindow.triggered.connect(self.log_window.show)
         self.actionPageBrowser.triggered.connect(self.show_page_browser)
@@ -658,8 +675,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.page_browser.set_comic_archive(self.comic_archive)
             self.page_browser.metadata = self.metadata
 
-        if self.comic_archive is not None:
-            self.page_list_editor.set_data(self.comic_archive, self.metadata.pages)
         self.metadata_to_form()
         self.clear_dirty_flag()  # also updates the app title
         self.update_info_box()
@@ -680,7 +695,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.actionCopyTags.setEnabled(enabled)
         self.actionParse_Filename.setEnabled(enabled)
         self.actionParse_Filename_split_words.setEnabled(enabled)
-        self.actionReCalcPageDims.setEnabled(enabled)
+        self.actionReCalcArchiveInfo.setEnabled(enabled)
         self.actionRemoveAuto.setEnabled(enabled)
         self.actionRename.setEnabled(enabled)
         self.actionRepackage.setEnabled(enabled)
@@ -795,6 +810,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         md = self.metadata
 
+        original_hash = md.original_hash or FileHash("", "")
+        self.cbHashName.setCurrentText(original_hash.name or self.config[0].internal__embedded_hash_type)
+        assign_text(self.leOriginalHash, original_hash.hash)
         assign_text(self.leSeries, md.series)
         assign_text(self.leIssueNum, md.issue)
         assign_text(self.leIssueCount, md.issue_count)
@@ -876,9 +894,12 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     continue
 
                 self.add_new_credit_entry(row, credit)
+        if self.comic_archive:
+            self.page_list_editor.set_data(self.comic_archive, self.metadata.pages)
 
         self.twCredits.setSortingEnabled(True)
         self.update_credit_colors()
+        self.toggle_enable_embedding_hashes()
 
     def add_new_credit_entry(self, row: int, credit: Credit) -> None:
         self.twCredits.insertRow(row)
@@ -922,6 +943,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
         # copy the data from the form into the metadata
         md = GenericMetadata()
         md.is_empty = False
+
+        if utils.xlate(self.cbHashName.currentText()) and utils.xlate(self.leOriginalHash.text()):
+            md.original_hash = FileHash(
+                utils.xlate(self.cbHashName.currentText()) or "", utils.xlate(self.leOriginalHash.text()) or ""
+            )
         md.alternate_number = utils.xlate(IssueString(self.leAltIssueNum.text()).as_string())
         md.issue = utils.xlate(IssueString(self.leIssueNum.text()).as_string())
         md.issue_count = utils.xlate_int(self.leIssueCount.text())
@@ -1237,6 +1263,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         self.update_credit_colors()
         self.page_list_editor.select_read_tags(self.selected_write_tags)
+        self.toggle_enable_embedding_hashes()
 
     def cell_double_clicked(self, r: int, c: int) -> None:
         self.edit_credit()
@@ -1414,6 +1441,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.populate_tag_names()
 
         self.adjust_tags_combo()
+
+        self.cbHashName: QtWidgets.QComboBox
+        self.cbHashName.addItems(sorted(hashlib.algorithms_available))
 
         # Add talker entries
         for t_id, talker in self.talkers.items():
@@ -2114,12 +2144,22 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.metadata = CBLTransformer(self.metadata, self.config[0]).apply()
         self.metadata_to_form()
 
-    def recalc_page_dimensions(self) -> None:
+    def recalc_archive_info(self) -> None:
         QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
         for p in self.metadata.pages:
             p.byte_size = None
             p.height = None
             p.width = None
+        if self.comic_archive and self.config[0].Runtime_Options__preferred_hash:
+            self.metadata.original_hash = None
+            self.comic_archive.apply_archive_info_to_metadata(
+                self.metadata, True, hash_archive=self.cbHashName.currentText()
+            )
+            original_hash = self.metadata.original_hash or FileHash("", "")
+            self.leOriginalHash.setText(original_hash.hash)
+            self.cbHashName.setCurrentText(original_hash.name or self.config[0].internal__embedded_hash_type)
+            self.page_list_editor.set_data(self.comic_archive, self.metadata.pages)
+
         self.set_dirty_flag()
         QtWidgets.QApplication.restoreOverrideCursor()
 

@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import os
 import platform
@@ -81,6 +82,20 @@ def register_runtime(parser: settngs.Manager) -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help='Enable the expiremental "quick tagger"',
+        file=False,
+    )
+    parser.add_setting(
+        "--enable-embedding-hashes",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable embedding hashes in metadata (currently only CR/CIX has support)",
+        file=False,
+    )
+    parser.add_setting(
+        "--preferred-hash",
+        default="shake_256",
+        choices=hashlib.algorithms_available,
+        help="The type of embedded hash to save when --enable-embedding-hashes is set\n\n",
         file=False,
     )
     parser.add_setting("-q", "--quiet", action="store_true", help="Don't say much (for print mode).", file=False)
@@ -306,6 +321,9 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
 
     if config[0].Runtime_Options__recursive:
         config[0].Runtime_Options__files = utils.get_recursive_filelist(config[0].Runtime_Options__files)
+
+    if not config[0].Runtime_Options__enable_embedding_hashes:
+        config[0].Runtime_Options__preferred_hash = ""
 
     # take a crack at finding rar exe if it's not in the path
     if not utils.which("rar"):

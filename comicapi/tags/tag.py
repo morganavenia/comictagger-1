@@ -14,6 +14,7 @@ class Tag:
             "data_origin",
             "issue_id",
             "series_id",
+            "original_hash",
             "series",
             "series_aliases",
             "issue",
