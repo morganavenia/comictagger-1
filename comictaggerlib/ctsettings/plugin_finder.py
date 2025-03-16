@@ -142,6 +142,7 @@ def find_plugins(plugin_folder: pathlib.Path) -> Plugins:
 
     for plugin_path in os_sorted(zips):
         logger.debug("looking for plugins in %s", plugin_path)
+        sys_path = sys.path.copy()
         try:
             sys.path.append(str(plugin_path))
             for plugin in _find_local_plugins(plugin_path):
@@ -150,7 +151,7 @@ def find_plugins(plugin_folder: pathlib.Path) -> Plugins:
         except Exception as err:
             logger.exception(FailedToLoadPlugin(plugin_path.name, err))
         finally:
-            sys.path.remove(str(plugin_path))
+            sys.path = sys_path
             for mod in list(sys.modules.values()):
                 if (
                     mod is not None
