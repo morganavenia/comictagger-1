@@ -23,7 +23,7 @@ import pathlib
 import platform
 import sys
 import unicodedata
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from enum import Enum, auto
 from shutil import which  # noqa: F401
 from typing import Any, Callable, TypeVar, cast
@@ -47,7 +47,7 @@ except ImportError:
 
 if sys.version_info < (3, 11):
 
-    def file_digest(fileobj, digest, /, *, _bufsize=2**18):
+    def file_digest(fileobj, digest, /, *, _bufsize=2**18):  # type: ignore[no-untyped-def]
         """Hash the contents of a file-like object. Returns a digest object.
 
         *fileobj* must be a file-like object opened for reading in binary mode.
@@ -147,12 +147,16 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class DefaultDict(dict):
-    def __init__(self, *args, default: Callable[[Any], Any] | None = None) -> None:
-        super().__init__(*args)
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
+
+
+class DefaultDict(dict[_KT, _VT]):
+    def __init__(self, *args, default: Callable[[_KT], _VT | _KT] | None = None, **kwargs) -> None:  # type: ignore[no-untyped-def]
+        super().__init__(*args, **kwargs)
         self.default = default
 
-    def __missing__(self, key: Any) -> Any:
+    def __missing__(self, key: _KT) -> _VT | _KT:
         if self.default is None:
             return key
         return self.default(key)
@@ -170,7 +174,7 @@ def _custom_key(tup: Any) -> Any:
     lst = []
     for x in natsort.os_sort_keygen()(tup):
         ret = x
-        if len(x) > 1 and isinstance(x[1], int) and isinstance(x[0], str) and x[0] == "":
+        if isinstance(x, Sequence) and len(x) > 1 and isinstance(x[1], int) and isinstance(x[0], str) and x[0] == "":
             ret = ("a", *x[1:])
 
         lst.append(ret)
@@ -623,7 +627,7 @@ def update_publishers(new_publishers: Mapping[str, Mapping[str, str]]) -> None:
             publishers[publisher] = ImprintDict(publisher, new_publishers[publisher])
 
 
-class ImprintDict(dict):  # type: ignore
+class ImprintDict(dict[str, str]):
     """
     ImprintDict takes a publisher and a dict or mapping of lowercased
     imprint names to the proper imprint name. Retrieving a value from an
@@ -631,14 +635,14 @@ class ImprintDict(dict):  # type: ignore
     if the key does not exist the key is returned as the publisher unchanged
     """
 
-    def __init__(self, publisher: str, mapping: tuple | Mapping = (), **kwargs: dict) -> None:  # type: ignore
+    def __init__(self, publisher: str, mapping: Mapping[str, str] = {}, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(mapping, **kwargs)
         self.publisher = publisher
 
     def __missing__(self, key: str) -> None:
         return None
 
-    def __getitem__(self, k: str) -> tuple[str, str, bool]:
+    def __getitem__(self, k: str) -> tuple[str, str, bool]:  # type: ignore[override]
         item = super().__getitem__(k.casefold())
         if k.casefold() == self.publisher.casefold():
             return "", self.publisher, True

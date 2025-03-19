@@ -10,7 +10,7 @@ import pathlib
 import platform
 import re
 import sys
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Sequence
 from typing import Any, NamedTuple, TypeVar
 
 if sys.version_info < (3, 10):
@@ -31,7 +31,7 @@ def _custom_key(tup: Any) -> Any:
     lst = []
     for x in natsort.os_sort_keygen()(tup):
         ret = x
-        if len(x) > 1 and isinstance(x[1], int) and isinstance(x[0], str) and x[0] == "":
+        if isinstance(x, Sequence) and len(x) > 1 and isinstance(x[1], int) and isinstance(x[0], str) and x[0] == "":
             ret = ("a", *x[1:])
 
         lst.append(ret)

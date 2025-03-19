@@ -35,7 +35,12 @@ logger = logging.getLogger(__name__)
 
 class ImageHasher:
     def __init__(
-        self, path: str | None = None, image: Image | None = None, data: bytes = b"", width: int = 8, height: int = 8
+        self,
+        path: str | None = None,
+        image: Image.Image | None = None,
+        data: bytes = b"",
+        width: int = 8,
+        height: int = 8,
     ) -> None:
         self.width = width
         self.height = height
@@ -141,6 +146,7 @@ class ImageHasher:
                 row = []
                 for x in range(width):
                     pixel = image.getpixel((x, y))
+                    assert isinstance(pixel, float)
                     row.append(pixel)
                 pixels2.append(row)
 

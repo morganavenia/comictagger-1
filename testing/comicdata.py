@@ -258,7 +258,7 @@ all_seed_imprints = {
     "Marvel": seed_imprints["Marvel"].copy(),
     "DC Comics": additional_seed_imprints["DC Comics"].copy(),
 }
-all_seed_imprints["Marvel"].update(additional_seed_imprints["Marvel"])
+all_seed_imprints["Marvel"].update(additional_seed_imprints["Marvel"].items())
 
 conflicting_seed_imprints = {"Marvel": {"test": "Never"}}
 

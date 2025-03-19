@@ -132,7 +132,7 @@ class IssueIdentifier:
     def set_cover_url_callback(self, cb_func: Callable[[bytes], None]) -> None:
         self.cover_url_callback = cb_func
 
-    def calculate_hash(self, image_data: bytes = b"", image: Image = None) -> int:
+    def calculate_hash(self, image_data: bytes = b"", image: Image.Image | None = None) -> int:
         if self.image_hasher == 3:
             return ImageHasher(data=image_data, image=image).p_hash()
         if self.image_hasher == 2:
@@ -377,8 +377,8 @@ class IssueIdentifier:
 
     def _process_cover(self, name: str, image_data: bytes) -> list[tuple[str, Image.Image]]:
         assert Image
-        cover_image = Image.open(io.BytesIO(image_data))
-        images = [(name, cover_image)]
+        cover_image: Image.Image = Image.open(io.BytesIO(image_data))
+        images: list[tuple[str, Image.Image]] = [(name, cover_image)]
 
         # check the aspect ratio
         # if it's wider than it is high, it's probably a two page spread (back_cover, front_cover)
@@ -413,7 +413,7 @@ class IssueIdentifier:
 
     def _get_search_keys(self, md: GenericMetadata) -> Any:
         search_keys = SearchKeys(
-            series=md.series,
+            series=md.series or "",
             issue_number=IssueString(md.issue).as_string(),
             alternate_number=IssueString(md.alternate_number).as_string(),
             month=md.month,

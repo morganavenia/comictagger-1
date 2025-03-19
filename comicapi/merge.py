@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Collection
 from enum import auto
-from typing import Any
+from typing import Any, Callable
 
 from comicapi.utils import DefaultDict, StrEnum, norm_fold
 
@@ -54,7 +54,7 @@ def overlay(old: Any, new: Any) -> Any:
     return new
 
 
-attribute = DefaultDict(
+attribute: DefaultDict[Mode, Callable[[Any, Any], Any]] = DefaultDict(
     {
         Mode.OVERLAY: overlay,
         Mode.ADD_MISSING: lambda old, new: overlay(new, old),
@@ -63,7 +63,7 @@ attribute = DefaultDict(
 )
 
 
-lists = DefaultDict(
+lists: DefaultDict[Mode, Callable[[Collection[Any], Collection[Any]], list[Any] | set[Any]]] = DefaultDict(
     {
         Mode.OVERLAY: merge_lists,
         Mode.ADD_MISSING: lambda old, new: merge_lists(new, old),

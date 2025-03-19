@@ -382,7 +382,7 @@ def lex_number(lex: Lexer) -> LexerFunc | None:
     return lex_filename
 
 
-def lex_issue_number(lex: Lexer) -> Callable[[Lexer], Callable | None] | None:  # type: ignore[type-arg]
+def lex_issue_number(lex: Lexer) -> LexerFunc:
     # Only called when lex.input[lex.start] == "#"
     original_start = lex.pos
     lex.accept_run(str.isalpha)
