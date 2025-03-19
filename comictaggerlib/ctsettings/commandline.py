@@ -283,7 +283,13 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
             + "Distributed under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)\n",
         )
 
-    if not config[0].Metadata_Options__cr and "cr" in comicarchive.tags and comicarchive.tags["cr"].enabled:
+    enabled_tags = {tag for tag in comicarchive.tags if comicarchive.tags[tag].enabled}
+    if (
+        (not config[0].Metadata_Options__cr)
+        and "cr" in comicarchive.tags
+        and comicarchive.tags["cr"].enabled
+        and len(enabled_tags) > 1
+    ):
         comicarchive.tags["cr"].enabled = False
 
     config[0].Runtime_Options__no_gui = any(
