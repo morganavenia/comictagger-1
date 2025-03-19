@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import pathlib
 
 import settngs
@@ -15,7 +16,8 @@ def generate() -> str:
     imports2, types2 = settngs.generate_ns(app.manager.definitions)
     i = imports.splitlines()
     i.extend(set(imports2.splitlines()) - set(i))
-    return "\n\n".join(("\n".join(i), types2, types))
+    os.linesep
+    return (os.linesep * 2).join((os.linesep.join(i), types2, types))
 
 
 if __name__ == "__main__":
