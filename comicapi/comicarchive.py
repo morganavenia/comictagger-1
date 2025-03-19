@@ -362,7 +362,7 @@ class ComicArchive:
                     length = digest.name.rpartition("_")[2]
                     if not length.isdigit():
                         length = "128"
-                    md.original_hash = FileHash(digest.name, digest.hexdigest(int(length) // 8))
+                    md.original_hash = FileHash(digest.name, digest.hexdigest(int(length) // 8))  # type: ignore[call-arg]
                 else:
                     md.original_hash = FileHash(digest.name, digest.hexdigest())
             except Exception:

@@ -313,7 +313,9 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
 
     disabled_tags = {tag for tag in comicarchive.tags if not comicarchive.tags[tag].enabled}
     to_be_removed = (
-        set(config[0].Runtime_Options__tags_read).union(config[0].Runtime_Options__tags_write).union(disabled_tags)
+        set(config[0].Runtime_Options__tags_read)
+        .union(config[0].Runtime_Options__tags_write)
+        .intersection(disabled_tags)
     )
     if to_be_removed:
         logger.debug("Removing disabled tags: %s", to_be_removed)
