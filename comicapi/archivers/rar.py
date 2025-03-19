@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import pathlib
@@ -271,10 +272,16 @@ class RarArchiver(Archiver):
         else:
             return True
 
+    @classmethod
+    @functools.cache
+    def _log_not_writeable(cls, exe: str) -> None:
+        logger.warning("Unable to find a useable copy of %r, will not be able to write rar files", str)
+
     def is_writable(self) -> bool:
+        writeable = False
         try:
             if bool(self.exe and (os.path.exists(self.exe) or shutil.which(self.exe))):
-                return (
+                writeable = (
                     subprocess.run(
                         (self.exe,),
                         startupinfo=self.startupinfo,
@@ -286,6 +293,8 @@ class RarArchiver(Archiver):
                 )
         except OSError:
             ...
+        if not writeable:
+            self._log_not_writeable(self.exe or "rar")
         return False
 
     def extension(self) -> str:
