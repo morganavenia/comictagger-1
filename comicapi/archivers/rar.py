@@ -295,7 +295,7 @@ class RarArchiver(Archiver):
             ...
         if not writeable:
             self._log_not_writeable(self.exe or "rar")
-        return False
+        return writeable
 
     def extension(self) -> str:
         return ".cbr"
