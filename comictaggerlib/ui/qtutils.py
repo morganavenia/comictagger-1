@@ -124,6 +124,12 @@ if qt_available:
 
     def get_qimage_from_data(image_data: bytes) -> QtGui.QImage:
         img = QtGui.QImage()
+
+        if len(image_data) == 0:
+            logger.warning("Empty image data.")
+            img.load(":/graphics/nocover.png")
+            return img
+
         success = img.loadFromData(image_data)
         if not success:
             try:
@@ -133,7 +139,7 @@ if qt_available:
                     Image.open(io.BytesIO(image_data)).save(buffer, format="ppm")
                     success = img.loadFromData(buffer.getvalue())
             except Exception:
-                logger.exception("Failed to load the image")
+                logger.exception("Failed to load the image.")
         # if still nothing, go with default image
         if not success:
             img.load(":/graphics/nocover.png")
