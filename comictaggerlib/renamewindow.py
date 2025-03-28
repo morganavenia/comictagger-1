@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 
 import settngs
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtWidgets, uic
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive, tags

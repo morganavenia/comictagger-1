@@ -23,4 +23,4 @@ disable = "C0330, C0326, C0115, C0116, C0103"
 max-line-length=120
 
 [tool.pylint.master]
-extension-pkg-whitelist="PyQt5"
+extension-pkg-whitelist="PyQt6"

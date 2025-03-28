@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive
 from comicapi.genericmetadata import GenericMetadata

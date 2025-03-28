@@ -31,7 +31,7 @@ from typing import Any, Callable, cast
 
 import natsort
 import settngs
-from PyQt5 import QtCore, QtGui, QtNetwork, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtNetwork, QtWidgets, uic
 
 import comicapi.merge
 import comictaggerlib.graphics.resources
@@ -370,9 +370,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def enabled_tags(self) -> Sequence[str]:
         return [tag.id for tag in tags.values() if tag.enabled]
 
-    def tag_actions(self) -> tuple[dict[str, QtWidgets.QAction], dict[str, QtWidgets.QAction]]:
-        view_raw_tags: dict[str, QtWidgets.QAction] = {}
-        remove_raw_tags: dict[str, QtWidgets.QAction] = {}
+    def tag_actions(self) -> tuple[dict[str, QtGui.QAction], dict[str, QtGui.QAction]]:
+        view_raw_tags: dict[str, QtGui.QAction] = {}
+        remove_raw_tags: dict[str, QtGui.QAction] = {}
         for tag in tags.values():
             view_raw_tags[tag.id] = self.menuViewRawTags.addAction(f"View Raw {tag.name()} Tags")
             view_raw_tags[tag.id].setEnabled(tag.enabled)
@@ -480,7 +480,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.actionParse_Filename_split_words.triggered.connect(self.use_filename_split)
         self.actionReCalcArchiveInfo.triggered.connect(self.recalc_archive_info)
         self.actionSearchOnline.triggered.connect(self.query_online)
-        self.actionEnableEmbeddingHashes: QtWidgets.QAction
+        self.actionEnableEmbeddingHashes: QtGui.QAction
         self.actionEnableEmbeddingHashes.triggered.connect(self.toggle_enable_embedding_hashes)
         self.actionEnableEmbeddingHashes.setChecked(self.config[0].Runtime_Options__enable_embedding_hashes)
         # Window Menu

@@ -1,4 +1,4 @@
-"""A PyQt5 widget to display cover images
+"""A PyQt6 widget to display cover images
 
 Display cover images from either a local archive, or from comic source metadata.
 TODO: This should be re-factored using subclasses!
@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 import pathlib
 
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive
 from comictaggerlib.imagefetcher import ImageFetcher

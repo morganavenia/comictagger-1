@@ -1,4 +1,4 @@
-"""A PyQt5 dialog to show a message and let the user check a box
+"""A PyQt6 dialog to show a message and let the user check a box
 
 Example usage:
 
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 
 logger = logging.getLogger(__name__)
 

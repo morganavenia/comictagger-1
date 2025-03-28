@@ -21,8 +21,8 @@ import logging
 from collections import deque
 
 import natsort
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtCore import QUrl, pyqtSignal
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
+from PyQt6.QtCore import QUrl, pyqtSignal
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive

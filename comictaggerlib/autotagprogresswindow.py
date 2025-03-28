@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtWidgets, uic
 
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ui import ui_path

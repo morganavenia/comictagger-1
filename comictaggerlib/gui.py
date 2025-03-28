@@ -16,7 +16,7 @@ from comictalker.comictalker import ComicTalker
 logger = logging.getLogger("comictagger")
 try:
     qt_available = True
-    from PyQt5 import QtCore, QtGui, QtWidgets
+    from PyQt6 import QtCore, QtGui, QtWidgets
 
     def show_exception_box(log_msg: str) -> None:
         """Checks if a QApplication instance is available and shows a messagebox with the exception message.
@@ -70,7 +70,7 @@ try:
 
     try:
         # needed here to initialize QWebEngine
-        from PyQt5.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+        from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
 
         qt_webengine_available = True
     except ImportError:
@@ -81,7 +81,7 @@ try:
 
         # Handles "Open With" from Finder on macOS
         def event(self, event: QtCore.QEvent) -> bool:
-            if event.type() == QtCore.QEvent.FileOpen:
+            if event.type() == QtCore.QEvent.Type.FileOpen:
                 logger.info("file open recieved: %s", event.url().toLocalFile())
                 self.openFileRequest.emit(event.url())
                 return True

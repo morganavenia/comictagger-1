@@ -1,4 +1,4 @@
-"""A PyQt5 dialog to show ID log and progress"""
+"""A PyQt6 dialog to show ID log and progress"""
 
 #
 # Copyright 2012-2014 ComicTagger Authors
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtWidgets, uic
 
 from comictaggerlib.ui import ui_path
 

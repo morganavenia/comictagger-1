@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import pathlib
 
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comictaggerlib.ui import ui_path
 
@@ -35,7 +35,7 @@ class ApplicationLogWindow(QtWidgets.QDialog):
         self.log_handler.qlog.connect(self.textEdit.append)
 
         f = QtGui.QFont("menlo")
-        f.setStyleHint(QtGui.QFont.Monospace)
+        f.setStyleHint(QtGui.QFont.StyleHint.Monospace)
         self.setFont(f)
         self._button = QtWidgets.QPushButton(self)
         self._button.setText("Test Me")

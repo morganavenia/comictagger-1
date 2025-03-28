@@ -271,7 +271,7 @@ class RarArchiver(Archiver):
     @classmethod
     @functools.cache
     def _log_not_writeable(cls, exe: str) -> None:
-        logger.warning("Unable to find a useable copy of %r, will not be able to write rar files", str)
+        logger.warning("Unable to find a useable copy of %r, will not be able to write rar files", exe)
 
     def is_writable(self) -> bool:
         return bool(self._writeable and bool(self.exe and (os.path.exists(self.exe) or shutil.which(self.exe))))

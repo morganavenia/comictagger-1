@@ -1,4 +1,4 @@
-"""A PyQt5 widget for managing list of comic archive files"""
+"""A PyQt6 widget for managing list of comic archive files"""
 
 #
 # Copyright 2012-2014 ComicTagger Authors
@@ -22,7 +22,7 @@ import pathlib
 import platform
 from typing import Callable, cast
 
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive
@@ -64,9 +64,9 @@ class FileSelectionList(QtWidgets.QWidget):
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.ActionsContextMenu)
         self.dirty_flag = False
 
-        select_all_action = QtWidgets.QAction("Select All", self)
-        remove_action = QtWidgets.QAction("Remove Selected Items", self)
-        self.separator = QtWidgets.QAction("", self)
+        select_all_action = QtGui.QAction("Select All", self)
+        remove_action = QtGui.QAction("Remove Selected Items", self)
+        self.separator = QtGui.QAction("", self)
         self.separator.setSeparator(True)
 
         select_all_action.setShortcut("Ctrl+A")
@@ -86,14 +86,14 @@ class FileSelectionList(QtWidgets.QWidget):
 
     def get_sorting(self) -> tuple[int, int]:
         col = self.twList.horizontalHeader().sortIndicatorSection()
-        order = self.twList.horizontalHeader().sortIndicatorOrder()
+        order = self.twList.horizontalHeader().sortIndicatorOrder().value
         return int(col), int(order)
 
     def set_sorting(self, col: int, order: QtCore.Qt.SortOrder) -> None:
         self.twList.horizontalHeader().setSortIndicator(col, order)
 
-    def add_app_action(self, action: QtWidgets.QAction) -> None:
-        self.insertAction(QtWidgets.QAction(), action)
+    def add_app_action(self, action: QtGui.QAction) -> None:
+        self.insertAction(QtGui.QAction(), action)
 
     def set_modified_flag(self, modified: bool) -> None:
         self.dirty_flag = modified

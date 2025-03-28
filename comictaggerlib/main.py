@@ -301,7 +301,7 @@ class App:
                 return gui.open_tagger_window(self.talkers, self.config, error)
             except ImportError:
                 self.config[0].Runtime_Options__no_gui = True
-                logger.warning("PyQt5 is not available. ComicTagger is limited to command-line mode.")
+                logger.warning("PyQt6 is not available. ComicTagger is limited to command-line mode.")
 
         # GUI mode is not available or CLI mode was requested
         if error and error[1]:

@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive
 from comictaggerlib.coverimagewidget import CoverImageWidget

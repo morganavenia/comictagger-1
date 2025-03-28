@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtWidgets, uic
 
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.ui import ui_path

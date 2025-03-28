@@ -41,7 +41,7 @@ Please open a [GitHub Pull Request](https://github.com/comictagger/comictagger/p
 
 Currently only python 3.9 is supported however 3.10 will probably work if you try it
 
-Those on linux should install `Pillow` from the system package manager if possible and if the GUI `pyqt5` should be installed from the system package manager
+Those on linux should install `Pillow` from the system package manager if possible and if the GUI `PyQt6` should be installed from the system package manager
 
 Those on macOS will need to ensure that you are using python3 in x86 mode either by installing an x86 only version of python or using the universal installer and using `python3-intel64` instead of `python3`
 

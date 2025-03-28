@@ -20,7 +20,7 @@ import logging
 import operator
 
 import natsort
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtWidgets, uic
 
 from comicapi import utils
 from comicapi.genericmetadata import Credit

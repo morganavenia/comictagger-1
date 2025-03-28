@@ -33,7 +33,7 @@ except ImportError:
 from comictaggerlib import ctversion
 
 if TYPE_CHECKING:
-    from PyQt5 import QtCore, QtNetwork
+    from PyQt6 import QtCore, QtNetwork
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class ImageFetcher:
 
         if self.qt_available:
             try:
-                from PyQt5 import QtNetwork
+                from PyQt6 import QtNetwork
 
                 self.qt_available = True
             except ImportError:
@@ -99,7 +99,7 @@ class ImageFetcher:
             return image_data
 
         if self.qt_available:
-            from PyQt5 import QtCore, QtNetwork
+            from PyQt6 import QtCore, QtNetwork
 
             # if we found it, just emit the signal asap
             if image_data:

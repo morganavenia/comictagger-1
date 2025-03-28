@@ -8,15 +8,15 @@ import traceback
 import webbrowser
 from collections.abc import Collection, Sequence
 
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QPalette
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QUrl
+from PyQt6.QtGui import QPalette
+from PyQt6.QtWidgets import QWidget
 
 logger = logging.getLogger(__name__)
 
 try:
-    from PyQt5 import QtGui, QtWidgets
-    from PyQt5.QtCore import Qt
+    from PyQt6 import QtGui, QtWidgets
+    from PyQt6.QtCore import Qt
 
     qt_available = True
 except ImportError:
@@ -31,7 +31,8 @@ if qt_available:
         pil_available = False
     active_palette: QPalette | None = None
     try:
-        from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineView
+        from PyQt6.QtWebEngineCore import QWebEnginePage
+        from PyQt6.QtWebEngineWidgets import QWebEngineView
 
         class WebPage(QWebEnginePage):
             def acceptNavigationRequest(
@@ -54,6 +55,7 @@ if qt_available:
             webengine.setPage(WebPage(parent))
             webengine.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
             settings = webengine.settings()
+            assert settings is not None
             settings.setAttribute(settings.WebAttribute.AutoLoadImages, True)
             settings.setAttribute(settings.WebAttribute.JavascriptEnabled, False)
             settings.setAttribute(settings.WebAttribute.JavascriptCanOpenWindows, False)
@@ -194,7 +196,7 @@ if qt_available:
             if isinstance(widget, (QtWidgets.QTextEdit, QtWidgets.QLineEdit, QtWidgets.QAbstractSpinBox)):
                 widget.setReadOnly(False)
             elif isinstance(widget, QtWidgets.QListWidget):
-                widget.setMovement(QtWidgets.QListWidget.Free)
+                widget.setMovement(QtWidgets.QListWidget.Movement.Free)
         else:
             if isinstance(widget, QtWidgets.QTableWidgetItem):
                 widget.setBackground(inactive_brush)
@@ -211,7 +213,7 @@ if qt_available:
             elif isinstance(widget, QtWidgets.QListWidget):
                 inactive_palette = palettes()
                 widget.setPalette(inactive_palette[0])
-                widget.setMovement(QtWidgets.QListWidget.Static)
+                widget.setMovement(QtWidgets.QListWidget.Movement.Static)
 
     def replaceWidget(
         layout: QtWidgets.QLayout | QtWidgets.QSplitter, old_widget: QtWidgets.QWidget, new_widget: QtWidgets.QWidget

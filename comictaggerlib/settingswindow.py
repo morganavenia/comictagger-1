@@ -26,7 +26,7 @@ import urllib.parse
 from typing import Any, cast
 
 import settngs
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 import comictaggerlib.ui.talkeruigenerator
 from comicapi import merge, utils

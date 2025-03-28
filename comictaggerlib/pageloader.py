@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore
+from PyQt6 import QtCore
 
 from comicapi.comicarchive import ComicArchive
 

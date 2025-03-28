@@ -20,7 +20,7 @@ import logging
 import os
 from typing import Callable
 
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive, tags
 from comicapi.genericmetadata import GenericMetadata

@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import platform
 
-from PyQt5 import QtCore, QtGui, QtWidgets, sip, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, sip, uic
 
 from comictaggerlib.ui import ui_path
 
@@ -82,7 +82,7 @@ class ImagePopup(QtWidgets.QDialog):
                 screen_size.width(),
                 screen_size.height(),
                 QtCore.Qt.AspectRatioMode.IgnoreAspectRatio,
-                QtCore.Qt.SmoothTransformation,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
             )
             self.setMask(self.clientBgPixmap.mask())
 
@@ -104,7 +104,10 @@ class ImagePopup(QtWidgets.QDialog):
         if self.imagePixmap.width() > win_w or self.imagePixmap.height() > win_h:
             # scale the pixmap to fit in the frame
             display_pixmap = self.imagePixmap.scaled(
-                win_w, win_h, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+                win_w,
+                win_h,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
             )
             self.lblImage.setPixmap(display_pixmap)
         else:

@@ -1,4 +1,4 @@
-"""A PyQt5 widget for editing the page list info"""
+"""A PyQt6 widget for editing the page list info"""
 
 #
 # Copyright 2012-2014 ComicTagger Authors
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt5 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive, tags
 from comicapi.genericmetadata import GenericMetadata, PageMetadata, PageType
@@ -145,7 +145,7 @@ class PageListEditor(QtWidgets.QWidget):
         if show_shortcut:
             text = text + " (" + shortcut + ")"
         self.cbPageType.addItem(text, user_data)
-        action_item = QtWidgets.QAction(shortcut, self)
+        action_item = QtGui.QAction(shortcut, self)
         action_item.triggered.connect(lambda: self.select_page_type_item(self.cbPageType.findData(user_data)))
         action_item.setShortcut(shortcut)
         self.addAction(action_item)

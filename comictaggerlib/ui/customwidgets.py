@@ -6,8 +6,8 @@ from enum import auto
 from sys import platform
 from typing import Any
 
-from PyQt5 import QtGui, QtWidgets
-from PyQt5.QtCore import QEvent, QModelIndex, QPoint, QRect, QSize, Qt, pyqtSignal
+from PyQt6 import QtGui, QtWidgets
+from PyQt6.QtCore import QEvent, QModelIndex, QPoint, QRect, QSize, Qt, pyqtSignal
 
 from comicapi.utils import StrEnum
 
@@ -30,41 +30,41 @@ class ModifyStyleItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Draw background with the same color as other widgets
         palette = self.combobox.palette()
-        background_color = palette.color(QtGui.QPalette.Window)
+        background_color = palette.color(QtGui.QPalette.ColorRole.Window)
         painter.fillRect(options.rect, background_color)
 
-        style.drawPrimitive(QtWidgets.QStyle.PE_PanelItemViewItem, options, painter, self.combobox)
+        style.drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_PanelItemViewItem, options, painter, self.combobox)
 
         painter.save()
 
         # Checkbox drawing logic
-        checked = index.data(Qt.CheckStateRole)
+        checked = index.data(Qt.ItemDataRole.CheckStateRole)
         opts = QtWidgets.QStyleOptionButton()
-        opts.state |= QtWidgets.QStyle.State_Active
+        opts.state |= QtWidgets.QStyle.StateFlag.State_Active
         opts.rect = self.getCheckBoxRect(options)
-        opts.state |= QtWidgets.QStyle.State_ReadOnly
+        opts.state |= QtWidgets.QStyle.StateFlag.State_ReadOnly
         if checked:
-            opts.state |= QtWidgets.QStyle.State_On
+            opts.state |= QtWidgets.QStyle.StateFlag.State_On
             style.drawPrimitive(
                 QtWidgets.QStyle.PrimitiveElement.PE_IndicatorMenuCheckMark, opts, painter, self.combobox
             )
         else:
-            opts.state |= QtWidgets.QStyle.State_Off
+            opts.state |= QtWidgets.QStyle.StateFlag.State_Off
         if platform != "darwin":
-            style.drawControl(QtWidgets.QStyle.CE_CheckBox, opts, painter, self.combobox)
+            style.drawControl(QtWidgets.QStyle.ControlElement.CE_CheckBox, opts, painter, self.combobox)
 
-        label = index.data(Qt.DisplayRole)
+        label = index.data(Qt.ItemDataRole.DisplayRole)
         rectangle = options.rect
         rectangle.setX(opts.rect.width() + 10)
-        painter.drawText(rectangle, Qt.AlignVCenter, label)
-
+        # We need the restore here so that text is colored properly
         painter.restore()
+        painter.drawText(rectangle, Qt.AlignmentFlag.AlignVCenter, label)
 
     def getCheckBoxRect(self, option: QtWidgets.QStyleOptionViewItem) -> QRect:
         # Get size of a standard checkbox.
         opts = QtWidgets.QStyleOptionButton()
         style = option.widget.style()
-        checkBoxRect = style.subElementRect(QtWidgets.QStyle.SE_CheckBoxIndicator, opts, None)
+        checkBoxRect = style.subElementRect(QtWidgets.QStyle.SubElement.SE_CheckBoxIndicator, opts, None)
         y = option.rect.y()
         h = option.rect.height()
         checkBoxTopLeftCorner = QPoint(5, int(y + h / 2 - checkBoxRect.height() / 2))
@@ -99,23 +99,23 @@ class CheckableComboBox(QtWidgets.QComboBox):
     # https://stackoverflow.com/questions/65826378/how-do-i-use-qcombobox-setplaceholdertext/65830989#65830989
     def paintEvent(self, event: QEvent) -> None:
         painter = QtWidgets.QStylePainter(self)
-        painter.setPen(self.palette().color(QtGui.QPalette.Text))
+        painter.setPen(self.palette().color(QtGui.QPalette.ColorRole.Text))
 
         # draw the combobox frame, focusrect and selected etc.
         opt = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(opt)
-        painter.drawComplexControl(QtWidgets.QStyle.CC_ComboBox, opt)
+        painter.drawComplexControl(QtWidgets.QStyle.ComplexControl.CC_ComboBox, opt)
 
         if self.currentIndex() < 0:
             opt.palette.setBrush(
-                QtGui.QPalette.ButtonText,
-                opt.palette.brush(QtGui.QPalette.ButtonText).color(),
+                QtGui.QPalette.ColorRole.ButtonText,
+                opt.palette.brush(QtGui.QPalette.ColorRole.ButtonText).color(),
             )
             if self.placeholderText():
                 opt.currentText = self.placeholderText()
 
         # draw the icon and text
-        painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, opt)
+        painter.drawControl(QtWidgets.QStyle.ControlElement.CE_ComboBoxLabel, opt)
 
     def resizeEvent(self, event: Any) -> None:
         # Recompute text to elide as needed
@@ -126,16 +126,16 @@ class CheckableComboBox(QtWidgets.QComboBox):
         # Allow events before the combobox list is shown
         if obj == self.view().viewport():
             # We record that the combobox list has been shown
-            if event.type() == QEvent.Show:
+            if event.type() == QEvent.Type.Show:
                 self.justShown = True
             # We record that the combobox list has hidden,
             # this will happen if the user does not make a selection
             # but clicks outside of the combobox list or presses escape
-            if event.type() == QEvent.Hide:
+            if event.type() == QEvent.Type.Hide:
                 self._updateText()
                 self.justShown = False
-            # QEvent.MouseButtonPress is inconsistent on activation because double clicks are a thing
-            if event.type() == QEvent.MouseButtonRelease:
+            # QEvent.Type.MouseButtonPress is inconsistent on activation because double clicks are a thing
+            if event.type() == QEvent.Type.MouseButtonRelease:
                 # If self.justShown is true it means that they clicked on the combobox to change the checked items
                 # This is standard behavior (on macos) but I think it is surprising when it has a multiple select
                 if self.justShown:
@@ -153,7 +153,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
         res = []
         for i in range(self.count()):
             item = self.model().item(i)
-            if item.checkState() == Qt.Checked:
+            if item.checkState() == Qt.CheckState.Checked:
                 res.append(self.itemData(i))
         return res
 
@@ -168,7 +168,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
         texts = []
         for i in range(self.count()):
             item = self.model().item(i)
-            if item.checkState() == Qt.Checked:
+            if item.checkState() == Qt.CheckState.Checked:
                 texts.append(item.text())
         text = ", ".join(texts)
 
@@ -180,22 +180,24 @@ class CheckableComboBox(QtWidgets.QComboBox):
         so.initFrom(self)
 
         # Ask the style for the size of the text field
-        rect = self.style().subControlRect(QtWidgets.QStyle.CC_ComboBox, so, QtWidgets.QStyle.SC_ComboBoxEditField)
+        rect = self.style().subControlRect(
+            QtWidgets.QStyle.ComplexControl.CC_ComboBox, so, QtWidgets.QStyle.SubControl.SC_ComboBoxEditField
+        )
 
         # Compute the elided text
-        elidedText = self.fontMetrics().elidedText(text, Qt.ElideRight, rect.width())
+        elidedText = self.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, rect.width())
 
         # This CheckableComboBox does not use the index, so we clear it and set the placeholder text
         self.setCurrentIndex(-1)
         self.setPlaceholderText(elidedText)
 
     def setItemChecked(self, index: Any, state: bool) -> None:
-        qt_state = Qt.Checked if state else Qt.Unchecked
+        qt_state = Qt.CheckState.Checked if state else Qt.CheckState.Unchecked
         item = self.model().item(index)
         current = self.currentData()
         # If we have at least one item checked emit itemChecked with the current check state and update text
         # Require at least one item to be checked and provide a tooltip
-        if len(current) == 1 and not state and item.checkState() == Qt.Checked:
+        if len(current) == 1 and not state and item.checkState() == Qt.CheckState.Checked:
             QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), self.toolTip(), self, QRect(), 3000)
             return
 
@@ -205,7 +207,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
             self._updateText()
 
     def toggleItem(self, index: int) -> None:
-        if self.model().item(index).checkState() == Qt.Checked:
+        if self.model().item(index).checkState() == Qt.CheckState.Checked:
             self.setItemChecked(index, False)
         else:
             self.setItemChecked(index, True)
@@ -240,43 +242,43 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Draw background with the same color as other widgets
         palette = self.combobox.palette()
-        background_color = palette.color(QtGui.QPalette.Window)
+        background_color = palette.color(QtGui.QPalette.ColorRole.Window)
         painter.fillRect(options.rect, background_color)
 
-        style.drawPrimitive(QtWidgets.QStyle.PE_PanelItemViewItem, options, painter, self.combobox)
+        style.drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_PanelItemViewItem, options, painter, self.combobox)
 
         painter.save()
 
         # Checkbox drawing logic
-        checked = index.data(Qt.CheckStateRole)
+        checked = index.data(Qt.ItemDataRole.CheckStateRole)
         opts = QtWidgets.QStyleOptionButton()
-        opts.state |= QtWidgets.QStyle.State_Active
+        opts.state |= QtWidgets.QStyle.StateFlag.State_Active
         opts.rect = self.getCheckBoxRect(options)
-        opts.state |= QtWidgets.QStyle.State_ReadOnly
+        opts.state |= QtWidgets.QStyle.StateFlag.State_ReadOnly
         if checked:
-            opts.state |= QtWidgets.QStyle.State_On
+            opts.state |= QtWidgets.QStyle.StateFlag.State_On
             style.drawPrimitive(
                 QtWidgets.QStyle.PrimitiveElement.PE_IndicatorMenuCheckMark, opts, painter, self.combobox
             )
         else:
-            opts.state |= QtWidgets.QStyle.State_Off
+            opts.state |= QtWidgets.QStyle.StateFlag.State_Off
         if platform != "darwin":
-            style.drawControl(QtWidgets.QStyle.CE_CheckBox, opts, painter, self.combobox)
+            style.drawControl(QtWidgets.QStyle.ControlElement.CE_CheckBox, opts, painter, self.combobox)
 
-        label = index.data(Qt.DisplayRole)
+        label = index.data(Qt.ItemDataRole.DisplayRole)
         rectangle = options.rect
         rectangle.setX(opts.rect.width() + 10)
-        painter.drawText(rectangle, Qt.AlignVCenter, label)
+        # We need the restore here so that text is colored properly
+        painter.restore()
+        painter.drawText(rectangle, Qt.AlignmentFlag.AlignVCenter, label)
 
         # Draw buttons
-        if checked and (options.state & QtWidgets.QStyle.State_Selected):
+        if checked and (options.state & QtWidgets.QStyle.StateFlag.State_Selected):
             up_rect = self._button_up_rect(options.rect)
             down_rect = self._button_down_rect(options.rect)
 
             painter.drawImage(up_rect, self.up_icon)
             painter.drawImage(down_rect, self.down_icon)
-
-        painter.restore()
 
     def _button_up_rect(self, rect: QRect) -> QRect:
         return QRect(
@@ -298,7 +300,7 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
         # Get size of a standard checkbox.
         opts = QtWidgets.QStyleOptionButton()
         style = option.widget.style()
-        checkBoxRect = style.subElementRect(QtWidgets.QStyle.SE_CheckBoxIndicator, opts, None)
+        checkBoxRect = style.subElementRect(QtWidgets.QStyle.SubElement.SE_CheckBoxIndicator, opts, None)
         y = option.rect.y()
         h = option.rect.height()
         checkBoxTopLeftCorner = QPoint(5, int(y + h / 2 - checkBoxRect.height() / 2))
@@ -307,7 +309,7 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
 
     def itemClicked(self, index: QModelIndex, pos: QPoint) -> None:
         item_rect = self.combobox.view().visualRect(index)
-        checked = index.data(Qt.CheckStateRole)
+        checked = index.data(Qt.ItemDataRole.CheckStateRole)
         button_up_rect = self._button_up_rect(item_rect)
         button_down_rect = self._button_down_rect(item_rect)
 
@@ -336,11 +338,11 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
         item_rect = view.visualRect(index)
         button_up_rect = self._button_up_rect(item_rect)
         button_down_rect = self._button_down_rect(item_rect)
-        checked = index.data(Qt.CheckStateRole)
+        checked = index.data(Qt.ItemDataRole.CheckStateRole)
 
-        if checked == Qt.Checked and button_up_rect.contains(event.pos()):
+        if checked == Qt.CheckState.Checked and button_up_rect.contains(event.pos()):
             QtWidgets.QToolTip.showText(event.globalPos(), self.up_help, self.combobox, QRect(), 3000)
-        elif checked == Qt.Checked and button_down_rect.contains(event.pos()):
+        elif checked == Qt.CheckState.Checked and button_down_rect.contains(event.pos()):
             QtWidgets.QToolTip.showText(event.globalPos(), self.down_help, self.combobox, QRect(), 3000)
         else:
             QtWidgets.QToolTip.showText(event.globalPos(), self.item_help, self.combobox, QRect(), 3000)
@@ -380,23 +382,23 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
     # https://stackoverflow.com/questions/65826378/how-do-i-use-qcombobox-setplaceholdertext/65830989#65830989
     def paintEvent(self, event: QEvent) -> None:
         painter = QtWidgets.QStylePainter(self)
-        painter.setPen(self.palette().color(QtGui.QPalette.Text))
+        painter.setPen(self.palette().color(QtGui.QPalette.ColorRole.Text))
 
         # draw the combobox frame, focusrect and selected etc.
         opt = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(opt)
-        painter.drawComplexControl(QtWidgets.QStyle.CC_ComboBox, opt)
+        painter.drawComplexControl(QtWidgets.QStyle.ComplexControl.CC_ComboBox, opt)
 
         if self.currentIndex() < 0:
             opt.palette.setBrush(
-                QtGui.QPalette.ButtonText,
-                opt.palette.brush(QtGui.QPalette.ButtonText).color(),
+                QtGui.QPalette.ColorRole.ButtonText,
+                opt.palette.brush(QtGui.QPalette.ColorRole.ButtonText).color(),
             )
             if self.placeholderText():
                 opt.currentText = self.placeholderText()
 
         # draw the icon and text
-        painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, opt)
+        painter.drawControl(QtWidgets.QStyle.ControlElement.CE_ComboBoxLabel, opt)
 
     def buttonClicked(self, index: QModelIndex, button: ClickedButtonEnum) -> None:
         if button == ClickedButtonEnum.up:
@@ -415,18 +417,18 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
         # Allow events before the combobox list is shown
         if obj == self.view().viewport():
             # We record that the combobox list has been shown
-            if event.type() == QEvent.Show:
+            if event.type() == QEvent.Type.Show:
                 self.justShown = True
             # We record that the combobox list has hidden,
             # this will happen if the user does not make a selection
             # but clicks outside of the combobox list or presses escape
-            if event.type() == QEvent.Hide:
+            if event.type() == QEvent.Type.Hide:
                 self._updateText()
                 self.justShown = False
                 # Reverse as the display order is in "priority" order for the user whereas overlay requires reversed
                 self.dropdownClosed.emit(self.currentData())
-            # QEvent.MouseButtonPress is inconsistent on activation because double clicks are a thing
-            if event.type() == QEvent.MouseButtonRelease:
+            # QEvent.Type.MouseButtonPress is inconsistent on activation because double clicks are a thing
+            if event.type() == QEvent.Type.MouseButtonRelease:
                 # If self.justShown is true it means that they clicked on the combobox to change the checked items
                 # This is standard behavior (on macos) but I think it is surprising when it has a multiple select
                 if self.justShown:
@@ -446,7 +448,7 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
         res = []
         for i in range(self.count()):
             item = self.model().item(i)
-            if item.checkState() == Qt.Checked:
+            if item.checkState() == Qt.CheckState.Checked:
                 res.append(self.itemData(i))
         return res
 
@@ -458,7 +460,7 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
             self.model().item(0).setCheckState(Qt.CheckState.Checked)
 
         # Add room for "move" arrows
-        text_width = self.fontMetrics().width(text)
+        text_width = self.fontMetrics().boundingRect(text).width()
         checkbox_width = 40
         total_width = text_width + checkbox_width + (self.itemDelegate().button_width * 2)
         if total_width > self.view().minimumWidth():
@@ -477,19 +479,19 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
             return
 
         # Grab values for the rows to swap
-        cur_data = self.model().item(index).data(Qt.UserRole)
-        cur_title = self.model().item(index).data(Qt.DisplayRole)
-        cur_state = self.model().item(index).data(Qt.CheckStateRole)
+        cur_data = self.model().item(index).data(Qt.ItemDataRole.UserRole)
+        cur_title = self.model().item(index).data(Qt.ItemDataRole.DisplayRole)
+        cur_state = self.model().item(index).checkState()
 
-        swap_data = self.model().item(row).data(Qt.UserRole)
-        swap_title = self.model().item(row).data(Qt.DisplayRole)
+        swap_data = self.model().item(row).data(Qt.ItemDataRole.UserRole)
+        swap_title = self.model().item(row).data(Qt.ItemDataRole.DisplayRole)
         swap_state = self.model().item(row).checkState()
 
-        self.model().item(row).setData(cur_data, Qt.UserRole)
+        self.model().item(row).setData(cur_data, Qt.ItemDataRole.UserRole)
         self.model().item(row).setCheckState(cur_state)
         self.model().item(row).setText(cur_title)
 
-        self.model().item(index).setData(swap_data, Qt.UserRole)
+        self.model().item(index).setData(swap_data, Qt.ItemDataRole.UserRole)
         self.model().item(index).setCheckState(swap_state)
         self.model().item(index).setText(swap_title)
 
@@ -497,7 +499,7 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
         texts = []
         for i in range(self.count()):
             item = self.model().item(i)
-            if item.checkState() == Qt.Checked:
+            if item.checkState() == Qt.CheckState.Checked:
                 texts.append(item.text())
         text = ", ".join(texts)
 
@@ -509,22 +511,24 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
         so.initFrom(self)
 
         # Ask the style for the size of the text field
-        rect = self.style().subControlRect(QtWidgets.QStyle.CC_ComboBox, so, QtWidgets.QStyle.SC_ComboBoxEditField)
+        rect = self.style().subControlRect(
+            QtWidgets.QStyle.ComplexControl.CC_ComboBox, so, QtWidgets.QStyle.SubControl.SC_ComboBoxEditField
+        )
 
         # Compute the elided text
-        elidedText = self.fontMetrics().elidedText(text, Qt.ElideRight, rect.width())
+        elidedText = self.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, rect.width())
 
         # This CheckableComboBox does not use the index, so we clear it and set the placeholder text
         self.setCurrentIndex(-1)
         self.setPlaceholderText(elidedText)
 
     def setItemChecked(self, index: Any, state: bool) -> None:
-        qt_state = Qt.Checked if state else Qt.Unchecked
+        qt_state = Qt.CheckState.Checked if state else Qt.CheckState.Unchecked
         item = self.model().item(index)
         current = self.currentData()
         # If we have at least one item checked emit itemChecked with the current check state and update text
         # Require at least one item to be checked and provide a tooltip
-        if len(current) == 1 and not state and item.checkState() == Qt.Checked:
+        if len(current) == 1 and not state and item.checkState() == Qt.CheckState.Checked:
             QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), self.toolTip(), self, QRect(), 3000)
             return
 
@@ -533,7 +537,7 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
             self._updateText()
 
     def toggleItem(self, index: int) -> None:
-        if self.model().item(index).checkState() == Qt.Checked:
+        if self.model().item(index).checkState() == Qt.CheckState.Checked:
             self.setItemChecked(index, False)
         else:
             self.setItemChecked(index, True)
