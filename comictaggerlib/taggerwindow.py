@@ -449,7 +449,15 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def toggle_enable_embedding_hashes(self) -> None:
         self.config[0].Runtime_Options__enable_embedding_hashes = self.actionEnableEmbeddingHashes.isChecked()
-        enable_widget(self.md_attributes["original_hash"], self.config[0].Runtime_Options__enable_embedding_hashes)
+        enabled_widgets = set()
+        for tag_id in self.selected_write_tags:
+            if not tags[tag_id].enabled:
+                continue
+            enabled_widgets.update(tags[tag_id].supported_attributes)
+        enable_widget(
+            self.md_attributes["original_hash"],
+            self.config[0].Runtime_Options__enable_embedding_hashes and "original_hash" in enabled_widgets,
+        )
         if not self.leOriginalHash.text().strip():
             self.cbHashName.setCurrentText(self.config[0].internal__embedded_hash_type)
         if self.config[0].Runtime_Options__enable_embedding_hashes:
