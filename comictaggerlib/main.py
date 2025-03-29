@@ -90,12 +90,12 @@ def configure_locale() -> None:
 
     #Get locale settings from OS, fall back to en_US or C in case of error for minimalist or misconfigured systems
     try:
-        locale.setlocale(locale.LC_ALL, '')
+        locale.setlocale(locale.LC_ALL, "")
     except locale.Error:
         try:
-            locale.setlocale(locale.LC_ALL, ‘en_US.UTF-8’)
+            locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
         except locale.Error:
-            locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+            locale.setlocale(locale.LC_ALL, "C.UTF-8")
     sys.stdout.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stdin.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
