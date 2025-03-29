@@ -88,7 +88,7 @@ def configure_locale() -> None:
         if code != "":
             os.environ["LANG"] = f"{code}.utf-8"
 
-    #Get locale settings from OS, fall back to en_US or C in case of error for minimalist or misconfigured systems
+    # Get locale settings from OS, fall back to en_US or C in case of error for minimalist or misconfigured systems
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error:
