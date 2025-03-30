@@ -93,9 +93,9 @@ def configure_locale() -> None:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error:
         try:
-            locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+            locale.setlocale(locale.LC_ALL, "en_US")
         except locale.Error:
-            locale.setlocale(locale.LC_ALL, "C.UTF-8")
+            locale.setlocale(locale.LC_ALL, "C")
     sys.stdout.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stdin.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
