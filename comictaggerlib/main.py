@@ -92,10 +92,8 @@ def configure_locale() -> None:
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error:
-        try:
-            locale.setlocale(locale.LC_ALL, "en_US")
-        except locale.Error:
-            locale.setlocale(locale.LC_ALL, "C")
+        locale.setlocale(locale.LC_ALL, "C")
+        logger.error("Couldn't set the locale: unsupported locale setting; falling back to 'C' locale")
     sys.stdout.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stdin.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
