@@ -88,7 +88,12 @@ def configure_locale() -> None:
         if code != "":
             os.environ["LANG"] = f"{code}.utf-8"
 
-    locale.setlocale(locale.LC_ALL, "")
+    # Get locale settings from OS, fall back to en_US or C in case of error for minimalist or misconfigured systems
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except locale.Error:
+        locale.setlocale(locale.LC_ALL, "C")
+        logger.error("Couldn't set the locale: unsupported locale setting; falling back to 'C' locale")
     sys.stdout.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
     sys.stdin.reconfigure(encoding=sys.getdefaultencoding())  # type: ignore[union-attr]
