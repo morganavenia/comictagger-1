@@ -123,7 +123,7 @@ def load_tag_plugins(version: str = f"ComicAPI/{version}", local_plugins: Iterab
 
 class ComicArchive:
     logo_data = b""
-    pil_available = True
+    pil_available = None
 
     def __init__(
         self,
@@ -330,6 +330,7 @@ class ComicArchive:
 
     def get_page_name_list(self) -> list[str]:
         if not self.page_list:
+            self.__import_pil__()  # Import pillow for list of supported extensions
             self.page_list = utils.get_page_name_list(self.archiver.get_filename_list())
 
         return self.page_list
@@ -338,6 +339,22 @@ class ComicArchive:
         if self.page_count is None:
             self.page_count = len(self.get_page_name_list())
         return self.page_count
+
+    def __import_pil__(self) -> bool:
+        if self.pil_available is not None:
+            return self.pil_available
+
+        try:
+            from PIL import Image
+
+            Image.init()
+            utils.KNOWN_IMAGE_EXTENSIONS.update([ext for ext, typ in Image.EXTENSION.items() if typ in Image.OPEN])
+            self.pil_available = True
+        except Exception:
+            self.pil_available = False
+            logger.exception("Failed to load Pillow")
+            return False
+        return True
 
     def apply_archive_info_to_metadata(
         self,
@@ -370,29 +387,14 @@ class ComicArchive:
         if not calc_page_sizes:
             return
         for p in md.pages:
-
-            if not self.pil_available:
-                if p.byte_size is not None:
-                    data = self.get_page(p.archive_index)
-                    p.byte_size = len(data)
-                continue
-            try:
-                from PIL import Image
-
-                self.pil_available = True
-            except ImportError:
-                self.pil_available = False
-                if p.byte_size is not None:
-                    data = self.get_page(p.archive_index)
-                    p.byte_size = len(data)
-                continue
-
             if p.byte_size is None or p.height is None or p.width is None or p.double_page is None:
                 try:
                     data = self.get_page(p.archive_index)
                     p.byte_size = len(data)
-                    if not data:
+                    if not data or not self.__import_pil__():
                         continue
+
+                    from PIL import Image
 
                     im = Image.open(io.BytesIO(data))
                     w, h = im.size

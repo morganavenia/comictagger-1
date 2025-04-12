@@ -193,6 +193,9 @@ def os_sorted(lst: Iterable[T]) -> Iterable[T]:
     return sorted(lst, key=key)
 
 
+KNOWN_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
+
+
 def parse_filename(
     filename: str,
     parser: Parser = Parser.ORIGINAL,
@@ -358,10 +361,7 @@ def get_page_name_list(files: list[str]) -> list[str]:
     # make a sub-list of image files
     page_list = []
     for name in files:
-        if (
-            os.path.splitext(name)[1].casefold() in [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]
-            and os.path.basename(name)[0] != "."
-        ):
+        if os.path.splitext(name)[1].casefold() in KNOWN_IMAGE_EXTENSIONS and os.path.basename(name)[0] != ".":
             page_list.append(name)
     return page_list
 
