@@ -102,8 +102,8 @@ class ImageHasher:
         Implementation follows http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
         """
 
-        def generate_dct2(block: Sequence[Sequence[float]], axis: int = 0) -> list[list[float]]:
-            def dct1(block: Sequence[float]) -> list[float]:
+        def generate_dct2(block: Sequence[Sequence[float | int]], axis: int = 0) -> list[list[float | int]]:
+            def dct1(block: Sequence[float | int]) -> list[float | int]:
                 """Perform 1D Discrete Cosine Transform (DCT) on a given block."""
                 N = len(block)
                 dct_block = [0.0] * N
@@ -120,7 +120,7 @@ class ImageHasher:
             """Perform 2D Discrete Cosine Transform (DCT) on a given block along the specified axis."""
             rows = len(block)
             cols = len(block[0])
-            dct_block = [[0.0] * cols for _ in range(rows)]
+            dct_block: list[list[float | int]] = [[0.0] * cols for _ in range(rows)]
 
             if axis == 0:
                 # Apply 1D DCT on each row
@@ -138,15 +138,15 @@ class ImageHasher:
 
             return dct_block
 
-        def convert_image_to_ndarray(image: Image.Image) -> Sequence[Sequence[float]]:
+        def convert_image_to_ndarray(image: Image.Image) -> Sequence[Sequence[float | int]]:
             width, height = image.size
 
             pixels2 = []
             for y in range(height):
-                row = []
+                row: list[float | int] = []
                 for x in range(width):
                     pixel = image.getpixel((x, y))
-                    assert isinstance(pixel, float)
+                    assert isinstance(pixel, (float, int))
                     row.append(pixel)
                 pixels2.append(row)
 
