@@ -289,27 +289,68 @@ metadata_prepared = (
     ),
 )
 
-issueidentifier_score = (
+issueidentifier_score = (  # type: ignore[var-annotated]
     (
         (
-            comicapi.genericmetadata.ImageHash(
-                Hash=0,  # Force using the alternate, since the alternate is a url it will be ignored
-                Kind="ahash",
-                URL="",
-            ),
-            ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
-            True,
+            None,
+            [],
+            False,
         ),
         {
             "remote_hash": 0,
-            "score": 31,
+            "score": 100,
             "url": "",
+            "local_hash": 0,
+            "local_hash_name": "0",
+        },
+    ),
+    (
+        (
+            # Test invalid ImageHash values
+            comicapi.genericmetadata.ImageHash(
+                Hash=0,
+                Kind="ahash",
+                URL="",
+            ),
+            [],
+            False,
+        ),
+        {
+            "remote_hash": 0,
+            "score": 100,
+            "url": "",
+            "local_hash": 0,
+            "local_hash_name": "0",
+        },
+    ),
+    (
+        (
+            # Test URL alternative
+            comicapi.genericmetadata.ImageHash(
+                Hash=0,
+                Kind="ahash",
+                URL="",
+            ),
+            [
+                comicapi.genericmetadata.ImageHash(
+                    URL="https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
+                    Hash=0,
+                    Kind="",
+                )
+            ],
+            True,
+        ),
+        {
+            "remote_hash": 212201432349720,
+            "score": 0,
+            "url": "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
             "local_hash": 212201432349720,
             "local_hash_name": "Cover 1",
         },
     ),
     (
         (
+            # Test hash alternative
             comicapi.genericmetadata.ImageHash(
                 Hash=0,
                 Kind="ahash",
@@ -339,7 +380,7 @@ issueidentifier_score = (
                 Kind="ahash",
                 URL="",
             ),
-            ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
+            [],
             False,
         ),
         {
@@ -352,8 +393,12 @@ issueidentifier_score = (
     ),
     (
         (
-            "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
-            ["https://comicvine.gamespot.com/cory-doctorows-futuristic-tales-of-the-here-and-no/4000-140529/"],
+            comicapi.genericmetadata.ImageHash(
+                Hash=0,
+                Kind="",
+                URL="https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
+            ),
+            [],
             False,
         ),
         {

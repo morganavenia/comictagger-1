@@ -42,7 +42,7 @@ def test_get_issue_cover_match_score(
     cbz,
     config,
     comicvine_api,
-    data: tuple[str | ImageHash, list[str | ImageHash], bool],
+    data: tuple[ImageHash, list[ImageHash], bool],
     expected: comictaggerlib.issueidentifier.Score,
 ):
     config, definitions = config
