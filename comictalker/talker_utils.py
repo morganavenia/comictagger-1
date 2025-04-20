@@ -43,7 +43,7 @@ def cleanup_html(string: str | None, remove_html_tables: bool = False) -> str:
 
     # find any tables
     soup = BeautifulSoup(string, "html.parser")
-    tables = soup.findAll("table")
+    tables = soup.find_all("table")
 
     # put in our own
     string = re.sub(r"<br>|</li>", "\n", string, flags=re.IGNORECASE)
