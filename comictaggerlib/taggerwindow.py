@@ -234,8 +234,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if self.config[0].Runtime_Options__preferred_hash:
             self.config[0].internal__embedded_hash_type = self.config[0].Runtime_Options__preferred_hash
 
-        self.selected_write_tags: list[str] = config[0].internal__write_tags
-        self.selected_read_tags: list[str] = config[0].internal__read_tags
+        self.selected_write_tags: list[str] = config[0].internal__write_tags or list(self.enabled_tags())
+        self.selected_read_tags: list[str] = config[0].internal__read_tags or list(self.enabled_tags())
 
         self.setAcceptDrops(True)
         self.view_tag_actions, self.remove_tag_actions = self.tag_actions()

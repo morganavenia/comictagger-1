@@ -52,15 +52,17 @@ def validate_types(config: settngs.Config[settngs.Values]) -> settngs.Config[set
         for setting in group.v.values():
             # Get the value and if it is the default
             value, default = settngs.get_option(config.values, setting)
-            if not default:
-                if setting.type is not None:
-                    # If it is not the default and the type attribute is not None
-                    # use it to convert the loaded string into the expected value
-                    if (
-                        isinstance(value, str)
-                        or isinstance(default, Enum)
-                        or (isinstance(setting.type, type) and issubclass(setting.type, Enum))
-                    ):
+            if not default and setting.type is not None:
+                # If it is not the default and the type attribute is not None
+                # use it to convert the loaded string into the expected value
+                if (
+                    isinstance(value, str)
+                    or isinstance(default, Enum)
+                    or (isinstance(setting.type, type) and issubclass(setting.type, Enum))
+                ):
+                    if isinstance(setting.type, type) and issubclass(setting.type, Enum) and isinstance(value, list):
+                        config.values[setting.group][setting.dest] = [setting.type(x) for x in value]
+                    else:
                         config.values[setting.group][setting.dest] = setting.type(value)
     return config
 
