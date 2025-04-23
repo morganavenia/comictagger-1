@@ -134,7 +134,7 @@ class IssueIdentifier:
 
     def calculate_hash(self, image_data: bytes = b"", image: Image.Image | None = None) -> int:
         if self.image_hasher == 3:
-            return ImageHasher(data=image_data, image=image).p_hash()
+            return ImageHasher(data=image_data, image=image).perception_hash()
         if self.image_hasher == 2:
             return -1  # ImageHasher(data=image_data, image=image).average_hash2()
 

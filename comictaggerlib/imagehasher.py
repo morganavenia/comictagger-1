@@ -72,11 +72,12 @@ class ImageHasher:
         pixels = list(image.getdata())
         avg = sum(pixels) / len(pixels)
 
-        diff = "".join(str(int(p > avg)) for p in pixels)
+        h = 0
+        for i, p in enumerate(pixels):
+            if p > avg:
+                h |= 1 << len(pixels) - 1 - i
 
-        result = int(diff, 2)
-
-        return result
+        return h
 
     def difference_hash(self) -> int:
         try:
@@ -86,17 +87,18 @@ class ImageHasher:
             return 0
 
         pixels = list(image.getdata())
-        diff = ""
+        h = 0
+        z = (self.width * self.height) - 1
         for y in range(self.height):
             for x in range(self.width):
-                idx = x + (self.width + 1 * y)
-                diff += str(int(pixels[idx] < pixels[idx + 1]))
+                idx = x + ((self.width + 1) * y)
+                if pixels[idx] < pixels[idx + 1]:
+                    h |= 1 << z
+                z -= 1
 
-        result = int(diff, 2)
+        return h
 
-        return result
-
-    def p_hash(self) -> int:
+    def perception_hash(self) -> int:
         """
         Pure python version of Perceptual Hash computation of https://github.com/JohannesBuchner/imagehash/tree/master
         Implementation follows http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
@@ -165,12 +167,13 @@ class ImageHasher:
         dct = generate_dct2(generate_dct2(pixels, axis=0), axis=1)
         dctlowfreq = list(itertools.chain.from_iterable(row[:8] for row in dct[:8]))
         med = median(dctlowfreq)
-        # Convert to a bit string
-        diff = "".join(str(int(item > med)) for item in dctlowfreq)
 
-        result = int(diff, 2)
+        h = 0
+        for i, p in enumerate(dctlowfreq):
+            if p > med:
+                h |= 1 << len(dctlowfreq) - 1 - i
 
-        return result
+        return h
 
     # accepts 2 hashes (longs or hex strings) and returns the hamming distance
 
@@ -191,5 +194,4 @@ class ImageHasher:
         # xor the two numbers
         n = n1 ^ n2
 
-        # count up the 1's in the binary string
-        return sum(b == "1" for b in bin(n)[2:])
+        return bin(n).count("1")

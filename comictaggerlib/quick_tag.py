@@ -139,7 +139,7 @@ class QuickTag:
         if HashType.DHASH in hashes:
             dhash = hex(hasher.difference_hash())[2:]
         if HashType.PHASH in hashes:
-            phash = hex(hasher.p_hash())[2:]
+            phash = hex(hasher.perception_hash())[2:]
 
         logger.info(f"Searching with {ahash=}, {dhash=}, {phash=}")
 
