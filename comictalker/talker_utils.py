@@ -78,15 +78,15 @@ def cleanup_html(string: str | None, remove_html_tables: bool = False) -> str:
                 rows = []
                 hdrs = []
                 col_widths = []
-                for hdr in table.findAll("th"):
+                for hdr in table.find_all("th"):
                     item = hdr.string.strip()
                     hdrs.append(item)
                     col_widths.append(len(item))
                 rows.append(hdrs)
 
-                for row in table.findAll("tr"):
+                for row in table.find_all("tr"):
                     cols = []
-                    col = row.findAll("td")
+                    col = row.find_all("td")
 
                     for i, c in enumerate(col):
                         item = c.string.strip()
