@@ -15,6 +15,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 import logging
@@ -517,19 +518,30 @@ def sanitize_title(text: str, basic: bool = False) -> str:
 
 
 def titles_match(search_title: str, record_title: str, threshold: int = 90) -> bool:
-    import rapidfuzz.fuzz
+    log_msg = "search title: %s ; record title: %s ; ratio: %d ; match threshold: %d"
+    thresh = threshold / 100
 
     sanitized_search = sanitize_title(search_title)
     sanitized_record = sanitize_title(record_title)
-    ratio = int(rapidfuzz.fuzz.ratio(sanitized_search, sanitized_record))
-    logger.debug(
-        "search title: %s ; record title: %s ; ratio: %d ; match threshold: %d",
-        search_title,
-        record_title,
-        ratio,
-        threshold,
-    )
-    return ratio >= threshold
+    s = difflib.SequenceMatcher(None, sanitized_search, sanitized_record)
+
+    ratio = s.real_quick_ratio()
+    if ratio < thresh:
+        logger.debug(log_msg, search_title, record_title, ratio * 100, threshold)
+        return False
+
+    ratio = s.quick_ratio()
+    if ratio < thresh:
+        logger.debug(log_msg, search_title, record_title, ratio * 100, threshold)
+        return False
+
+    ratio = s.ratio()
+    if ratio < thresh:
+        logger.debug(log_msg, search_title, record_title, ratio * 100, threshold)
+        return False
+
+    logger.debug(log_msg, search_title, record_title, ratio * 100, threshold)
+    return True
 
 
 def unique_file(file_name: pathlib.Path) -> pathlib.Path:
