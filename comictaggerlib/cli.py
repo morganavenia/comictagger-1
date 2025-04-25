@@ -438,7 +438,6 @@ class CLI:
             ct_md = qt.id_comic(
                 ca,
                 md,
-                self.config.Quick_Tag__simple,
                 set(self.config.Quick_Tag__hash),
                 self.config.Quick_Tag__exact_only,
                 self.config.Runtime_Options__interactive,
