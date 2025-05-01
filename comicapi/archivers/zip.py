@@ -141,12 +141,17 @@ class ZipArchiver(Archiver):
         return data
 
     def remove_file(self, archive_file: str) -> bool:
-        return self.rebuild([archive_file])
+        files = self.get_filename_list()
+        try:
+            with ZipFile(self.path, mode="a", allowZip64=True, compression=zipfile.ZIP_DEFLATED) as zf:
+                if archive_file in files:
+                    zf.remove(archive_file)
+            return True
+        except (zipfile.BadZipfile, OSError) as e:
+            logger.error("Error writing zip archive [%s]: %s :: %s", e, self.path, archive_file)
+            return False
 
     def write_file(self, archive_file: str, data: bytes) -> bool:
-        # At the moment, no other option but to rebuild the whole
-        # zip archive w/o the indicated file. Very sucky, but maybe
-        # another solution can be found
         files = self.get_filename_list()
 
         try:
