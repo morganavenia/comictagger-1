@@ -162,8 +162,7 @@ if qt_available:
             _enable_widget(widget, enable)
 
     def _enable_widget(widget: QtWidgets.QWidget, enable: bool) -> None:
-        global active_palette
-        if not (widget is not None and active_palette is not None):
+        if widget is None or active_palette is None:
             return
         active_color = active_palette.color(QtGui.QPalette.ColorRole.Base)
 
