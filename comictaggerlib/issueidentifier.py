@@ -16,6 +16,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import io
 import logging
 from operator import attrgetter
@@ -185,7 +186,7 @@ class IssueIdentifier:
 
         self.log_msg(f"Found {len(issues)} series that have an issue #{terms['issue_number']}")
 
-        final_cover_matching = self._cover_matching(terms, images, extra_images, issues)
+        final_cover_matching, full = self._cover_matching(terms, images, extra_images, issues)
 
         # One more test for the case choosing limited series first issue vs a trade with the same cover:
         # if we have a given issue count > 1 and the series from CV has count==1, remove it from match list
@@ -197,10 +198,10 @@ class IssueIdentifier:
                     )
                     final_cover_matching.remove(match)
 
+        self.log_msg(f"{final_cover_matching=}")
+        best_score = 0
         if final_cover_matching:
             best_score = final_cover_matching[0].distance
-        else:
-            best_score = 0
         if best_score >= self.min_score_thresh:
             if len(final_cover_matching) == 1:
                 self.log_msg("No matching pages in the issue.")
@@ -220,7 +221,7 @@ class IssueIdentifier:
                 self.log_msg("--------------------------------------------------------------------------")
                 search_result = self.result_one_good_match
 
-            elif len(self.match_list) == 0:
+            elif len(final_cover_matching) == 0:
                 self.log_msg("--------------------------------------------------------------------------")
                 self.log_msg("No matches found :(")
                 self.log_msg("--------------------------------------------------------------------------")
@@ -229,6 +230,7 @@ class IssueIdentifier:
                 # we've got multiple good matches:
                 self.log_msg("More than one likely candidate.")
                 search_result = self.result_multiple_good_matches
+                final_cover_matching = full  # display more options for the user to pick
                 self.log_msg("--------------------------------------------------------------------------")
                 for match_item in final_cover_matching:
                     self._print_match(match_item)
@@ -632,7 +634,7 @@ class IssueIdentifier:
         images: list[tuple[str, Image.Image]],
         extra_images: list[tuple[str, Image.Image]],
         issues: list[tuple[ComicSeries, GenericMetadata]],
-    ) -> list[IssueResult]:
+    ) -> tuple[list[IssueResult], list[IssueResult]]:
         # Set hashing kind, will presume all hashes are of the same kind
         for series, issue in issues:
             if isinstance(issue._cover_image, ImageHash):
@@ -647,7 +649,7 @@ class IssueIdentifier:
 
         if len(cover_matching_1) == 0:
             self.log_msg(":-( no matches!")
-            return cover_matching_1
+            return cover_matching_1, cover_matching_1
 
         # sort list by image match scores
         cover_matching_1.sort(key=attrgetter("distance"))
@@ -681,8 +683,14 @@ class IssueIdentifier:
                 # now drop down into the rest of the processing
 
         best_score = final_cover_matching[0].distance
+
+        full = copy.copy(final_cover_matching)
         # now pare down list, remove any item more than specified distant from the top scores
         for match_item in reversed(final_cover_matching):
             if match_item.distance > (best_score + self.min_score_distance):
                 final_cover_matching.remove(match_item)
-        return final_cover_matching
+
+        # If we have 5 or less results we don't trim as the user can pick
+        if len(final_cover_matching) > 5:
+            full = final_cover_matching
+        return final_cover_matching, full

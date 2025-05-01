@@ -20,6 +20,7 @@ import io
 import itertools
 import logging
 import math
+import statistics
 from collections.abc import Sequence
 from statistics import median
 from typing import TypeVar
@@ -70,7 +71,7 @@ class ImageHasher:
             return 0
 
         pixels = list(image.getdata())
-        avg = sum(pixels) / len(pixels)
+        avg = statistics.mean(pixels)
 
         h = 0
         for i, p in enumerate(pixels):

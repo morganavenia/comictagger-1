@@ -35,7 +35,7 @@ from comicapi.issuestring import IssueString
 from comicapi.utils import LocationParseError, parse_url
 from comictalker import talker_utils
 from comictalker.comiccacher import ComicCacher, Issue, Series
-from comictalker.comictalker import ComicTalker, TalkerDataError, TalkerNetworkError
+from comictalker.comictalker import ComicTalker, TalkerDataError, TalkerError, TalkerNetworkError
 
 try:
     import niquests as requests
@@ -543,14 +543,6 @@ class ComicVineTalker(ComicTalker):
             cached_results.append(
                 self._map_comic_issue_to_metadata(issue, series_info[str(issue["volume"]["id"])]),
             )
-        from pprint import pp
-
-        pp(cache_issue, indent=2)
-        cvc.add_issues_info(
-            self.id,
-            cache_issue,
-            False,  # The /issues/ endpoint never provides credits
-        )
 
         return cached_results
 
@@ -642,36 +634,42 @@ class ComicVineTalker(ComicTalker):
                 )
                 if resp.status_code == 200:
                     return resp.json()
-                elif resp.status_code == 500:
-                    logger.debug(f"Try #{tries}: ")
-                    time.sleep(1)
-                    logger.debug(str(resp.status_code))
+                elif resp.status_code in (
+                    requests.codes.SERVER_ERROR,
+                    requests.codes.BAD_GATEWAY,
+                    requests.codes.UNAVAILABLE,
+                ):
+                    logger.debug("Try #%d: %d", tries, resp.status_code)
 
-                elif resp.status_code in (requests.status_codes.codes.TOO_MANY_REQUESTS, TWITTER_TOO_MANY_REQUESTS):
-                    logger.info(f"{self.name} rate limit encountered. Waiting for 10 seconds\n")
+                elif resp.status_code in (requests.codes.TOO_MANY_REQUESTS, TWITTER_TOO_MANY_REQUESTS):
+                    logger.info("%s rate limit encountered. Waiting for 10 seconds", self.name)
                     self._log_total_requests()
                     time.sleep(10)
                     limit_counter += 1
                     if limit_counter > 3:
                         # Tried 3 times, inform user to check CV website.
-                        logger.error(f"{self.name} rate limit error. Exceeded 3 retires.")
+                        logger.error("%s rate limit error. Exceeded 3 retires.", self.name)
                         raise TalkerNetworkError(
                             self.name,
                             3,
                             "Rate Limit Error: Check your current API usage limit at https://comicvine.gamespot.com/api/",
                         )
                 else:
+                    logger.error("Unknown status code: %d, %s", resp.status_code, resp.content)
                     break
 
             except requests.exceptions.Timeout:
                 logger.debug(f"Connection to {self.name} timed out.")
-                raise TalkerNetworkError(self.name, 4)
+                if tries > 3:
+                    raise TalkerNetworkError(self.name, 4)
             except requests.exceptions.RequestException as e:
                 logger.debug(f"Request exception: {e}")
                 raise TalkerNetworkError(self.name, 0, str(e)) from e
             except json.JSONDecodeError as e:
                 logger.debug(f"JSON decode error: {e}")
                 raise TalkerDataError(self.name, 2, "ComicVine did not provide json")
+            except TalkerError as e:
+                raise e
             except Exception as e:
                 raise TalkerNetworkError(self.name, 5, str(e))
 
