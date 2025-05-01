@@ -185,7 +185,7 @@ def _custom_key(tup: Any) -> Any:
 T = TypeVar("T")
 
 
-def os_sorted(lst: Iterable[T]) -> Iterable[T]:
+def os_sorted(lst: Iterable[T]) -> list[T]:
     import natsort
 
     key = _custom_key

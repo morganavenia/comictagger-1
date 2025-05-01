@@ -351,7 +351,9 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
             parser.exit(message="Please specify the tags to copy to with --tags-write\n", status=1)
 
     if config[0].Runtime_Options__recursive:
-        config[0].Runtime_Options__files = utils.get_recursive_filelist(config[0].Runtime_Options__files)
+        config[0].Runtime_Options__files = utils.os_sorted(
+            set(utils.get_recursive_filelist(config[0].Runtime_Options__files))
+        )
 
     if not config[0].Runtime_Options__enable_embedding_hashes:
         config[0].Runtime_Options__preferred_hash = ""
