@@ -108,8 +108,11 @@ class ZipFile(zipfile.ZipFile):
 class ZipArchiver(Archiver):
     """ZIP implementation"""
 
+    supported_extensions = frozenset((".cbz", ".zip"))
+
     def __init__(self) -> None:
         super().__init__()
+        self._filename_list: list[str] = []
 
     def supports_comment(self) -> bool:
         return True
@@ -142,6 +145,7 @@ class ZipArchiver(Archiver):
 
     def remove_file(self, archive_file: str) -> bool:
         files = self.get_filename_list()
+        self._filename_list = []
         try:
             with ZipFile(self.path, mode="a", allowZip64=True, compression=zipfile.ZIP_DEFLATED) as zf:
                 if archive_file in files:
@@ -153,6 +157,7 @@ class ZipArchiver(Archiver):
 
     def write_file(self, archive_file: str, data: bytes) -> bool:
         files = self.get_filename_list()
+        self._filename_list = []
 
         try:
             # now just add the archive file as a new one
@@ -166,10 +171,12 @@ class ZipArchiver(Archiver):
             return False
 
     def get_filename_list(self) -> list[str]:
+        if self._filename_list:
+            return self._filename_list
         try:
             with ZipFile(self.path, mode="r") as zf:
-                namelist = [file.filename for file in zf.infolist() if not file.is_dir()]
-            return namelist
+                self._filename_list = [file.filename for file in zf.infolist() if not file.is_dir()]
+                return self._filename_list
         except (zipfile.BadZipfile, OSError) as e:
             logger.error("Error listing files in zip archive [%s]: %s", e, self.path)
             return []
@@ -182,6 +189,7 @@ class ZipArchiver(Archiver):
 
         This recompresses the zip archive, without the files in the exclude_list
         """
+        self._filename_list = []
         try:
             with ZipFile(
                 tempfile.NamedTemporaryFile(dir=os.path.dirname(self.path), delete=False), "w", allowZip64=True
@@ -208,6 +216,7 @@ class ZipArchiver(Archiver):
 
     def copy_from_archive(self, other_archive: Archiver) -> bool:
         """Replace the current zip with one copied from another archive"""
+        self._filename_list = []
         try:
             with ZipFile(self.path, mode="w", allowZip64=True) as zout:
                 for filename in other_archive.get_filename_list():
@@ -237,13 +246,4 @@ class ZipArchiver(Archiver):
 
     @classmethod
     def is_valid(cls, path: pathlib.Path) -> bool:
-        if not zipfile.is_zipfile(path):  # only checks central directory ot the end of the archive
-            return False
-        try:
-            # test all the files in the zip. adds about 0.1 to execution time per zip
-            with ZipFile(path) as zf:
-                for zipinfo in zf.filelist:
-                    zf.open(zipinfo).close()
-            return True
-        except Exception:
-            return False
+        return zipfile.is_zipfile(path)  # only checks central directory ot the end of the archive

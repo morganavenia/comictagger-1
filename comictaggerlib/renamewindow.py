@@ -191,13 +191,13 @@ class RenameWindow(QtWidgets.QDialog):
 
         try:
             for idx, comic in enumerate(zip(self.comic_archive_list, self.rename_list), 1):
-                QtCore.QCoreApplication.processEvents()
                 if prog_dialog.wasCanceled():
                     break
 
                 prog_dialog.setValue(idx)
                 prog_dialog.setLabelText(comic[1])
-                QtCore.QCoreApplication.processEvents()
+                if idx % 5 == 0:
+                    QtCore.QCoreApplication.processEvents()
 
                 folder = get_rename_dir(
                     comic[0],

@@ -146,12 +146,20 @@ class ComicArchive:
             self.path = pathlib.Path(path).absolute()
             self.archiver = UnknownArchiver.open(self.path)
 
-        load_archive_plugins()
-        load_tag_plugins()
-        for archiver in archivers:
-            if archiver.enabled and archiver.is_valid(self.path):
-                self.archiver = archiver.open(self.path)
-                break
+            load_archive_plugins()
+            load_tag_plugins()
+            archiver_missing = True
+            for archiver in archivers:
+                if self.path.suffix in archiver.supported_extensions and archiver.is_valid(self.path):
+                    self.archiver = archiver.open(self.path)
+                    archiver_missing = False
+                    break
+
+            if archiver_missing:
+                for archiver in archivers:
+                    if archiver.enabled and archiver.is_valid(self.path):
+                        self.archiver = archiver.open(self.path)
+                        break
 
         if not ComicArchive.logo_data and self.default_image_path:
             with open(self.default_image_path, mode="rb") as fd:

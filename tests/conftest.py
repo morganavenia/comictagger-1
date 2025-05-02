@@ -215,7 +215,7 @@ def config(tmp_path):
 
 
 @pytest.fixture
-def plugin_config(tmp_path):
+def plugin_config(tmp_path, comicvine_api):
     from comictaggerlib.main import App
 
     ns = Namespace(config=comictaggerlib.ctsettings.ComicTaggerPaths(tmp_path / "config"))

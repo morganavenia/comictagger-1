@@ -574,13 +574,13 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
             for prog_idx, ca in enumerate(to_zip, 1):
                 logger.debug("Exporting comic %d: %s", prog_idx, ca.path)
-                QtCore.QCoreApplication.processEvents()
+                if prog_idx % 10 == 0:
+                    QtCore.QCoreApplication.processEvents()
                 if prog_dialog is not None:
                     if prog_dialog.wasCanceled():
                         break
                     prog_dialog.setValue(prog_idx)
                     prog_dialog.setLabelText(str(ca.path))
-                QtCore.QCoreApplication.processEvents()
 
                 export_name = ca.path.with_suffix(".cbz")
                 export = True
@@ -610,7 +610,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
             if prog_dialog is not None:
                 prog_dialog.hide()
-            QtCore.QCoreApplication.processEvents()
             self.fileSelectionList.remove_archive_list(archives_to_remove)
 
             summary = f"Successfully created {success_count} Zip archive(s)."
@@ -1060,7 +1059,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if dialog.exec():
             file_list = dialog.selectedFiles()
             if file_list:
-                self.fileSelectionList.twList.selectRow(self.fileSelectionList.add_path_item(file_list[0]))
+                self.fileSelectionList.twList.selectRow(self.fileSelectionList.add_path_item(file_list[0])[0])
 
     def select_file(self, folder_mode: bool = False) -> None:
         dialog = self.file_dialog(folder_mode=folder_mode)
@@ -1595,17 +1594,16 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 progdialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
                 progdialog.setMinimumDuration(300)
                 center_window_on_parent(progdialog)
-                QtCore.QCoreApplication.processEvents()
 
                 failed_list = []
                 success_count = 0
                 for prog_idx, ca in enumerate(ca_list, 1):
-                    QtCore.QCoreApplication.processEvents()
+                    if prog_idx % 10 == 0:
+                        QtCore.QCoreApplication.processEvents()
                     if progdialog.wasCanceled():
                         break
                     progdialog.setValue(prog_idx)
                     progdialog.setLabelText(str(ca.path))
-                    QtCore.QCoreApplication.processEvents()
                     for tag_id in tag_ids:
                         if ca.has_tags(tag_id) and ca.is_writable():
                             if ca.remove_tags(tag_id):
@@ -1694,6 +1692,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 failed_list = []
                 success_count = 0
                 for prog_idx, ca in enumerate(ca_list, 1):
+                    if prog_idx % 10 == 0:
+                        QtCore.QCoreApplication.processEvents()
                     ca_saved = False
                     md, error = self.read_selected_tags(src_tag_ids, ca)
                     if error is not None:
@@ -1704,14 +1704,12 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
                     for tag_id in dest_tag_ids:
                         if ca.has_tags(tag_id):
-                            QtCore.QCoreApplication.processEvents()
                             if prog_dialog.wasCanceled():
                                 break
 
                             prog_dialog.setValue(prog_idx)
                             prog_dialog.setLabelText(str(ca.path))
                             center_window_on_parent(prog_dialog)
-                            QtCore.QCoreApplication.processEvents()
 
                         if tag_id == "cbi" and self.config[0].Metadata_Options__apply_transform_on_bulk_operation:
                             md = CBLTransformer(md, self.config[0]).apply()
@@ -1747,8 +1745,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if self.atprogdialog is not None:
             self.atprogdialog.textEdit.append(text.rstrip())
             self.atprogdialog.textEdit.ensureCursorVisible()
-            QtCore.QCoreApplication.processEvents()
-            QtCore.QCoreApplication.processEvents()
             QtCore.QCoreApplication.processEvents()
 
     def identify_and_tag_single_archive(
@@ -1981,6 +1977,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.auto_tag_log("==========================================================================\n")
             self.auto_tag_log(f"Auto-Tagging {prog_idx} of {len(ca_list)}\n")
             self.auto_tag_log(f"{ca.path}\n")
+            QtCore.QCoreApplication.processEvents()
             try:
                 cover_idx = ca.read_tags(self.selected_read_tags[0]).get_cover_page_index_list()[0]
             except Exception as e:
@@ -1990,13 +1987,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.atprogdialog.set_archive_image(image_data)
             self.atprogdialog.set_test_image(b"")
 
-            QtCore.QCoreApplication.processEvents()
             if self.atprogdialog.isdone:
                 break
             self.atprogdialog.progressBar.setValue(prog_idx)
 
             self.atprogdialog.label.setText(str(ca.path))
-            QtCore.QCoreApplication.processEvents()
 
             if ca.is_writable():
                 success, match_results = self.identify_and_tag_single_archive(ca, match_results, atstartdlg)
@@ -2307,7 +2302,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.setWindowFlags(
                 flags | QtCore.Qt.WindowType.WindowStaysOnTopHint | QtCore.Qt.WindowType.X11BypassWindowManagerHint
             )
-            QtCore.QCoreApplication.processEvents()
             self.setWindowFlags(flags)
             self.show()
 

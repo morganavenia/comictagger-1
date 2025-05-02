@@ -22,9 +22,11 @@ class SevenZipArchiver(Archiver):
     """7Z implementation"""
 
     enabled = z7_support
+    supported_extensions = frozenset({".7z", ".cb7"})
 
     def __init__(self) -> None:
         super().__init__()
+        self._filename_list: list[str] = []
 
     # @todo: Implement Comment?
     def get_comment(self) -> str:
@@ -45,6 +47,7 @@ class SevenZipArchiver(Archiver):
         return data
 
     def remove_file(self, archive_file: str) -> bool:
+        self._filename_list = []
         return self.rebuild([archive_file])
 
     def write_file(self, archive_file: str, data: bytes) -> bool:
@@ -52,6 +55,7 @@ class SevenZipArchiver(Archiver):
         # archive w/o the indicated file. Very sucky, but maybe
         # another solution can be found
         files = self.get_filename_list()
+        self._filename_list = []
         if archive_file in files:
             if not self.rebuild([archive_file]):
                 return False
@@ -66,10 +70,13 @@ class SevenZipArchiver(Archiver):
             return False
 
     def get_filename_list(self) -> list[str]:
+        if self._filename_list:
+            return self._filename_list
         try:
             with py7zr.SevenZipFile(self.path, "r") as zf:
                 namelist: list[str] = [file.filename for file in zf.list() if not file.is_directory]
 
+            self._filename_list = namelist
             return namelist
         except (py7zr.Bad7zFile, OSError) as e:
             logger.error("Error listing files in 7zip archive [%s]: %s", e, self.path)
@@ -84,6 +91,7 @@ class SevenZipArchiver(Archiver):
         This recompresses the zip archive, without the files in the exclude_list
         """
 
+        self._filename_list = []
         try:
             # py7zr treats all archives as if they used solid compression
             # so we need to get the filename list first to read all the files at once
@@ -106,6 +114,7 @@ class SevenZipArchiver(Archiver):
 
     def copy_from_archive(self, other_archive: Archiver) -> bool:
         """Replace the current zip with one copied from another archive"""
+        self._filename_list = []
         try:
             with py7zr.SevenZipFile(self.path, "w") as zout:
                 for filename in other_archive.get_filename_list():

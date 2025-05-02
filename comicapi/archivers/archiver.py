@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Collection
 from typing import Protocol, runtime_checkable
 
 
@@ -29,6 +30,8 @@ class Archiver(Protocol):
     For example directories cannot be hashed.
     """
     hashable: bool = True
+
+    supported_extensions: Collection[str] = set()
 
     def __init__(self) -> None:
         self.path = pathlib.Path()

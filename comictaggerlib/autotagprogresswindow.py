@@ -65,7 +65,6 @@ class AutoTagProgressWindow(QtWidgets.QDialog):
     def set_cover_image(self, img_data: bytes, widget: CoverImageWidget) -> None:
         widget.set_image_data(img_data)
         QtCore.QCoreApplication.processEvents()
-        QtCore.QCoreApplication.processEvents()
 
     def reject(self) -> None:
         QtWidgets.QDialog.reject(self)

@@ -13,7 +13,6 @@ from comictalker.comictalker import ComicTalker
 def test_save(
     plugin_config: tuple[settngs.Config[ctsettings.ct_ns], dict[str, ComicTalker]],
     tmp_comic,
-    comicvine_api,
     md_saved,
     mock_now,
 ) -> None:
@@ -70,7 +69,6 @@ def test_save(
 def test_delete(
     plugin_config: tuple[settngs.Config[ctsettings.ct_ns], dict[str, ComicTalker]],
     tmp_comic,
-    comicvine_api,
     md_saved,
     mock_now,
 ) -> None:
@@ -109,7 +107,6 @@ def test_delete(
 def test_rename(
     plugin_config: tuple[settngs.Config[ctsettings.ct_ns], dict[str, ComicTalker]],
     tmp_comic,
-    comicvine_api,
     md_saved,
     mock_now,
 ) -> None:

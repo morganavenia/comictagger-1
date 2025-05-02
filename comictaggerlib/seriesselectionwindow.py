@@ -254,8 +254,6 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
             self.iddialog.textEdit.append(text.rstrip())
             self.iddialog.textEdit.ensureCursorVisible()
             QtCore.QCoreApplication.processEvents()
-            QtCore.QCoreApplication.processEvents()
-            QtCore.QCoreApplication.processEvents()
 
     def identify_progress(self, cur: int, total: int) -> None:
         if self.iddialog is not None:
@@ -489,14 +487,13 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         self.perform_query()
+        QtCore.QCoreApplication.processEvents()
         if not self.series_list:
-            QtCore.QCoreApplication.processEvents()
             QtWidgets.QMessageBox.information(self, "Search Result", "No matches found!")
             QtCore.QTimer.singleShot(200, self.close_me)
 
         elif self.immediate_autoselect:
             # defer the immediate autoselect so this dialog has time to pop up
-            QtCore.QCoreApplication.processEvents()
             QtCore.QTimer.singleShot(10, self.do_immediate_autoselect)
 
     def do_immediate_autoselect(self) -> None:

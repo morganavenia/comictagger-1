@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import pathlib
 import platform
 import shutil
@@ -81,8 +82,9 @@ def test_page_type_write(tmp_comic):
 
 def test_invalid_zip(tmp_comic: comicapi.comicarchive.ComicArchive):
     with open(tmp_comic.path, mode="b+r") as f:
-        # This only corrupts the first file. If it is never read then no exception will be caused
-        f.write(b"PK\000\000")
+        # Corrupting the first file only breaks the first file. If it is never read then no exception will be raised
+        f.seek(-10, os.SEEK_END)  # seek to a probably bad place in th Central Directory and write some bytes
+        f.write(b"PK\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000")
 
     result = tmp_comic.write_tags(comicapi.genericmetadata.md_test, "cr")  # This is not the first file
     assert result
