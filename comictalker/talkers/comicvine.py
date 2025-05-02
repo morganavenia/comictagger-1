@@ -24,7 +24,7 @@ import pathlib
 import time
 from functools import cache
 from typing import Any, Callable, Generic, TypeVar, cast
-from urllib.parse import parse_qsl, urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin
 
 import settngs
 from pyrate_limiter import Limiter, RequestRate
@@ -481,72 +481,87 @@ class ComicVineTalker(ComicTalker):
 
         return formatted_filtered_issues_result
 
+    def _get_id_list(self, needed_issues: list[str]) -> tuple[str, set[str]]:
+        used_issues = set(needed_issues[: min(len(needed_issues), 100)])
+        flt = "id:" + "|".join(used_issues)
+        return flt, used_issues
+
     def fetch_comics(self, *, issue_ids: list[str]) -> list[GenericMetadata]:
-        logger.debug("Fetching comic IDs: %s", issue_ids)
         # before we search online, look in our cache, since we might already have this info
         cvc = self.cacher()
         cached_results: list[GenericMetadata] = []
-        needed_issues: list[int] = []
-        for issue_id in issue_ids:
-            cached_issue = cvc.get_issue_info(issue_id, self.id)
+        needed_issues: set[str] = set(issue_ids)
+        cached_issues = [x for x in (cvc.get_issue_info(issue_id, self.id) for issue_id in issue_ids) if x is not None]
+        needed_issues -= {i.data.id for i in cached_issues}
 
-            if cached_issue is not None:
-                cached_results.append(
-                    self._map_comic_issue_to_metadata(
-                        json.loads(cached_issue[0].data),
-                        self._fetch_series([int(cached_issue[0].series_id)])[0][0],
-                    ),
-                )
-            else:
-                needed_issues.append(int(issue_id))  # CV uses integers for it's IDs
+        for cached_issue in cached_issues:
+            issue: CVIssue = json.loads(cached_issue.data.data)
+            series: CVSeries = issue["volume"]
+            cached_series = cvc.get_series_info(cached_issue.data.series_id, self.id, expire_stale=False)
+            if cached_series is not None and cached_series.complete:
+                series = json.loads(cached_series.data.data)
+            cached_results.append(
+                self._map_comic_issue_to_metadata(
+                    issue,
+                    self._format_series(series),
+                ),
+            )
 
         logger.debug("Found %d issues cached need %d issues", len(cached_results), len(needed_issues))
         if not needed_issues:
             return cached_results
 
-        issue_filter = ""
-        for iid in needed_issues:
-            issue_filter += str(iid) + "|"
-        flt = "id:" + issue_filter.rstrip("|")
-
         issue_url = urljoin(self.api_url, "issues/")
         params: dict[str, Any] = {
             "api_key": self.api_key,
             "format": "json",
-            "filter": flt,
         }
-        cv_response: CVResult[list[CVIssue]] = self._get_cv_content(issue_url, params)
 
-        issue_results = cv_response["results"]
-        page = 1
-        offset = 0
-        current_result_count = cv_response["number_of_page_results"]
-        total_result_count = cv_response["number_of_total_results"]
+        issue_results: list[CVIssue] = []
 
         # see if we need to keep asking for more pages...
-        while current_result_count < total_result_count:
-            page += 1
-            offset += cv_response["number_of_page_results"]
+        while needed_issues:
+            flt, used_issues = self._get_id_list(list(needed_issues))
+            params["filter"] = flt
 
-            params["offset"] = offset
-            cv_response = self._get_cv_content(issue_url, params)
+            cv_response: CVResult[list[CVIssue]] = self._get_cv_content(issue_url, params)
 
             issue_results.extend(cv_response["results"])
-            current_result_count += cv_response["number_of_page_results"]
 
-        series_info = {s[0].id: s[0] for s in self._fetch_series([int(i["volume"]["id"]) for i in issue_results])}
+            retrieved_issues = {str(x["id"]) for x in cv_response["results"]}
+            used_issues.difference_update(retrieved_issues)
+            if used_issues:
+                logger.debug("%s issue ids %r do not exist anymore", self.name, used_issues)
 
-        cache_issue: list[Issue] = []
-        for issue in issue_results:
-            cache_issue.append(
-                Issue(
-                    id=str(issue["id"]),
-                    series_id=str(issue["volume"]["id"]),
-                    data=json.dumps(issue).encode("utf-8"),
+            needed_issues = needed_issues.difference(retrieved_issues, used_issues)
+
+            cache_issue: list[Issue] = []
+            for issue in issue_results:
+                cache_issue.append(
+                    Issue(
+                        id=str(issue["id"]),
+                        series_id=str(issue["volume"]["id"]),
+                        data=json.dumps(issue).encode("utf-8"),
+                    )
                 )
+            cvc.add_issues_info(
+                self.id,
+                cache_issue,
+                False,  # The /issues/ endpoint never provides credits
             )
+            cvc.add_series_info(
+                self.id,
+                Series(id=str(issue["volume"]["id"]), data=json.dumps(issue["volume"]).encode("utf-8")),
+                False,
+            )
+
+        for issue in issue_results:
+            series = issue["volume"]
+            cached_series = cvc.get_series_info(str(series["id"]), self.id, expire_stale=False)
+            if cached_series is not None and cached_series.complete:
+                series = json.loads(cached_series.data.data)
             cached_results.append(
-                self._map_comic_issue_to_metadata(issue, series_info[str(issue["volume"]["id"])]),
+                self._map_comic_issue_to_metadata(issue, self._format_series(series)),
             )
 
         return cached_results
@@ -555,54 +570,48 @@ class ComicVineTalker(ComicTalker):
         # before we search online, look in our cache, since we might already have this info
         cvc = self.cacher()
         cached_results: list[tuple[ComicSeries, bool]] = []
-        needed_series: list[int] = []
+        needed_series: set[str] = set()
         for series_id in series_ids:
             cached_series = cvc.get_series_info(str(series_id), self.id)
-            if cached_series is not None:
+            if cached_series is not None and cached_series.complete:
                 cached_results.append((self._format_series(json.loads(cached_series[0].data)), cached_series[1]))
             else:
-                needed_series.append(series_id)
+                needed_series.add(str(series_id))
 
-        if needed_series == []:
+        if not needed_series:
             return cached_results
-
-        series_filter = ""
-        for vid in needed_series:
-            series_filter += str(vid) + "|"
-        flt = "id:" + series_filter.rstrip("|")  # CV uses volume to mean series
+        logger.debug("Found %d series cached need %d series", len(cached_results), len(needed_series))
 
         series_url = urljoin(self.api_url, "volumes/")  # CV uses volume to mean series
         params: dict[str, Any] = {
             "api_key": self.api_key,
             "format": "json",
-            "filter": flt,
         }
-        cv_response: CVResult[list[CVSeries]] = self._get_cv_content(series_url, params)
+        series_results: list[CVSeries] = []
 
-        series_results = cv_response["results"]
-        page = 1
-        offset = 0
-        current_result_count = cv_response["number_of_page_results"]
-        total_result_count = cv_response["number_of_total_results"]
+        while needed_series:
+            flt, used_series = self._get_id_list(list(needed_series))
+            params["filter"] = flt
 
-        # see if we need to keep asking for more pages...
-        while current_result_count < total_result_count:
-            page += 1
-            offset += cv_response["number_of_page_results"]
-
-            params["offset"] = offset
-            cv_response = self._get_cv_content(series_url, params)
+            cv_response: CVResult[list[CVSeries]] = self._get_cv_content(series_url, params)
 
             series_results.extend(cv_response["results"])
-            current_result_count += cv_response["number_of_page_results"]
 
-        if series_results:
+            retrieved_series = {str(x["id"]) for x in series_results}
+            used_series.difference_update(retrieved_series)
+            if used_series:
+                logger.debug("%s series ids %r do not exist anymore", self.name, used_series)
+
+            needed_series = needed_series.difference(retrieved_series, used_series)
             for series in series_results:
                 cvc.add_series_info(
                     self.id,
                     Series(id=str(series["id"]), data=json.dumps(series).encode("utf-8")),
                     True,
                 )
+
+        if series_results:
+            for series in series_results:
                 cached_results.append((self._format_series(series), True))
 
         return cached_results
@@ -634,8 +643,9 @@ class ComicVineTalker(ComicTalker):
         for tries in range(1, 5):
             try:
                 self.total_requests_made[url.removeprefix(self.api_url)] += 1
+                logger.debug("Requesting: %s?%s", url, urlencode(final_params))
                 resp = requests.get(
-                    url, params=final_params, headers={"user-agent": "comictagger/" + self.version}, timeout=10
+                    url, params=final_params, headers={"user-agent": "comictagger/" + self.version}, timeout=60
                 )
                 if resp.status_code == 200:
                     return resp.json()
@@ -780,7 +790,7 @@ class ComicVineTalker(ComicTalker):
         cached_series = cvc.get_series_info(str(series_id), self.id)
 
         logger.debug("Series cached: %s", bool(cached_series))
-        if cached_series is not None:
+        if cached_series is not None and cached_series.complete:
             return (self._format_series(json.loads(cached_series[0].data)), cached_series[1])
 
         series_url = urljoin(self.api_url, f"volume/{CVTypeID.Volume}-{series_id}")  # CV uses volume to mean series
