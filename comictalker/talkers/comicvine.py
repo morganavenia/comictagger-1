@@ -22,6 +22,7 @@ import json
 import logging
 import pathlib
 import time
+from functools import cache
 from typing import Any, Callable, Generic, TypeVar, cast
 from urllib.parse import parse_qsl, urljoin
 
@@ -262,6 +263,10 @@ class ComicVineTalker(ComicTalker):
             self._log_total_requests()
             return "Failed to connect to the URL!", False
 
+    @cache
+    def cacher(self) -> ComicCacher:
+        return ComicCacher(self.cache_folder, self.version)
+
     def search_for_series(
         self,
         series_name: str,
@@ -281,7 +286,7 @@ class ComicVineTalker(ComicTalker):
 
         # Before we search online, look in our cache, since we might have done this same search recently
         # For literal searches always retrieve from online
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         if not refresh_cache and not literal:
             cached_search_results = cvc.get_search_results(self.id, series_name)
 
@@ -389,7 +394,7 @@ class ComicVineTalker(ComicTalker):
     ) -> list[GenericMetadata]:
         logger.debug("Fetching comics by series ids: %s and number: %s", series_id_list, issue_number)
         # before we search online, look in our cache, since we might already have this info
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         cached_results: list[GenericMetadata] = []
         needed_volumes: set[int] = set()
         for series_id in series_id_list:
@@ -479,7 +484,7 @@ class ComicVineTalker(ComicTalker):
     def fetch_comics(self, *, issue_ids: list[str]) -> list[GenericMetadata]:
         logger.debug("Fetching comic IDs: %s", issue_ids)
         # before we search online, look in our cache, since we might already have this info
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         cached_results: list[GenericMetadata] = []
         needed_issues: list[int] = []
         for issue_id in issue_ids:
@@ -548,7 +553,7 @@ class ComicVineTalker(ComicTalker):
 
     def _fetch_series(self, series_ids: list[int]) -> list[tuple[ComicSeries, bool]]:
         # before we search online, look in our cache, since we might already have this info
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         cached_results: list[tuple[ComicSeries, bool]] = []
         needed_series: list[int] = []
         for series_id in series_ids:
@@ -714,7 +719,7 @@ class ComicVineTalker(ComicTalker):
     def _fetch_issues_in_series(self, series_id: str) -> list[tuple[GenericMetadata, bool]]:
         logger.debug("Fetching all issues in series: %s", series_id)
         # before we search online, look in our cache, since we might already have this info
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         cached_results = cvc.get_series_issues_info(series_id, self.id)
 
         series = self._fetch_series_data(int(series_id))[0]
@@ -771,7 +776,7 @@ class ComicVineTalker(ComicTalker):
     def _fetch_series_data(self, series_id: int) -> tuple[ComicSeries, bool]:
         logger.debug("Fetching series info: %s", series_id)
         # before we search online, look in our cache, since we might already have this info
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         cached_series = cvc.get_series_info(str(series_id), self.id)
 
         logger.debug("Series cached: %s", bool(cached_series))
@@ -819,7 +824,7 @@ class ComicVineTalker(ComicTalker):
     def _fetch_issue_data_by_issue_id(self, issue_id: str) -> GenericMetadata:
         logger.debug("Fetching issue by issue ID: %s", issue_id)
         # before we search online, look in our cache, since we might already have this info
-        cvc = ComicCacher(self.cache_folder, self.version)
+        cvc = self.cacher()
         cached_issue = cvc.get_issue_info(issue_id, self.id)
 
         logger.debug("Issue cached: %s", bool(cached_issue and cached_issue[1]))

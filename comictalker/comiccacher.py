@@ -16,11 +16,13 @@
 # limitations under the License.
 from __future__ import annotations
 
+import contextlib
 import datetime
 import logging
 import os
 import pathlib
 import sqlite3
+import threading
 from typing import Any, Generic, TypeVar
 
 from typing_extensions import NamedTuple
@@ -53,6 +55,8 @@ class ComicCacher:
         self.db_file = cache_folder / "comic_cache.db"
         self.version_file = cache_folder / "cache_version.txt"
         self.version = version
+        self.local: threading.Thread | None = None
+        self.db: sqlite3.Connection | None = None
 
         # verify that cache is from same version as this one
         data = ""
@@ -65,10 +69,13 @@ class ComicCacher:
         if data != version:
             self.clear_cache()
 
-        if not os.path.exists(self.db_file):
-            self.create_cache_db()
+        self.create_cache_db()
 
     def clear_cache(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
         try:
             os.unlink(self.db_file)
         except Exception:
@@ -78,32 +85,40 @@ class ComicCacher:
         except Exception:
             pass
 
+    def connect(self) -> sqlite3.Connection:
+        if self.local != threading.current_thread():
+            self.db = None
+        if self.db is None:
+            self.local = threading.current_thread()
+            self.db = sqlite3.connect(self.db_file)
+            self.db.row_factory = sqlite3.Row
+            self.db.text_factory = str
+        return self.db
+
+    def close(self) -> None:
+        if self.db is not None:
+            self.db.close()
+            self.db = None
+
     def create_cache_db(self) -> None:
         # create the version file
         with open(self.version_file, "w", encoding="utf-8") as f:
             f.write(self.version)
 
-        # this will wipe out any existing version
-        open(self.db_file, "wb").close()
-
-        con = sqlite3.connect(self.db_file)
-        con.row_factory = sqlite3.Row
-
         # create tables
-        with con:
-            cur = con.cursor()
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
             cur.execute(
-                """CREATE TABLE SeriesSearchCache(
+                """CREATE TABLE IF NOT EXISTS SeriesSearchCache(
                 timestamp DATE DEFAULT (datetime('now','localtime')),
                 id          TEXT NOT NULL,
                 source      TEXT NOT NULL,
                 search_term TEXT,
                 PRIMARY KEY (id, source, search_term))"""
             )
-            cur.execute("CREATE TABLE Source(id TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (id))")
+            cur.execute("CREATE TABLE IF NOT EXISTS Source(id TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (id))")
 
             cur.execute(
-                """CREATE TABLE Series(
+                """CREATE TABLE IF NOT EXISTS Series(
                 timestamp DATE DEFAULT (datetime('now','localtime')),
                 id       TEXT NOT NULL,
                 source   TEXT NOT NULL,
@@ -113,7 +128,7 @@ class ComicCacher:
             )
 
             cur.execute(
-                """CREATE TABLE Issues(
+                """CREATE TABLE IF NOT EXISTS Issues(
                 timestamp DATE DEFAULT (datetime('now','localtime')),
                 id        TEXT NOT NULL,
                 source    TEXT NOT NULL,
@@ -129,10 +144,7 @@ class ComicCacher:
         cur.execute("DELETE FROM Series WHERE timestamp  < ?", [str(a_week_ago)])
 
     def add_search_results(self, source: str, search_term: str, series_list: list[Series], complete: bool) -> None:
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            con.text_factory = str
-            cur = con.cursor()
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             # remove all previous entries with this search term
             cur.execute(
@@ -155,9 +167,7 @@ class ComicCacher:
                 self.upsert(cur, "series", data)
 
     def add_series_info(self, source: str, series: Series, complete: bool) -> None:
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             data = {
                 "id": series.id,
@@ -168,9 +178,7 @@ class ComicCacher:
             self.upsert(cur, "series", data)
 
     def add_issues_info(self, source: str, issues: list[Issue], complete: bool) -> None:
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             for issue in issues:
                 data = {
@@ -184,10 +192,7 @@ class ComicCacher:
 
     def get_search_results(self, source: str, search_term: str, expire_stale: bool = True) -> list[CacheResult[Series]]:
         results = []
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            con.text_factory = str
-            cur = con.cursor()
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
                 self.expire_stale_records(cur, "SeriesSearchCache")
@@ -210,10 +215,7 @@ class ComicCacher:
         return results
 
     def get_series_info(self, series_id: str, source: str, expire_stale: bool = True) -> CacheResult[Series] | None:
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
-            con.text_factory = str
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
                 self.expire_stale_records(cur, "Series")
@@ -233,10 +235,7 @@ class ComicCacher:
     def get_series_issues_info(
         self, series_id: str, source: str, expire_stale: bool = True
     ) -> list[CacheResult[Issue]]:
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
-            con.text_factory = str
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
                 self.expire_stale_records(cur, "Issues")
@@ -256,10 +255,7 @@ class ComicCacher:
         return results
 
     def get_issue_info(self, issue_id: str, source: str, expire_stale: bool = True) -> CacheResult[Issue] | None:
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
-            con.text_factory = str
+        with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
                 self.expire_stale_records(cur, "Issues")
