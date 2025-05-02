@@ -43,7 +43,6 @@ class SettngsNS(settngs.TypedNS):
 
     Quick_Tag__url: urllib3.util.url.Url
     Quick_Tag__max: int
-    Quick_Tag__simple: bool
     Quick_Tag__aggressive_filtering: bool
     Quick_Tag__hash: list[comictaggerlib.quick_tag.HashType]
     Quick_Tag__exact_only: bool
@@ -170,7 +169,6 @@ class Runtime_Options(typing.TypedDict):
 class Quick_Tag(typing.TypedDict):
     url: urllib3.util.url.Url
     max: int
-    simple: bool
     aggressive_filtering: bool
     hash: list[comictaggerlib.quick_tag.HashType]
     exact_only: bool
