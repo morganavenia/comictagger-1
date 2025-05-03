@@ -168,6 +168,13 @@ winget install ComicTagger.ComicTagger
     </td></tr>
 <tr>
     <td align="center">
+        <a href="https://github.com/emmanuel-ferdman">
+            <img src="https://avatars.githubusercontent.com/u/35470921?v=4" width="100;" alt="emmanuel-ferdman"/>
+            <br />
+            <sub><b>emmanuel-ferdman</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/jpcranford">
             <img src="https://avatars.githubusercontent.com/u/21347202?v=4" width="100;" alt="jpcranford"/>
             <br />
@@ -201,7 +208,8 @@ winget install ComicTagger.ComicTagger
             <br />
             <sub><b>thFrgttn</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/tlc">
             <img src="https://avatars.githubusercontent.com/u/19436?v=4" width="100;" alt="tlc"/>
