@@ -198,7 +198,6 @@ class IssueIdentifier:
                     )
                     final_cover_matching.remove(match)
 
-        self.log_msg(f"{final_cover_matching=}")
         best_score = 0
         if final_cover_matching:
             best_score = final_cover_matching[0].distance
