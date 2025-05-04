@@ -82,6 +82,8 @@ class CLI:
         if not args:
             log_args: tuple[Any, ...] = ("",)
         elif isinstance(args[0], str):
+            if args[0] == "":
+                already_logged = True
             log_args = (args[0].strip("\n"), *args[1:])
         else:
             log_args = args
@@ -112,6 +114,7 @@ class CLI:
         for f in self.config.Runtime_Options__files:
             res, match_results = self.process_file_cli(self.config.Commands__command, f, match_results)
             results.append(res)
+            self.output("")
             if results[-1].status != Status.success:
                 return_code = 3
             if self.config.Runtime_Options__json:

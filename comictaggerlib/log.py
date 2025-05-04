@@ -46,7 +46,8 @@ def setup_logging(verbose: int, log_dir: pathlib.Path) -> None:
     logging.basicConfig(
         handlers=[stream_handler, file_handler],
         level=logging.WARNING,
-        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+        style="{",
+        format="{asctime} | {name:<30} | {levelname:<7} | {message}",
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
 
