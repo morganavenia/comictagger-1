@@ -306,10 +306,10 @@ issueidentifier_score = (  # type: ignore[var-annotated]
     ),
     (
         (
-            # Test invalid ImageHash values
+            # Test invalid ImageHash Kind value
             comicapi.genericmetadata.ImageHash(
                 Hash=0,
-                Kind="ahash",
+                Kind="",
                 URL="",
             ),
             [],
