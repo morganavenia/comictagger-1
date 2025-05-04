@@ -33,7 +33,7 @@ from typing_extensions import Required, TypedDict
 from comicapi import utils
 from comicapi.genericmetadata import ComicSeries, GenericMetadata, MetadataOrigin
 from comicapi.issuestring import IssueString
-from comicapi.utils import LocationParseError, parse_url
+from comicapi.utils import LocationParseError, StrEnum, parse_url
 from comictalker import talker_utils
 from comictalker.comiccacher import ComicCacher, Issue, Series
 from comictalker.comictalker import ComicTalker, TalkerDataError, TalkerError, TalkerNetworkError
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 TWITTER_TOO_MANY_REQUESTS = 420
 
 
-class CVTypeID:
+class CVTypeID(StrEnum):
     Volume = "4050"  # CV uses volume to mean series
     Issue = "4000"
 
@@ -620,19 +620,15 @@ class ComicVineTalker(ComicTalker):
         """
         Get the content from the CV server.
         """
-        ratelimit_key = url
-        if self.api_key == self.default_api_key:
-            ratelimit_key = "cv"
-        with self.limiter.ratelimit(ratelimit_key, delay=True):
 
-            cv_response: CVResult[T] = self._get_url_content(url, params)
-            if cv_response["status_code"] != 1:
-                logger.debug(
-                    f"{self.name} query failed with error #{cv_response['status_code']}:  [{cv_response['error']}]."
-                )
-                raise TalkerNetworkError(self.name, 0, f"{cv_response['status_code']}: {cv_response['error']}")
+        cv_response: CVResult[T] = self._get_url_content(url, params)
+        if cv_response["status_code"] != 1:
+            logger.debug(
+                f"{self.name} query failed with error #{cv_response['status_code']}:  [{cv_response['error']}]."
+            )
+            raise TalkerNetworkError(self.name, 0, f"{cv_response['status_code']}: {cv_response['error']}")
 
-            return cv_response
+        return cv_response
 
     def _get_url_content(self, url: str, params: dict[str, Any]) -> Any:
         # if there is a 500 error, try a few more times before giving up
@@ -642,11 +638,13 @@ class ComicVineTalker(ComicTalker):
 
         for tries in range(1, 5):
             try:
-                self.total_requests_made[url.removeprefix(self.api_url)] += 1
-                logger.debug("Requesting: %s?%s", url, urlencode(final_params))
-                resp = requests.get(
-                    url, params=final_params, headers={"user-agent": "comictagger/" + self.version}, timeout=60
-                )
+                ratelimit_key = self._get_ratelimit_key(url)
+                with self.limiter.ratelimit(ratelimit_key, delay=True):
+                    logger.debug("Requesting: %s?%s", url, urlencode(final_params))
+                    self.total_requests_made[ratelimit_key] += 1
+                    resp = requests.get(
+                        url, params=final_params, headers={"user-agent": "comictagger/" + self.version}, timeout=60
+                    )
                 if resp.status_code == 200:
                     return resp.json()
                 elif resp.status_code in (
@@ -689,6 +687,15 @@ class ComicVineTalker(ComicTalker):
                 raise TalkerNetworkError(self.name, 5, str(e))
 
         raise TalkerNetworkError(self.name, 5, "Unknown error occurred")
+
+    def _get_ratelimit_key(self, url: str) -> str:
+        if self.api_key == self.default_api_key:
+            return "cv"
+
+        ratelimit_key = url.removeprefix(self.api_url)
+        for x in CVTypeID:
+            ratelimit_key = ratelimit_key.partition(f"/{x}-")[0]
+        return ratelimit_key
 
     def _format_search_results(self, search_results: list[CVSeries]) -> list[ComicSeries]:
         formatted_results = []
