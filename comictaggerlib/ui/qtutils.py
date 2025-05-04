@@ -9,6 +9,7 @@ import webbrowser
 from collections.abc import Collection, Sequence
 
 from PyQt5.QtCore import QUrl
+from PyQt5.QtGui import QPalette
 from PyQt5.QtWidgets import QWidget
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ if qt_available:
         pil_available = True
     except ImportError:
         pil_available = False
-
+    active_palette: QPalette | None = None
     try:
         from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineView
 
@@ -151,8 +152,6 @@ if qt_available:
             trace = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
 
         QtWidgets.QMessageBox.critical(QtWidgets.QMainWindow(), "Error", msg + trace)
-
-    active_palette = None
 
     def enable_widget(widget: QtWidgets.QWidget | Collection[QtWidgets.QWidget], enable: bool) -> None:
         if isinstance(widget, Sequence):

@@ -38,9 +38,9 @@ class RarArchiver(Archiver):
     exe = "rar"
     supported_extensions = frozenset({".cbr", ".rar"})
 
-    _rar = None
-    _rar_setup = None
-    _writeable = None
+    _rar: rarfile.RarFile | None = None
+    _rar_setup: rarfile.ToolSetup | None = None
+    _writeable: bool | None = None
 
     def __init__(self) -> None:
         super().__init__()

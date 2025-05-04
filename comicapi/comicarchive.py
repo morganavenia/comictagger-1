@@ -123,7 +123,7 @@ def load_tag_plugins(version: str = f"ComicAPI/{version}", local_plugins: Iterab
 
 class ComicArchive:
     logo_data = b""
-    pil_available = None
+    pil_available: bool | None = None
 
     def __init__(
         self,
