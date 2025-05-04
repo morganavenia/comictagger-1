@@ -305,3 +305,17 @@ class ComicCacher:
             vals.append(True)  # If the cache is complete and this isn't complete we don't update it
 
         cur.execute(sql_ins, vals)
+
+
+def adapt_datetime_iso(val: datetime.datetime) -> str:
+    """Adapt datetime.datetime to timezone-naive ISO 8601 date."""
+    return val.isoformat()
+
+
+def convert_datetime(val: bytes) -> datetime.datetime:
+    """Convert ISO 8601 datetime to datetime.datetime object."""
+    return datetime.datetime.fromisoformat(val.decode())
+
+
+sqlite3.register_adapter(datetime.datetime, adapt_datetime_iso)
+sqlite3.register_converter("datetime", convert_datetime)
