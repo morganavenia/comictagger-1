@@ -141,18 +141,12 @@ class ImageHasher:
 
             return dct_block
 
-        def convert_image_to_ndarray(image: Image.Image) -> Sequence[Sequence[float | int]]:
-            width, height = image.size
+        def convert_to_array(data: list[float | int]) -> list[list[float | int]]:
 
             pixels2 = []
-            for y in range(height):
-                row: list[float | int] = []
-                for x in range(width):
-                    pixel = image.getpixel((x, y))
-                    assert isinstance(pixel, (float, int))
-                    row.append(pixel)
-                pixels2.append(row)
-
+            for row in range(32):
+                x = row * 32
+                pixels2.append(data[x : x + 32])
             return pixels2
 
         highfreq_factor = 4
@@ -164,7 +158,8 @@ class ImageHasher:
             logger.exception("p_hash error converting to greyscale and resizing")
             return 0
 
-        pixels = convert_image_to_ndarray(image)
+        pixels = convert_to_array(list(image.getdata()))
+
         dct = generate_dct2(generate_dct2(pixels, axis=0), axis=1)
         dctlowfreq = list(itertools.chain.from_iterable(row[:8] for row in dct[:8]))
         med = median(dctlowfreq)

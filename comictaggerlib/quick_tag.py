@@ -328,6 +328,7 @@ class QuickTag:
 
         cover_index = tags.get_cover_page_index_list()[0]
         cover_image = Image.open(BytesIO(ca.get_page(cover_index)))
+        cover_image.load()
         self.limit = 30
         if aggressive_filtering:
             self.limit = 15
