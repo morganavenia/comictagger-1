@@ -307,35 +307,42 @@ class IssueIdentifier:
 
     def _get_issue_cover_match_score(
         self,
-        primary_img_url: str | ImageHash,
-        alt_urls: list[str | ImageHash],
+        primary_img_url: ImageHash | None,
+        alt_urls: list[ImageHash],
         local_hashes: list[tuple[str, int]],
         use_alt_urls: bool = False,
     ) -> Score:
         # local_hashes is a list of pre-calculated hashes.
-        # use_alt_urls - indicates to use alternate covers from CV
+        # use_alt_urls - indicates to use alternate covers
 
-        # If there is no URL return 100
-        if not primary_img_url:
+        # If there is no ImageHash or no URL and Kind, return 100 for a bad match
+        if primary_img_url is None or (not primary_img_url.Kind and not primary_img_url.URL and not use_alt_urls):
             return Score(score=100, url="", remote_hash=0, local_hash=0, local_hash_name="0")
 
         self._user_canceled()
 
         remote_hashes = []
-        # If the cover is ImageHash and the alternate covers are URLs, the alts will not be hashed/checked currently
-        if isinstance(primary_img_url, ImageHash):
-            # ImageHash doesn't have a url so we just give it an empty string
-            remote_hashes.append(("", primary_img_url.Hash))
-            if use_alt_urls and alt_urls:
-                remote_hashes.extend(("", alt_hash.Hash) for alt_hash in alt_urls if isinstance(alt_hash, ImageHash))
-        else:
-            urls = [primary_img_url]
-            if use_alt_urls:
-                only_urls = [url for url in alt_urls if isinstance(url, str)]
-                urls.extend(only_urls)
-                self.log_msg(f"[{len(only_urls)} alt. covers]")
 
-            remote_hashes = self._get_remote_hashes(urls)
+        if primary_img_url.Kind:
+            remote_hashes.append((primary_img_url.URL, primary_img_url.Hash))
+            self.log_msg(
+                f"Using provided hash for cover matching. Hash: {primary_img_url.Hash}, Kind: {primary_img_url.Kind}"
+            )
+        elif primary_img_url.URL:
+            remote_hashes = self._get_remote_hashes([primary_img_url.URL])
+            self.log_msg(f"Downloading image for cover matching: {primary_img_url.URL}")
+
+        if use_alt_urls and alt_urls:
+            only_urls = []
+            for alt_url in alt_urls:
+                if alt_url.Kind:
+                    remote_hashes.append((alt_url.URL, alt_url.Hash))
+                elif alt_url.URL:
+                    only_urls.append(alt_url.URL)
+            if only_urls:
+                remote_hashes.extend(self._get_remote_hashes(only_urls))
+
+            self.log_msg(f"[{len(remote_hashes) - 1} alt. covers]")
 
         score_list = []
         done = False
@@ -526,13 +533,12 @@ class IssueIdentifier:
             )
 
             try:
-                image_url = issue._cover_image if isinstance(issue._cover_image, str) else ""
                 # We only include urls in the IssueResult so we don't have to deal with it down the line
                 # TODO: display the hash to the user so they know a direct hash was used instead of downloading an image
-                alt_urls: list[str] = [url for url in issue._alternate_images if isinstance(url, str)]
+                alt_urls: list[str] = [img.URL for img in issue._alternate_images]
 
                 score_item = self._get_issue_cover_match_score(
-                    image_url, issue._alternate_images, hashes, use_alt_urls=use_alternates
+                    issue._cover_image, issue._alternate_images, hashes, use_alt_urls=use_alternates
                 )
             except Exception:
                 logger.exception(f"Scoring series{alternate} covers failed")
@@ -550,7 +556,7 @@ class IssueIdentifier:
                 month=issue.month,
                 year=issue.year,
                 publisher=None,
-                image_url=image_url,
+                image_url=issue._cover_image.URL if issue._cover_image else "",
                 alt_image_urls=alt_urls,
                 description=issue.description or "",
             )

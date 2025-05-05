@@ -31,7 +31,7 @@ from pyrate_limiter import Limiter, RequestRate
 from typing_extensions import Required, TypedDict
 
 from comicapi import utils
-from comicapi.genericmetadata import ComicSeries, GenericMetadata, MetadataOrigin
+from comicapi.genericmetadata import ComicSeries, GenericMetadata, ImageHash, MetadataOrigin
 from comicapi.issuestring import IssueString
 from comicapi.utils import LocationParseError, StrEnum, parse_url
 from comictalker import talker_utils
@@ -895,13 +895,11 @@ class ComicVineTalker(ComicTalker):
                 md.web_links = [parse_url(url)]
             except LocationParseError:
                 ...
-        if issue.get("image") is None:
-            md._cover_image = ""
-        else:
-            md._cover_image = issue.get("image", {}).get("super_url", "")
+        if issue.get("image") is not None:
+            md._cover_image = ImageHash(URL=issue.get("image", {}).get("super_url", ""), Hash=0, Kind="")
 
         for alt in issue.get("associated_images", []):
-            md._alternate_images.append(alt["original_url"])
+            md._alternate_images.append(ImageHash(URL=alt["original_url"], Hash=0, Kind=""))
 
         for character in issue.get("character_credits", set()):
             md.characters.add(character["name"])
