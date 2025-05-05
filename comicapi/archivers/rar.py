@@ -8,7 +8,6 @@ import platform
 import shutil
 import subprocess
 import tempfile
-import time
 
 from comicapi.archivers import Archiver
 
@@ -86,16 +85,11 @@ class RarArchiver(Archiver):
                         result.stderr,
                     )
                     return False
-
-                if platform.system() == "Darwin":
-                    time.sleep(1)
             except OSError as e:
                 logger.exception("Error writing comment to rar archive [%s]: %s", e, self.path)
                 return False
-            else:
-                return True
-        else:
-            return False
+            return True
+        return False
 
     def supports_comment(self) -> bool:
         return True
@@ -125,7 +119,6 @@ class RarArchiver(Archiver):
 
             except OSError as e:
                 logger.error("Error reading rar archive [%s]: %s :: %s :: tries #%d", e, self.path, archive_file, tries)
-                time.sleep(1)
             except Exception as e:
                 logger.error(
                     "Unexpected exception reading rar archive [%s]: %s :: %s :: tries #%d",
@@ -168,8 +161,7 @@ class RarArchiver(Archiver):
                 )
                 return False
             return True
-        else:
-            return False
+        return False
 
     def write_file(self, archive_file: str, data: bytes) -> bool:
         self._reset()
@@ -197,8 +189,6 @@ class RarArchiver(Archiver):
                 cwd=self.path.absolute().parent,
             )
 
-            if platform.system() == "Darwin":
-                time.sleep(1)
             if result.returncode != 0:
                 logger.error(
                     "Error writing rar archive [exitcode: %d]: %s :: %s :: %s",
@@ -208,10 +198,8 @@ class RarArchiver(Archiver):
                     result.stderr,
                 )
                 return False
-            else:
-                return True
-        else:
-            return False
+            return True
+        return False
 
     def get_filename_list(self) -> list[str]:
         if self._filename_list:
@@ -229,7 +217,6 @@ class RarArchiver(Archiver):
 
                 except OSError as e:
                     logger.error("Error listing files in rar archive [%s]: %s :: attempt #%d", e, self.path, tries)
-                    time.sleep(1)
 
                 else:
                     self._filename_list = namelist
