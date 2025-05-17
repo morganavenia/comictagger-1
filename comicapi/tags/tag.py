@@ -29,6 +29,7 @@ class Tag:
             "alternate_series",
             "alternate_number",
             "alternate_count",
+            "gtin",
             "story_arcs",
             "series_groups",
             "publisher",

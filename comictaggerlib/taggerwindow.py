@@ -113,6 +113,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             "alternate_series": self.leAltSeries,
             "alternate_number": self.leAltIssueNum,
             "alternate_count": self.leAltIssueCount,
+            "gtin": self.leGtin,
             "imprint": self.leImprint,
             "notes": self.teNotes,
             "web_links": (self.leWebLink, self.btnOpenWebLink, self.btnAddWebLink, self.btnRemoveWebLink),
@@ -843,6 +844,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         assign_text(self.leAltSeries, md.alternate_series)
         assign_text(self.leAltIssueNum, md.alternate_number)
         assign_text(self.leAltIssueCount, md.alternate_count)
+        assign_text(self.leGtin, md.gtin)
         self.leWebLink.clear()
         for u in md.web_links:
             self.add_weblink_item(u.url)
@@ -985,6 +987,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         md.scan_info = utils.xlate(self.leScanInfo.text())
         md.series_groups = utils.split(self.leSeriesGroup.text(), ",")
         md.alternate_series = self.leAltSeries.text()
+        md.gtin = utils.xlate(self.leGtin.text())
         md.web_links = [utils.parse_url(self.leWebLink.item(i).text()) for i in range(self.leWebLink.count())]
         md.characters = set(utils.split(self.teCharacters.toPlainText(), "\n"))
         md.teams = set(utils.split(self.teTeams.toPlainText(), "\n"))

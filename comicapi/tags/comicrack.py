@@ -49,6 +49,7 @@ class ComicRack(Tag):
             "alternate_series",
             "alternate_number",
             "alternate_count",
+            "gtin",
             "story_arcs",
             "series_groups",
             "publisher",
@@ -232,6 +233,7 @@ class ComicRack(Tag):
         assign("AlternateCount", md.alternate_count)
         assign("StoryArc", md.story_arcs)
         assign("SeriesGroup", md.series_groups)
+        assign("GTIN", md.gtin)
 
         assign("Publisher", md.publisher)
         assign("Imprint", md.imprint)
@@ -319,6 +321,7 @@ class ComicRack(Tag):
         md.alternate_count = utils.xlate_int(get("AlternateCount"))
         md.story_arcs = utils.split(get("StoryArc"), ",")
         md.series_groups = utils.split(get("SeriesGroup"), ",")
+        md.gtin = utils.xlate(get("GTIN"))
 
         md.publisher = utils.xlate(get("Publisher"))
         md.imprint = utils.xlate(get("Imprint"))

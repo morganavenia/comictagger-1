@@ -83,6 +83,7 @@ tr:nth-child(even) {
      &lt;tr&gt;&lt;td&gt;{alternate_series}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{alternate_number}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{alternate_count}&lt;/td&gt;&lt;td&gt;integer&lt;/td&gt;&lt;/tr&gt;
+     &lt;tr&gt;&lt;td&gt;{gtin}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{imprint}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{notes}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
      &lt;tr&gt;&lt;td&gt;{web_link}&lt;/td&gt;&lt;td&gt;string&lt;/td&gt;&lt;/tr&gt;
