@@ -590,9 +590,6 @@ class CLI:
             self.output(f"Processing {utils.path_to_short_str(ca.path)}...")
 
         md, tags_read = self.create_local_metadata(ca, self.config.Runtime_Options__tags_read)
-        if md.issue is None or md.issue == "":
-            if self.config.Auto_Tag__assume_issue_one:
-                md.issue = "1"
 
         matches: list[IssueResult] = []
         # now, search online
@@ -629,11 +626,15 @@ class CLI:
                     return res, match_results
 
             else:
-                qt_md = self.try_quick_tag(ca, md)
+                query_md = md.copy()
+                qt_md = self.try_quick_tag(ca, query_md)
+                if query_md.issue is None or query_md.issue == "":
+                    if self.config.Auto_Tag__assume_issue_one:
+                        query_md.issue = "1"
                 if qt_md is None or qt_md.is_empty:
                     if qt_md is not None:
                         self.output("Failed to find match via quick tag")
-                    ct_md, matches, res, match_results = self.normal_tag(ca, tags_read, md, match_results)  # type: ignore[assignment]
+                    ct_md, matches, res, match_results = self.normal_tag(ca, tags_read, query_md, match_results)  # type: ignore[assignment]
                     if res is not None:
                         return res, match_results
                 else:
