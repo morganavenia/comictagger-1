@@ -194,7 +194,7 @@ def parse_metadata_from_string(mdstr: str) -> GenericMetadata:
                 else:
                     value = t(value)
         except (ValueError, TypeError):
-            raise argparse.ArgumentTypeError(f"Invalid syntax for tag '{key}': {value}")
+            raise argparse.ArgumentTypeError(f"Invalid syntax for tag {key!r}: {value!r}")
         return value
 
     md = GenericMetadata()
@@ -240,6 +240,8 @@ def parse_metadata_from_string(mdstr: str) -> GenericMetadata:
             else:
                 raise argparse.ArgumentTypeError(f"'{key}' is not a valid tag name")
         md.is_empty = empty
+    except argparse.ArgumentTypeError as e:
+        raise e
     except Exception as e:
         logger.exception("Unable to read metadata from the commandline '%s'", mdstr)
         raise Exception("Unable to read metadata from the commandline") from e
