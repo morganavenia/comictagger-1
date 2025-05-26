@@ -53,6 +53,7 @@ from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.exportwindow import ExportConflictOpts, ExportWindow
 from comictaggerlib.fileselectionlist import FileSelectionList
 from comictaggerlib.graphics import graphics_path
+from comictaggerlib.gtinvalidator import is_valid_gtin
 from comictaggerlib.issueidentifier import IssueIdentifier
 from comictaggerlib.logwindow import LogWindow
 from comictaggerlib.md import prepare_metadata
@@ -290,6 +291,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.page_list_editor.firstFrontCoverChanged.connect(self.front_cover_changed)
         self.page_list_editor.listOrderChanged.connect(self.page_list_order_changed)
         self.tabWidget.currentChanged.connect(self.tab_changed)
+        self.leGtin.textChanged.connect(self.gtin_changed)
 
         self.page_list_editor.set_blur(self.config[0].General__blur)
 
@@ -844,13 +846,14 @@ class TaggerWindow(QtWidgets.QMainWindow):
         assign_text(self.leAltSeries, md.alternate_series)
         assign_text(self.leAltIssueNum, md.alternate_number)
         assign_text(self.leAltIssueCount, md.alternate_count)
-        assign_text(self.leGtin, md.gtin)
         self.leWebLink.clear()
         for u in md.web_links:
             self.add_weblink_item(u.url)
         assign_text(self.teCharacters, "\n".join(md.characters))
         assign_text(self.teTeams, "\n".join(md.teams))
         assign_text(self.teLocations, "\n".join(md.locations))
+
+        assign_text(self.leGtin, md.gtin)
 
         self.dsbCriticalRating.setValue(md.critical_rating or 0.0)
 
@@ -2242,6 +2245,15 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def tab_changed(self, idx: int) -> None:
         if idx == 0:
             self.splitter_moved_event(0, 0)
+
+    def gtin_changed(self) -> None:
+        # GTIN changed, so we check if it's valid
+        gtin = self.leGtin.text().strip()
+        is_valid = is_valid_gtin(gtin) if gtin else True
+        if is_valid:
+            self.leGtin.setStyleSheet("")
+        else:
+            self.leGtin.setStyleSheet("background-color: salmon;")
 
     def check_latest_version_online(self) -> None:
         version_checker = VersionChecker()
