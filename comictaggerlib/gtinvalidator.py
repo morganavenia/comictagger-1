@@ -1,4 +1,4 @@
-"""Functions for validation the GTIN field"""
+"""Functions for validating the GTIN field"""
 
 #
 # Copyright 2012-2014 ComicTagger Authors
