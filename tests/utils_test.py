@@ -194,8 +194,8 @@ titles_2 = [
     ("Conan el Bárbaro", "Conan el Barbaro"),
     ("The Batman's Grave", "batmans grave"),
     ("A+X", "ax"),
-    ("ms. marvel", "ms marvel"),
-    ("spider-man/deadpool", "spider man deadpool"),
+    ("ms. marvel", "ms- marvel"),
+    ("spider-man/deadpool", "spider-man-deadpool"),
 ]
 
 

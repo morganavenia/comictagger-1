@@ -505,11 +505,12 @@ def sanitize_title(text: str, basic: bool = False) -> str:
     text = text.replace('"', "")
     if not basic:
         # comicvine ignores punctuation and accents
-        # remove all characters that are not a letter, separator (space) or number
-        # replace any "dash punctuation" with a space
+        # remove all characters that are not a letter(L), separator (Z) or number (N)
+        # replace any punctuation (P) with a '-'. ComicVine search treats spaces something like an 'or' however using a dash '-' acts more like an 'and'
+        # specifically this helps with titles like 'X-Men: FF'
         # makes sure that batman-superman and self-proclaimed stay separate words
         text = "".join(
-            c if unicodedata.category(c)[0] not in "P" else " " for c in text if unicodedata.category(c)[0] in "LZNP"
+            c if unicodedata.category(c)[0] not in "P" else "-" for c in text if unicodedata.category(c)[0] in "LZNP"
         )
         # remove extra space and articles and all lower case
         text = remove_articles(text).strip()
