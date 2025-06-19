@@ -96,5 +96,5 @@ jobs:
       - name: PyTest
         run: |
           export TOX_OVERRIDE='testenv.install_command=python -I -m pip install --only-binary PyQt6 --only-binary PyQt6-WebEngine {opts} {packages}'
-          python -m tox r
+          python -m tox p
         shell: bash
