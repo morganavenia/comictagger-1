@@ -139,6 +139,13 @@ winget install ComicTagger.ComicTagger
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/Kijaru">
+            <img src="https://avatars.githubusercontent.com/u/9641432?v=4" width="100;" alt="Kijaru"/>
+            <br />
+            <sub><b>Kijaru</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/kcgthb">
             <img src="https://avatars.githubusercontent.com/u/186807?v=4" width="100;" alt="kcgthb"/>
             <br />
@@ -158,15 +165,15 @@ winget install ComicTagger.ComicTagger
             <br />
             <sub><b>AlbanSeurat</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/Sn1cket">
             <img src="https://avatars.githubusercontent.com/u/32904645?v=4" width="100;" alt="Sn1cket"/>
             <br />
             <sub><b>Sn1cket</b></sub>
         </a>
-    </td></tr>
-<tr>
+    </td>
     <td align="center">
         <a href="https://github.com/emmanuel-ferdman">
             <img src="https://avatars.githubusercontent.com/u/35470921?v=4" width="100;" alt="emmanuel-ferdman"/>
@@ -201,15 +208,15 @@ winget install ComicTagger.ComicTagger
             <br />
             <sub><b>Xav83</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/thFrgttn">
             <img src="https://avatars.githubusercontent.com/u/39759781?v=4" width="100;" alt="thFrgttn"/>
             <br />
             <sub><b>thFrgttn</b></sub>
         </a>
-    </td></tr>
-<tr>
+    </td>
     <td align="center">
         <a href="https://github.com/tlc">
             <img src="https://avatars.githubusercontent.com/u/19436?v=4" width="100;" alt="tlc"/>
