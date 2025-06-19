@@ -203,6 +203,8 @@ class GenericMetadata:
     story_arcs: list[str] = dataclasses.field(default_factory=list)
     series_groups: list[str] = dataclasses.field(default_factory=list)
 
+    gtin: str | None = None  # ISBN/EAN identifier
+
     publisher: str | None = None
     imprint: str | None = None
     day: int | None = None
@@ -339,6 +341,8 @@ class GenericMetadata:
         self.alternate_count = assign(self.alternate_count, new_md.alternate_count)
         self.story_arcs = assign_list(self.story_arcs, new_md.story_arcs)
         self.series_groups = assign_list(self.series_groups, new_md.series_groups)
+
+        self.gtin = assign(self.gtin, new_md.gtin)
 
         self.publisher = assign(self.publisher, new_md.publisher)
         self.imprint = assign(self.imprint, new_md.imprint)
@@ -509,6 +513,7 @@ class GenericMetadata:
         add_string("web_links", [str(x) for x in self.web_links])
         add_string("format", self.format)
         add_string("manga", self.manga)
+        add_string("gtin", self.gtin)
 
         add_string("price", self.price)
         add_string("is_version_of", self.is_version_of)
@@ -596,6 +601,7 @@ md_test: GenericMetadata = GenericMetadata(
     alternate_series="Tales",
     alternate_number="2",
     alternate_count=7,
+    gtin=None,
     imprint="craphound.com",
     notes="Tagged with ComicTagger 1.3.2a5 using info from Comic Vine on 2022-04-16 15:52:26. [Issue ID 140529]",
     web_links=[

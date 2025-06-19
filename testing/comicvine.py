@@ -213,6 +213,7 @@ cv_md = comicapi.genericmetadata.GenericMetadata(
     alternate_series=None,
     alternate_number=None,
     alternate_count=None,
+    gtin=None,
     imprint=None,
     notes=None,
     web_links=[comicapi.genericmetadata.parse_url(cv_issue_result["results"]["site_detail_url"])],

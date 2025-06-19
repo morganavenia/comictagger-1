@@ -91,6 +91,7 @@ Accepts the following variables:
 {alternate_series} (string)
 {alternate_number} (string)
 {alternate_count}  (integer)
+{gtin}             (string)
 {imprint}          (string)
 {notes}            (string)
 {web_link}         (string)

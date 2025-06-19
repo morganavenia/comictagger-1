@@ -53,6 +53,7 @@ from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.exportwindow import ExportConflictOpts, ExportWindow
 from comictaggerlib.fileselectionlist import FileSelectionList
 from comictaggerlib.graphics import graphics_path
+from comictaggerlib.gtinvalidator import is_valid_gtin
 from comictaggerlib.issueidentifier import IssueIdentifier
 from comictaggerlib.logwindow import LogWindow
 from comictaggerlib.md import prepare_metadata
@@ -113,6 +114,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             "alternate_series": self.leAltSeries,
             "alternate_number": self.leAltIssueNum,
             "alternate_count": self.leAltIssueCount,
+            "gtin": self.leGtin,
             "imprint": self.leImprint,
             "notes": self.teNotes,
             "web_links": (self.leWebLink, self.btnOpenWebLink, self.btnAddWebLink, self.btnRemoveWebLink),
@@ -289,6 +291,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.page_list_editor.firstFrontCoverChanged.connect(self.front_cover_changed)
         self.page_list_editor.listOrderChanged.connect(self.page_list_order_changed)
         self.tabWidget.currentChanged.connect(self.tab_changed)
+        self.leGtin.textChanged.connect(self.gtin_changed)
 
         self.page_list_editor.set_blur(self.config[0].General__blur)
 
@@ -858,6 +861,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         assign_text(self.teTeams, "\n".join(md.teams))
         assign_text(self.teLocations, "\n".join(md.locations))
 
+        assign_text(self.leGtin, md.gtin)
+
         self.dsbCriticalRating.setValue(md.critical_rating or 0.0)
 
         if md.format is not None and md.format != "":
@@ -993,6 +998,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         md.scan_info = utils.xlate(self.leScanInfo.text())
         md.series_groups = utils.split(self.leSeriesGroup.text(), ",")
         md.alternate_series = self.leAltSeries.text()
+        md.gtin = utils.xlate(self.leGtin.text())
         md.web_links = [utils.parse_url(self.leWebLink.item(i).text()) for i in range(self.leWebLink.count())]
         md.characters = set(utils.split(self.teCharacters.toPlainText(), "\n"))
         md.teams = set(utils.split(self.teTeams.toPlainText(), "\n"))
@@ -2247,6 +2253,15 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def tab_changed(self, idx: int) -> None:
         if idx == 0:
             self.splitter_moved_event(0, 0)
+
+    def gtin_changed(self) -> None:
+        # GTIN changed, so we check if it's valid
+        gtin = self.leGtin.text().strip()
+        is_valid = is_valid_gtin(gtin) if gtin else True
+        if is_valid:
+            self.leGtin.setStyleSheet("")
+        else:
+            self.leGtin.setStyleSheet("background-color: salmon;")
 
     def check_latest_version_online(self) -> None:
         version_checker = VersionChecker()
