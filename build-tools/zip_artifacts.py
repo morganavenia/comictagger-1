@@ -55,20 +55,15 @@ def Tar(tar_file: pathlib.Path, path: pathlib.Path) -> None:
 if __name__ == "__main__":
     app = "ComicTagger"
     exe = app.casefold()
+    final_name = f"{app}-{__version__}-{platform.system()}-{platform.machine()}"
     if platform.system() == "Windows":
-        os_version = f"win-{platform.machine()}"
-        app_name = f"{exe}.exe"
-        final_name = f"{app}-{__version__}-{os_version}.exe"
+        exe = f"{exe}.exe"
     elif platform.system() == "Darwin":
+        exe = f"{app}.app"
         ver = platform.mac_ver()
-        os_version = f"osx-{ver[0]}-{ver[2]}"
-        app_name = f"{app}.app"
-        final_name = f"{app}-{__version__}-{os_version}"
-    else:
-        app_name = exe
-        final_name = f"ComicTagger-{__version__}-{platform.system()}"
+        final_name = f"{app}-{__version__}-macOS-{ver[0]}-{ver[2]}"
 
-    path = pathlib.Path(f"dist/{app_name}")
+    path = pathlib.Path(f"dist/{exe}")
     binary_path = pathlib.Path("dist/binary")
     binary_path.mkdir(parents=True, exist_ok=True)
     archive_destination = binary_path / final_name

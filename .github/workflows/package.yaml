@@ -15,8 +15,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.9]
-        os: [ubuntu-22.04, macos-13, macos-14, windows-latest]
+        python-version: [3.13]
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-13, macos-14, windows-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
 
       - name: Install linux dependencies
         run: |
-          sudo apt-get update && sudo apt-get upgrade && sudo apt-get install pkg-config libicu-dev libqt5gui5 libfuse2 desktop-file-utils
+          sudo apt-get update && sudo apt-get upgrade && sudo apt-get install pkg-config libicu-dev libqt6gui6 libfuse2 desktop-file-utils
         if: runner.os == 'Linux'
 
       - name: Build, Install and Test PyPi packages
@@ -47,11 +47,14 @@ jobs:
           export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/icu4c/lib/pkgconfig${PKG_CONFIG_PATH+:$PKG_CONFIG_PATH}";
           export PATH="/usr/local/opt/icu4c/bin:/usr/local/opt/icu4c/sbin${PATH+:$PATH}"
           python -m tox r
-          python -m tox r -m release
+
+      - name: Release PyPi package
+        run: |
+          python -m tox r -e pypi-upload
         shell: bash
+        if: matrix.os == 'ubuntu-22.04'
 
       - name: Get release name
-        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           git fetch --depth=1 origin +refs/tags/*:refs/tags/* # github is dumb
@@ -70,4 +73,4 @@ jobs:
             dist/binary/*.tar.gz
             dist/binary/*.dmg
             dist/binary/*.AppImage
-            dist/*${{ fromJSON('["never", ""]')[runner.os == 'Linux'] }}.whl
+            dist/*${{ fromJSON('["never", ""]')[matrix.os == 'ubuntu-22.04'] }}.whl
