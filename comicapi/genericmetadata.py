@@ -425,7 +425,7 @@ class GenericMetadata:
             if p.type == PageType.FrontCover:
                 coverlist.append(p.archive_index)
 
-        if len(coverlist) == 0:
+        if not coverlist:
             coverlist.append(self.get_archive_page_index(0))
 
         return coverlist

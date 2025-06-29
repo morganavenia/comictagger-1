@@ -128,7 +128,7 @@ if qt_available:
     def get_qimage_from_data(image_data: bytes) -> QtGui.QImage:
         img = QtGui.QImage()
 
-        if len(image_data) == 0:
+        if not image_data:
             logger.warning("Empty image data.")
             img.load(":/graphics/nocover.png")
             return img

@@ -220,7 +220,7 @@ class IssueIdentifier:
                 self.log_msg("--------------------------------------------------------------------------")
                 search_result = self.result_one_good_match
 
-            elif len(final_cover_matching) == 0:
+            elif not final_cover_matching:
                 self.log_msg("--------------------------------------------------------------------------")
                 self.log_msg("No matches found :(")
                 self.log_msg("--------------------------------------------------------------------------")
@@ -652,7 +652,7 @@ class IssueIdentifier:
 
         cover_matching_1 = self._match_covers(terms, images, issues, use_alternates=False)
 
-        if len(cover_matching_1) == 0:
+        if not cover_matching_1:
             self.log_msg(":-( no matches!")
             return cover_matching_1, cover_matching_1
 
@@ -677,7 +677,7 @@ class IssueIdentifier:
                 if score.distance < self.min_alternate_score_thresh:
                     cover_matching_2.append(score)
 
-            if len(cover_matching_2) > 0:
+            if cover_matching_2:
                 # We did good, found something!
                 self.log_msg("Success in secondary/alternate cover matching!")
 

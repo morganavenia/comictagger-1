@@ -94,7 +94,7 @@ def cleanup_html(string: str | None, remove_html_tables: bool = False) -> str:
                         if len(item) > col_widths[i]:
                             col_widths[i] = len(item)
 
-                    if len(cols) != 0:
+                    if cols:
                         rows.append(cols)
                 # now we have the data, make it into text
                 fmtstr = "|"

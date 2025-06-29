@@ -521,7 +521,7 @@ class QuickTag:
         interactive: bool,
         aggressive_filtering: bool,
     ) -> ID | None:
-        if len(results) < 1:
+        if not results:
             return None
         # we only return early if we don't have a series name or issue as get_mds will pull the full info if there is only one result
         if (

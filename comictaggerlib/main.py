@@ -251,7 +251,7 @@ class App:
         # config already loaded
         error = None
 
-        if len(self.talkers) < 1:
+        if not self.talkers:
             error = (
                 "Failed to load any talkers, please re-install and check the log located in '"
                 + str(self.config[0].Runtime_Options__config.user_log_dir)

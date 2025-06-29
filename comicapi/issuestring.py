@@ -40,7 +40,7 @@ class IssueString:
 
         text = str(text)
 
-        if len(text) == 0:
+        if not text:
             return
 
         for idx, r in enumerate(text):

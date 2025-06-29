@@ -87,7 +87,7 @@ class Result:
     tags_written: list[str] = dataclasses.field(default_factory=list)
 
     def __str__(self) -> str:
-        if len(self.online_results) == 0:
+        if not self.online_results:
             matches = None
         elif len(self.online_results) == 1:
             matches = str(self.online_results[0])

@@ -188,8 +188,8 @@ class PageListEditor(QtWidgets.QWidget):
         for x in selection:
             current = x.row()
             old_indexes.append(current)
-            if 0 <= current + movement <= self.listWidget.count() - 1:
-                if len(new_indexes) < 1 or current + movement != new_indexes[-1]:
+            if 0 <= (current + movement) <= self.listWidget.count() - 1:
+                if (not new_indexes) or (current + movement) != new_indexes[-1]:
                     current += movement
 
             new_indexes.append(current)

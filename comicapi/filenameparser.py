@@ -485,7 +485,7 @@ def parse(p: Parser) -> ParserFunc:
                     if p.issue_number_at is None:
                         # Series has already been started/parsed,
                         # filters out leading alternate numbers leading alternate number
-                        if len(p.series) > 0:
+                        if p.series:
                             return parse_issue_number
             else:
                 p.operator_rejected.append(item)
@@ -906,7 +906,7 @@ def parse_series(p: Parser, i: filenamelexer.Item | None) -> ParserFunc:
 
 
 def resolve_year(p: Parser) -> None:
-    if len(p.year_candidates) > 0:
+    if p.year_candidates:
         # Sort by likely_year boolean
         p.year_candidates.sort(key=itemgetter(0))
 

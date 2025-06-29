@@ -201,7 +201,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
             QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), self.toolTip(), self, QRect(), 3000)
             return
 
-        if len(current) > 0:
+        if current:
             item.setCheckState(qt_state)
             self.itemChecked.emit(self.itemData(index), state)
             self._updateText()
@@ -532,7 +532,7 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
             QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), self.toolTip(), self, QRect(), 3000)
             return
 
-        if len(current) > 0:
+        if current:
             item.setCheckState(qt_state)
             self._updateText()
 

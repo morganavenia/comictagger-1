@@ -290,7 +290,7 @@ class ComicVineTalker(ComicTalker):
         if not refresh_cache and not literal:
             cached_search_results = cvc.get_search_results(self.id, series_name)
 
-            if len(cached_search_results) > 0:
+            if cached_search_results:
                 logger.debug("Search for %s cached: True", repr(series_name))
                 return self._format_search_results([json.loads(x[0].data) for x in cached_search_results])
         logger.debug("Search for %s cached: False", repr(series_name))

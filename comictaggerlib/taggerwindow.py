@@ -624,13 +624,13 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.fileSelectionList.remove_archive_list(archives_to_remove)
 
             summary = f"Successfully created {success_count} Zip archive(s)."
-            if len(skipped_list) > 0:
+            if skipped_list:
                 summary += (
                     f"\n\nThe following {len(skipped_list)} archive(s) were skipped due to file name conflicts:\n"
                 )
                 for f in skipped_list:
                     summary += f"\t{f}\n"
-            if len(failed_list) > 0:
+            if failed_list:
                 summary += (
                     f"\n\nThe following {len(failed_list)} archive(s) failed to export due to read/write errors:\n"
                 )
@@ -1636,7 +1636,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.update_menus()
 
                 summary = f"Successfully removed {success_count} tags in archive(s)."
-                if len(failed_list) > 0:
+                if failed_list:
                     summary += f"\n\nThe remove operation failed in the following {len(failed_list)} archive(s):\n"
                     for f in failed_list:
                         summary += f"\t{f}\n"
@@ -1745,7 +1745,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.update_menus()
 
                 summary = f"Successfully copied tags in {success_count} archive(s)."
-                if len(failed_list) > 0:
+                if failed_list:
                     summary += f"\n\nThe copy operation failed in the following {len(failed_list)} archive(s):\n"
                     for f in failed_list:
                         summary += f"\t{f}\n"
@@ -1952,7 +1952,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         ca_list = self.fileSelectionList.get_selected_archive_list()
         tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
 
-        if len(ca_list) == 0:
+        if not ca_list:
             QtWidgets.QMessageBox.information(self, "Auto-Tag", "No archives selected!")
             return
 
@@ -2027,23 +2027,23 @@ class TaggerWindow(QtWidgets.QMainWindow):
         summary = f"<p>{self.current_talker().attribution}</p>"
         summary += f"Successfully added {tag_names} tags to {len(match_results.good_matches)} archive(s)\n"
 
-        if len(match_results.multiple_matches) > 0:
+        if match_results.multiple_matches:
             summary += f"Archives with multiple matches: {len(match_results.multiple_matches)}\n"
-        if len(match_results.low_confidence_matches) > 0:
+        if match_results.low_confidence_matches:
             summary += (
                 f"Archives with one or more low-confidence matches: {len(match_results.low_confidence_matches)}\n"
             )
-        if len(match_results.no_matches) > 0:
+        if match_results.no_matches:
             summary += f"Archives with no matches: {len(match_results.no_matches)}\n"
-        if len(match_results.fetch_data_failures) > 0:
+        if match_results.fetch_data_failures:
             summary += f"Archives that failed due to data fetch errors: {len(match_results.fetch_data_failures)}\n"
-        if len(match_results.write_failures) > 0:
+        if match_results.write_failures:
             summary += f"Archives that failed due to file writing errors: {len(match_results.write_failures)}\n"
 
         self.auto_tag_log(summary)
 
-        sum_selectable = len(match_results.multiple_matches) + len(match_results.low_confidence_matches)
-        if sum_selectable > 0:
+        selectable = match_results.multiple_matches or match_results.low_confidence_matches
+        if selectable:
             summary += (
                 "\n\nDo you want to manually select the ones with multiple matches and/or low-confidence matches now?"
             )
@@ -2186,7 +2186,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def rename_archive(self) -> None:
         ca_list = self.fileSelectionList.get_selected_archive_list()
 
-        if len(ca_list) == 0:
+        if not ca_list:
             QtWidgets.QMessageBox.information(self, "Rename", "No archives selected!")
             return
 
@@ -2287,7 +2287,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         local_socket = self.socketServer.nextPendingConnection()
         if local_socket.waitForReadyRead(3000):
             byte_array = local_socket.readAll().data()
-            if len(byte_array) > 0:
+            if byte_array:
                 obj = pickle.loads(byte_array)
                 local_socket.disconnectFromServer()
                 if isinstance(obj, list):

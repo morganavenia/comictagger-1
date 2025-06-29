@@ -146,7 +146,7 @@ class FileSelectionList(QtWidgets.QWidget):
             if item.column() == 0:
                 row_list.append(item.row())
 
-        if len(row_list) == 0:
+        if not row_list:
             return
 
         if self.twList.currentRow() in row_list:

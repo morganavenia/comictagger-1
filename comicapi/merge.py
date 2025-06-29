@@ -29,9 +29,9 @@ class Mode(StrEnum):
 
 def merge_lists(old: Collection[Any], new: Collection[Any]) -> list[Any] | set[Any]:
     """Dedupes normalised (NFKD), casefolded values using 'new' values on collisions"""
-    if len(new) == 0:
+    if not new:
         return old if isinstance(old, set) else list(old)
-    if len(old) == 0:
+    if not old:
         return new if isinstance(new, set) else list(new)
 
     # Create dict to preserve case
