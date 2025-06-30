@@ -86,6 +86,7 @@ class Hashes:
         self,
         *,
         hashes: Iterable[Result],
+        domain: str | None,
         id: ID | None = None,  # noqa: A002
     ) -> None:
         self.hashes = tuple(
@@ -96,6 +97,12 @@ class Hashes:
             self.id = ID(**self.hash()["ID"])
         else:
             self.id = id
+
+        if domain and self.id.Domain != domain:
+            for _hash in self.hashes:
+                for e_id in _hash["EquivalentIDs"]:
+                    if e_id["Domain"] == domain:
+                        self.id = ID(**e_id)
 
     @overload
     def hash(self) -> Result: ...
@@ -359,7 +366,7 @@ class QuickTag:
             return None
 
         IDs = [
-            Hashes(hashes=(g[1] for g in group), id=i)
+            Hashes(hashes=(g[1] for g in group), id=i, domain=self.domain)
             for i, group in itertools.groupby(
                 sorted(((ID(**r["ID"]), (r)) for r in results), key=lambda r: (r[0], r[1]["Hash"]["Kind"])),
                 key=lambda r: r[0],
@@ -404,11 +411,14 @@ class QuickTag:
 
     def get_mds(self, ids: Iterable[ID]) -> list[GenericMetadata]:
         md_results: list[GenericMetadata] = []
-        ids = {md_id for md_id in ids if md_id.Domain == self.domain}
+        ids = set(ids)
+        relevant_ids = {md_id for md_id in ids if md_id.Domain == self.domain}
 
         all_ids = {md_id.ID for md_id in ids if md_id.Domain == self.domain}
 
-        self.output(f"Retrieving basic {self.talker.name} data")
+        logger.debug("Removed %d ids that are not for %s", len(ids - relevant_ids), self.domain)
+
+        self.output(f"Retrieving basic {self.talker.name} data for {len(relevant_ids)} results")
         # Try to do a bulk fetch of basic issue data, if we have more than 1 id
         if hasattr(self.talker, "fetch_comics") and len(all_ids) > 1:
             md_results = self.talker.fetch_comics(issue_ids=list(all_ids))
@@ -417,7 +427,7 @@ class QuickTag:
                 md_results.append(self.talker.fetch_comic_data(issue_id=md_id))
 
         retrieved_ids = {ID(self.domain, md.issue_id) for md in md_results}  # type: ignore[arg-type]
-        bad_ids = ids - retrieved_ids
+        bad_ids = relevant_ids - retrieved_ids
         if bad_ids:
             logger.debug("Adding bad IDs to known list: %s", bad_ids)
             self.known_bad_ids[self.domain] |= bad_ids
@@ -492,6 +502,7 @@ class QuickTag:
         if exact:
             self.output(f"{len(exact)} exact result found. Ignoring any others: {exact}")
             aggressive = exact  # I've never seen more than 2 "exact" matches
+        logger.debug("Filtering reduced to %d hash scores", len(aggressive))
         return aggressive, normal
 
     def match_names(self, tags: GenericMetadata, results: list[tuple[Hashes, GenericMetadata]]) -> NameMatches:
