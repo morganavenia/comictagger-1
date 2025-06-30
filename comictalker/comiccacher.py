@@ -84,6 +84,7 @@ class ComicCacher:
             os.unlink(self.version_file)
         except Exception:
             pass
+        self.create_cache_db()
 
     def connect(self) -> sqlite3.Connection:
         if self.local != threading.current_thread():
