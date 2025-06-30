@@ -1110,6 +1110,9 @@ Example Merge:
            </item>
            <item row="8" column="0">
             <widget class="QCheckBox" name="cbxMoveOnly">
+             <property name="toolTip">
+              <string>If checked only moves files to specified folders but does not change the filename.&lt;br/&gt;New folders will follow rename template.</string>
+             </property>
              <property name="text">
               <string>Only Move files when renaming</string>
              </property>

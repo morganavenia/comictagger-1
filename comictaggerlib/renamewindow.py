@@ -139,13 +139,18 @@ class RenameWindow(QtWidgets.QDialog):
                 )
                 return
 
+            folder = get_rename_dir(
+                ca,
+                self.config[0].File_Rename__dir if self.config[0].File_Rename__move else None,
+            )
+
             row = self.twList.rowCount()
             self.twList.insertRow(row)
             folder_item = QtWidgets.QTableWidgetItem()
             old_name_item = QtWidgets.QTableWidgetItem()
             new_name_item = QtWidgets.QTableWidgetItem()
 
-            item_text = str(ca.path.parent)
+            item_text = str(folder)
             folder_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, 0, folder_item)
             folder_item.setText(item_text)
@@ -189,6 +194,7 @@ class RenameWindow(QtWidgets.QDialog):
         center_window_on_parent(prog_dialog)
         QtCore.QCoreApplication.processEvents()
 
+        failed_renames: list[tuple[str, str, OSError]] = []
         try:
             for idx, comic in enumerate(zip(self.comic_archive_list, self.rename_list), 1):
                 if prog_dialog.wasCanceled():
@@ -213,13 +219,34 @@ class RenameWindow(QtWidgets.QDialog):
                 if not comic[0].is_writable(check_archive_status=False):
                     continue
 
-                comic[0].rename(utils.unique_file(full_path))
+                new_name = utils.unique_file(full_path)
+                try:
+                    comic[0].rename(new_name)
+                except OSError as e:
+                    logger.exception("Failed to rename comic archive: %s", comic[0].path)
+                    failed_renames.append(
+                        (
+                            utils.path_to_short_str(comic[0].path),
+                            utils.path_to_short_str(comic[0].path, new_name),
+                            e,
+                        )
+                    )
         except Exception as e:
+            assert comic
             logger.exception("Failed to rename comic archive: %s", comic[0].path)
             QtWidgets.QMessageBox.critical(
                 self,
                 "There was an issue when renaming!",
                 f"Renaming failed!<br/><br/>{type(e).__name__}: {e}<br/><br/>",
+            )
+
+        if failed_renames:
+            QtWidgets.QMessageBox.critical(
+                self,
+                f"Failed to rename {len(failed_renames)} files!",
+                f"Renaming failed for {len(failed_renames)} files!<br/><br/>"
+                + "<br/>".join([f"{x[0]!r} -> {x[1]!r}: {x[2]}" for x in failed_renames])
+                + "<br/><br/>",
             )
 
         prog_dialog.hide()

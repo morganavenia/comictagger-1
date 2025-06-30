@@ -42,7 +42,7 @@
        </property>
        <column>
         <property name="text">
-         <string>Folder</string>
+         <string>Destination Folder</string>
         </property>
        </column>
        <column>
