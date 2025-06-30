@@ -16,9 +16,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import difflib
 import itertools
 import logging
-from collections import deque
 
 import natsort
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
@@ -410,6 +410,17 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
             except Exception:
                 logger.exception("bad data error filtering publishers")
 
+        sanitized_full = utils.sanitize_title(self.series_name, False).casefold()
+        sanitized_basic = utils.sanitize_title(self.series_name, True).casefold()
+        matcher_full = difflib.SequenceMatcher(None, sanitized_basic)
+        matcher_basic = difflib.SequenceMatcher(None, sanitized_full)
+
+        def score(result: tuple[str, ComicSeries]) -> float:
+            matcher_full.set_seq2(utils.sanitize_title(result[1].name, False).casefold())
+            return matcher_full.ratio()
+
+        self.series_list = dict(sorted(self.series_list.items(), key=score, reverse=True))
+
         # pre sort the data - so that we can put exact matches first afterwards
         # compare as str in case extra chars ie. '1976?'
         # - missing (none) values being converted to 'None' - consistent with prior behaviour in v1.2.3
@@ -425,29 +436,24 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
                 )
             except Exception:
                 logger.exception("bad data error sorting results by start_year,count_of_issues")
-        else:
-            try:
-                self.series_list = dict(
-                    natsort.natsorted(self.series_list.items(), key=lambda i: str(i[1].count_of_issues), reverse=True)
-                )
-            except Exception:
-                logger.exception("bad data error sorting results by count_of_issues")
 
-        # move sanitized matches to the front
-        if self.config.Issue_Identifier__exact_series_matches_first:
             try:
-                sanitized = utils.sanitize_title(self.series_name, False).casefold()
-                sanitized_no_articles = utils.sanitize_title(self.series_name, True).casefold()
 
-                deques: list[deque[tuple[str, ComicSeries]]] = [deque(), deque(), deque()]
+                deques: list[list[tuple[str, ComicSeries]]] = [list(), list(), list()]
 
                 def categorize(result: ComicSeries) -> int:
-                    # We don't remove anything on this one so that we only get exact matches
-                    if utils.sanitize_title(result.name, True).casefold() == sanitized_no_articles:
+                    matcher_full.set_seq2(utils.sanitize_title(result.name, False).casefold())
+                    matcher_basic.set_seq2(utils.sanitize_title(result.name, True).casefold())
+                    ratio_full = matcher_full.ratio()
+                    ratio_basic = matcher_basic.ratio()
+                    logger.info("%s: %.3f, %.3f", result.name, ratio_full, ratio_basic)
+                    # here basic means partial sanitization meaning that less things will match
+                    if ratio_basic > 0.9:
                         return 0
 
                     # this ensures that 'The Joker' is near the top even if you search 'Joker'
-                    if utils.sanitize_title(result.name, False).casefold() in sanitized:
+                    # here full means full sanitization meaning that more things will match
+                    if ratio_full > 0.9:
                         return 1
                     return 2
 
@@ -456,7 +462,7 @@ class SeriesSelectionWindow(QtWidgets.QDialog):
                 logger.info("Length: %d, %d, %d", len(deques[0]), len(deques[1]), len(deques[2]))
                 self.series_list = dict(itertools.chain.from_iterable(deques))
             except Exception:
-                logger.exception("bad data error filtering exact/near matches")
+                logger.exception("error filtering exact/near matches: bad data")
 
         self.update_buttons()
 
