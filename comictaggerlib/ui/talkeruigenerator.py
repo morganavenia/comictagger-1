@@ -353,6 +353,10 @@ def generate_source_option_tabs(
 
     talker_layout = QtWidgets.QGridLayout()
     lbl_select_talker = QtWidgets.QLabel("Metadata Source:")
+    lbl_more_sources = QtWidgets.QLabel(
+        "Find more metadata plugin sources <a href='https://github.com/comictagger/comictagger/wiki/Comic-and-Manga-Information-Sources'>here</a>"
+    )
+    lbl_more_sources.setOpenExternalLinks(True)
     line = QtWidgets.QFrame()
     line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
     line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
@@ -362,9 +366,10 @@ def generate_source_option_tabs(
     sources: Sources = Sources(QtWidgets.QComboBox(), [])
 
     talker_layout.addWidget(lbl_select_talker, 0, 0)
-    talker_layout.addWidget(sources[0], 0, 1)
+    talker_layout.addWidget(sources[0], 0, 1, 1, 3)
     talker_layout.addWidget(line, 1, 0, 1, -1)
     talker_layout.addWidget(talker_tabs, 2, 0, 1, -1)
+    talker_layout.addWidget(lbl_more_sources, 4, 0)
 
     comic_talker_tab_layout.addLayout(talker_layout)
 
