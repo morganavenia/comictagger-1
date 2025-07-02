@@ -22,6 +22,7 @@ import logging
 import os
 import pathlib
 import string
+import sys
 import unicodedata
 from collections.abc import Collection, Iterable, Mapping, Sequence, Sized
 from typing import Any, cast
@@ -131,10 +132,12 @@ class MetadataFormatter(string.Formatter):
         return value
 
     def split_replacement(self, field_name: str) -> tuple[str, str, str]:
-        if "-" in field_name:
-            return field_name.rpartition("-")
-        if "+" in field_name:
-            return field_name.rpartition("+")
+        pos_index = field_name.index("+") if "+" in field_name else sys.maxsize
+        neg_index = field_name.index("-") if "-" in field_name else sys.maxsize
+        if neg_index < pos_index:
+            return field_name.partition("-")
+        if pos_index < neg_index:
+            return field_name.partition("+")
         return field_name, "", ""
 
     def is_strict(self) -> bool:
