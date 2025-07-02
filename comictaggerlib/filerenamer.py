@@ -124,11 +124,28 @@ class MetadataFormatter(string.Formatter):
                 string = string.replace(find, replace)
         return string
 
-    def none_replacement(self, value: Any, replacement: str, r: str) -> Any:
+    def __get_object(self, original: str, field_name: str, args: Sequence[Any], kwargs: Mapping[str, Any]) -> str:
+        if field_name not in kwargs or field_name == original:
+            return field_name
+        try:
+            obj, arg_used = self.get_field(field_name, args, kwargs)
+        except Exception:
+            obj = field_name
+        return obj
+
+    def none_replacement(
+        self,
+        value: Any,
+        field_name: str,
+        replacement: str,
+        r: str,
+        args: Sequence[Any],
+        kwargs: Mapping[str, Any],
+    ) -> Any:
         if r == "-" and value is None or value == "":
-            return replacement
+            return self.__get_object(field_name, replacement, args, kwargs)
         if r == "+" and value is not None:
-            return replacement
+            return self.__get_object(field_name, replacement, args, kwargs)
         return value
 
     def split_replacement(self, field_name: str) -> tuple[str, str, str]:
@@ -194,11 +211,11 @@ class MetadataFormatter(string.Formatter):
                 except Exception:
                     obj = None
 
-                obj = self.none_replacement(obj, replacement, r)
+                obj = self.none_replacement(obj, field_name, replacement, r, args, kwargs)
                 # do any conversion on the resulting object
                 obj = self.convert_field(obj, conversion)
                 if r == "-":
-                    obj = self.none_replacement(obj, replacement, r)
+                    obj = self.none_replacement(obj, field_name, replacement, r, args, kwargs)
 
                 # expand the format spec, if needed
                 format_spec, _ = self._vformat(
@@ -219,8 +236,7 @@ class MetadataFormatter(string.Formatter):
                 if self.smart_cleanup:
                     # colons and slashes get special treatment
                     fmt_obj = self.handle_replacements(fmt_obj, self.replacements.format_value)
-                    fmt_obj = " ".join(fmt_obj.split())
-                    fmt_obj = str(sanitize_filename(fmt_obj, platform=self.platform))
+                    fmt_obj = self.strip_internal(fmt_obj)
                 result.append(fmt_obj)
 
         return "".join(result), False
@@ -239,6 +255,15 @@ class MetadataFormatter(string.Formatter):
             else:
                 break
         return string
+
+    def strip_internal(self, string: str) -> str:
+        s = list(string)
+        p = False
+        for i, x in reversed(list(enumerate(s))):
+            if p and x.isspace():
+                del s[i]
+            p = x.isspace()
+        return "".join(s)
 
 
 class FileRenamer:
