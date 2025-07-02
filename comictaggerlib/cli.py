@@ -320,6 +320,7 @@ class CLI:
             return Result(Action.print, Status.success, ca.path)
 
         self.output()
+        tags_read = []
 
         for tag_id, tag in tags.items():
             if not self.config.Runtime_Options__tags_read or tag_id in self.config.Runtime_Options__tags_read:
@@ -331,6 +332,7 @@ class CLI:
                         else:
                             md = ca.read_tags(tag_id)
                             self.output(md)
+                        tags_read.append(tag_id)
                     except Exception as e:
                         logger.error("Failed to read tags from %s: %s", ca.path, e)
         if not self.config.Auto_Tag__metadata.is_empty and not self.config.Runtime_Options__raw:
@@ -341,10 +343,11 @@ class CLI:
                 tags_read_names = ", ".join(["CLI"] + [tags[t].name() for t in tags_read])
                 self.output(f"--------- Combined {tags_read_names} tags ---------")
                 self.output(md)
+                tags_read = list(tags.keys())
             except Exception as e:
                 logger.error("Failed to read tags from %s: %s", ca.path, e)
 
-        return Result(Action.print, Status.success, ca.path, md=md)
+        return Result(Action.print, Status.success, ca.path, md=md, tags_read=tags_read)
 
     def delete_tags(self, ca: ComicArchive, tag_id: str) -> Status:
         tag_name = tags[tag_id].name()
