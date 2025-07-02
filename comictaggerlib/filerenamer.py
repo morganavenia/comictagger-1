@@ -22,6 +22,7 @@ import logging
 import os
 import pathlib
 import string
+import unicodedata
 from collections.abc import Collection, Iterable, Mapping, Sequence, Sized
 from typing import Any, cast
 
@@ -203,13 +204,15 @@ class MetadataFormatter(string.Formatter):
 
                 # format the object and append to the result
                 fmt_obj = self.format_field(obj, format_spec)
-                if fmt_obj == "" and result and self.smart_cleanup and literal_text:
+                if fmt_obj == "" and result and self.smart_cleanup:
+
                     if self.str_contains(result[-1], "({["):
-                        lstrip = True
-                    if result:
-                        if " " in result[-1]:
-                            result[-1], _, _ = result[-1].rstrip().rpartition(" ")
-                        result[-1] = result[-1].rstrip("-_({[#")
+                        lstrip = True  # trailing braces are handled above
+
+                    if result[-1].startswith(" "):
+                        result[-1] = ""  # handles `v{volume}` where volume is None
+
+                    result[-1] = self.rstrip(result[-1])  # cleans up opening punctuation, spaces, dashes
                 if self.smart_cleanup:
                     # colons and slashes get special treatment
                     fmt_obj = self.handle_replacements(fmt_obj, self.replacements.format_value)
@@ -224,6 +227,15 @@ class MetadataFormatter(string.Formatter):
             if char in string:
                 return True
         return False
+
+    def rstrip(self, string: str) -> str:
+        while string:
+            r = string[-1]
+            if unicodedata.category(r) in ("Po", "Ps", "Pd", "Zl", "Zp", "Zs"):
+                string = string[:-1]
+            else:
+                break
+        return string
 
 
 class FileRenamer:

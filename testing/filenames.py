@@ -1147,6 +1147,54 @@ for p in names:
 
 file_renames = [
     (
+        "#{issue} {series}: {price} ({year}) [{issue_id}]",
+        False,
+        False,
+        "universal",
+        "#001 Cory Doctorow's Futuristic Tales of the Here and Now (2007) [140529].cbz",
+        does_not_raise(),
+    ),
+    (
+        "#{issue} {series}: {price} ({year}) [{issue_id}]",
+        False,
+        False,
+        "linux",
+        "#001 Cory Doctorow's Futuristic Tales of the Here and Now (2007) [140529].cbz",
+        does_not_raise(),
+    ),
+    (
+        "{series} #{issue} - {title} ({year}) [{issue_id}] (digital) ({price}) {price} test",
+        False,
+        False,
+        "universal",
+        "Cory Doctorow's Futuristic Tales of the Here and Now #001 - Anda's Game (2007) [140529] (digital) test.cbz",
+        does_not_raise(),
+    ),
+    (
+        "{series} #{issue} - {title} ({year}) [{issue_id}] (digital) - ({price}) - {price} test",
+        False,
+        False,
+        "universal",
+        "Cory Doctorow's Futuristic Tales of the Here and Now #001 - Anda's Game (2007) [140529] (digital) test.cbz",
+        does_not_raise(),
+    ),
+    (
+        "{series} #{issue} - {title} ({year}) [{issue_id}] {price} test",
+        False,
+        False,
+        "universal",
+        "Cory Doctorow's Futuristic Tales of the Here and Now #001 - Anda's Game (2007) [140529] test.cbz",
+        does_not_raise(),
+    ),
+    (
+        "{series} #{issue} - {title} ({year}){price+ - }{price}",
+        False,
+        False,
+        "universal",
+        "Cory Doctorow's Futuristic Tales of the Here and Now #001 - Anda's Game (2007).cbz",
+        does_not_raise(),
+    ),
+    (
         "{series} #{issue} - {title} ({year}) ({price!c})",  # conversion on None
         False,
         False,
