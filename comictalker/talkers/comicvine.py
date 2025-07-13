@@ -643,6 +643,8 @@ class ComicVineTalker(ComicTalker):
             try:
                 ratelimit_key = self._get_ratelimit_key(url)
                 with self.limiter.ratelimit(ratelimit_key, delay=True):
+                    logged_params = final_params.copy()
+                    logged_params.pop("api_key")
                     logger.debug("Requesting: %s?%s", url, urlencode(final_params))
                     self.total_requests_made[ratelimit_key] += 1
                     resp = requests.get(
