@@ -43,11 +43,15 @@ def get_talkers(
                     talkers[talker.name] = obj
                 else:
                     logger.error(
-                        f"Minimum ComicTagger version required of {obj.comictagger_min_ver} for talker {talker.name} is not met, will NOT load talker"
+                        "Minimum ComicTagger version required of %s for talker %s is not met, will NOT load talker",
+                        obj.comictagger_min_ver,
+                        talker.name,
                     )
             except InvalidVersion:
                 logger.warning(
-                    f"Invalid minimum required ComicTagger version number for talker: {talker.name} - version: {obj.comictagger_min_ver}, will load talker anyway"
+                    "Invalid minimum required ComicTagger version number for talker: %s - version: %s, will load talker anyway",
+                    talker.name,
+                    obj.comictagger_min_ver,
                 )
                 # Attempt to use the talker anyway
                 # TODO flag this problem for later display to the user
@@ -55,6 +59,7 @@ def get_talkers(
 
         except Exception:
             logger.exception("Failed to load talker: %s", talker.name)
+            logger.debug("", exc_info=True)
 
     # A dict is used, last plugin wins
     for talker_cls in local_plugins:
@@ -65,11 +70,15 @@ def get_talkers(
                     talkers[talker_cls.id] = obj
                 else:
                     logger.error(
-                        f"Minimum ComicTagger version required of {talker_cls.comictagger_min_ver} for talker {talker_cls.id} is not met, will NOT load talker"
+                        "Minimum ComicTagger version required of %s for talker %s is not met, will NOT load talker",
+                        talker_cls.comictagger_min_ver,
+                        talker_cls.id,
                     )
             except InvalidVersion:
                 logger.warning(
-                    f"Invalid minimum required ComicTagger version number for talker: {talker_cls.id} - version: {talker_cls.comictagger_min_ver}, will load talker anyway"
+                    "Invalid minimum required ComicTagger version number for talker: %s - version: %s, will load talker anyway",
+                    talker_cls.id,
+                    talker_cls.comictagger_min_ver,
                 )
                 # Attempt to use the talker anyway
                 # TODO flag this problem for later display to the user
@@ -77,5 +86,6 @@ def get_talkers(
 
         except Exception:
             logger.exception("Failed to load talker: %s", talker_cls.id)
+            logger.debug("", exc_info=True)
 
     return talkers

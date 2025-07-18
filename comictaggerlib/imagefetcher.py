@@ -94,7 +94,7 @@ class ImageFetcher:
                     # save the image to the cache
                     self.add_image_to_cache(self.fetched_url, image_data)
                 except Exception as e:
-                    logger.exception("Fetching url failed: %s")
+                    logger.exception("Fetching url failed: %s", e)
                     raise ImageFetcherException("Network Error!") from e
             return image_data
 

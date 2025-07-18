@@ -76,7 +76,7 @@ def _lang_code_mac() -> str:
         # Command was successful.
         lang_code = output
     else:
-        logging.warning("Language detection command failed: %r", output)
+        logger.warning("Language detection command failed: %r", output)
         lang_code = ""
 
     return lang_code

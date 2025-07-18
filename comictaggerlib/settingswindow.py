@@ -523,7 +523,9 @@ class SettingsWindow(QtWidgets.QDialog):
         self.rename_test()
         if self.rename_error is not None:
             if isinstance(self.rename_error, ValueError):
-                logger.exception("Invalid format string: %s", self.config[0].File_Rename__template)
+                logger.error(
+                    "Invalid format string: %s", self.config[0].File_Rename__template, exc_info=self.rename_error
+                )
                 QtWidgets.QMessageBox.critical(
                     self,
                     "Invalid format string!",
@@ -536,8 +538,11 @@ class SettingsWindow(QtWidgets.QDialog):
                 )
                 return
             else:
-                logger.exception(
-                    "Formatter failure: %s metadata: %s", self.config[0].File_Rename__template, self.renamer.metadata
+                logger.error(
+                    "Formatter failure: %s metadata: %s",
+                    self.config[0].File_Rename__template,
+                    self.renamer.metadata,
+                    exc_info=self.rename_error,
                 )
                 QtWidgets.QMessageBox.critical(
                     self,

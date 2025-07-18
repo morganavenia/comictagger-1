@@ -134,8 +134,8 @@ class CLI:
         # now get the particular issue data
         try:
             ct_md = self.current_talker().fetch_comic_data(issue_id)
-        except TalkerError as e:
-            logger.exception(f"Error retrieving issue details. Save aborted.\n{e}")
+        except Exception as e:
+            logger.error("Error retrieving issue details '%s'. Save aborted.", e)
             return GenericMetadata()
 
         if self.config.Metadata_Options__apply_transform_on_import:
@@ -453,8 +453,9 @@ class CLI:
             if ct_md is None:
                 ct_md = GenericMetadata()
             return ct_md
-        except Exception:
-            logger.exception("Quick Tagging failed")
+        except Exception as e:
+            logger.exception("Quick Tagging failed: %s", e)
+            logger.debug("", exc_info=True)
         return None
 
     def normal_tag(
@@ -604,7 +605,7 @@ class CLI:
                 try:
                     ct_md = self.current_talker().fetch_comic_data(self.config.Auto_Tag__issue_id)
                 except TalkerError as e:
-                    logger.exception(f"Error retrieving issue details. Save aborted.\n{e}")
+                    logger.error("Error retrieving issue details. Save aborted. %s", e)
                     res = Result(
                         Action.save,
                         original_path=ca.path,
@@ -690,7 +691,7 @@ class CLI:
         md, tags_read = self.create_local_metadata(ca, self.config.Runtime_Options__tags_read)
 
         if md.series is None:
-            logger.error(msg_hdr + "Can't rename without series name")
+            logger.error("%sCan't rename without series name", msg_hdr)
             return Result(Action.rename, Status.read_failure, original_path)
 
         new_ext = ""  # default
@@ -713,13 +714,13 @@ class CLI:
             new_name = renamer.determine_name(ext=new_ext)
         except ValueError:
             logger.exception(
-                msg_hdr
-                + "Invalid format string!\n"
+                "%sInvalid format string!\n"
                 + "Your rename template is invalid!\n\n"
                 + "%s\n\n"
                 + "Please consult the template help in the settings "
                 + "and the documentation on the format at "
                 + "https://docs.python.org/3/library/string.html#format-string-syntax",
+                msg_hdr,
                 self.config.File_Rename__template,
             )
             return Result(Action.rename, Status.rename_failure, original_path, md=md)
@@ -755,14 +756,14 @@ class CLI:
             msg_hdr = f"{ca.path}: "
 
         if ca.is_zip():
-            logger.error(msg_hdr + "Archive is already a zip file.")
+            logger.error("%sArchive is already a zip file.", msg_hdr)
             return Result(Action.export, Status.success, ca.path)
 
         filename_path = ca.path
         new_file = filename_path.with_suffix(".cbz")
 
         if self.config.Runtime_Options__abort_on_conflict and new_file.exists():
-            self.output(msg_hdr + f"{new_file.name} already exists in the that folder.")
+            self.output("%s%s already exists in the that folder.", msg_hdr, new_file.name)
             return Result(Action.export, Status.write_failure, ca.path)
 
         new_file = utils.unique_file(new_file)
@@ -777,7 +778,7 @@ class CLI:
                         filename_path.unlink(missing_ok=True)
                         delete_success = True
                     except OSError:
-                        logger.exception(msg_hdr + "Error deleting original archive after export")
+                        logger.exception("%sError deleting original archive after export", msg_hdr)
             else:
                 # last export failed, so remove the zip, if it exists
                 new_file.unlink(missing_ok=True)

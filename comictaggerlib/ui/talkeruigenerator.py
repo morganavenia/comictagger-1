@@ -432,7 +432,7 @@ def generate_source_option_tabs(
                 tab.widgets[option.setting_name] = current_widget
             else:
                 # We didn't create anything for this dest
-                logger.debug(f"Unsupported talker option found. Name: {option.internal_name} Type: {option.type}")
+                logger.debug("Unsupported talker option found. Name: %s Type: %s", option.internal_name, option.type)
                 continue
             # Mark this destination as being created
             dest_created.add(option.dest)

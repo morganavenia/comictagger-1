@@ -130,7 +130,7 @@ class ComicRack(Tag):
             except Exception:
                 ...
         else:
-            logger.warning(f"Archive ({archive.name()}) does not support {self.name()} metadata")
+            logger.warning("Archive %s(%s) does not support '%s' metadata", archive.path, archive.name(), self.name())
         return False
 
     def name(self) -> str:

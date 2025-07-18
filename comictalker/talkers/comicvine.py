@@ -282,7 +282,7 @@ class ComicVineTalker(ComicTalker):
         if literal:
             search_series_name = series_name
 
-        logger.info(f"{self.name} searching: {search_series_name}")
+        logger.info("%s searching: %s", self.name, search_series_name)
 
         # Before we search online, look in our cache, since we might have done this same search recently
         # For literal searches always retrieve from online
@@ -325,7 +325,7 @@ class ComicVineTalker(ComicTalker):
 
         if callback is None:
             logger.debug(
-                f"Found {cv_response['number_of_page_results']} of {cv_response['number_of_total_results']} results"
+                "Found %s of %s results", cv_response["number_of_page_results"], cv_response["number_of_total_results"]
             )
         search_results.extend(cv_response["results"])
         page = 1
@@ -346,7 +346,7 @@ class ComicVineTalker(ComicTalker):
                     break
 
             if callback is None:
-                logger.debug(f"getting another page of results {current_result_count} of {total_result_count}...")
+                logger.debug("getting another page of results %s of %s...", current_result_count, total_result_count)
             page += 1
 
             params["page"] = page
@@ -624,7 +624,10 @@ class ComicVineTalker(ComicTalker):
         cv_response: CVResult[T] = self._get_url_content(url, params)
         if cv_response["status_code"] != 1:
             logger.debug(
-                f"{self.name} query failed with error #{cv_response['status_code']}:  [{cv_response['error']}]."
+                "%s query failed with error #%s:  [%s].",
+                self.name,
+                cv_response["status_code"],
+                cv_response["error"],
             )
             raise TalkerNetworkError(self.name, 0, f"{cv_response['status_code']}: {cv_response['error']}")
 
@@ -672,14 +675,14 @@ class ComicVineTalker(ComicTalker):
                     break
 
             except requests.exceptions.Timeout:
-                logger.debug(f"Connection to {self.name} timed out.")
+                logger.debug("Connection to %s timed out.", self.name)
                 if tries > 3:
                     raise TalkerNetworkError(self.name, 4)
             except requests.exceptions.RequestException as e:
-                logger.debug(f"Request exception: {e}")
+                logger.debug("Request exception", exc_info=True)
                 raise TalkerNetworkError(self.name, 0, str(e)) from e
-            except json.JSONDecodeError as e:
-                logger.debug(f"JSON decode error: {e}")
+            except json.JSONDecodeError:
+                logger.debug("JSON decode error", exc_info=True)
                 raise TalkerDataError(self.name, 2, "ComicVine did not provide json")
             except TalkerError as e:
                 raise e

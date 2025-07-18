@@ -541,7 +541,7 @@ class IssueIdentifier:
                     issue._cover_image, issue._alternate_images, hashes, use_alt_urls=use_alternates
                 )
             except Exception:
-                logger.exception(f"Scoring series{alternate} covers failed")
+                logger.exception("Scoring series%s covers failed", alternate)
                 return []
 
             match = IssueResult(
