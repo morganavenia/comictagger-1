@@ -142,10 +142,10 @@ def register_runtime(parser: settngs.Manager) -> None:
         file=False,
     )
     parser.add_setting(
-        "-R",
-        "--recursive",
+        "--directory",
+        "--no-recursive",
         action="store_true",
-        help="Recursively include files in sub-folders.",
+        help="Disable reading comics recursively (the default), opens any directories/folders given as an individual comic.",
         file=False,
     )
     parser.add_setting("-g", "--glob", action="store_true", help="Windows only. Enable globbing", file=False)
@@ -350,10 +350,12 @@ def validate_commandline_settings(config: settngs.Config[ct_ns], parser: settngs
         if not config[0].Runtime_Options__tags_write:
             parser.exit(message="Please specify the tags to copy to with --tags-write\n", status=1)
 
-    if config[0].Runtime_Options__recursive:
+    if not config[0].Runtime_Options__directory:
         config[0].Runtime_Options__files = utils.os_sorted(
             set(utils.get_recursive_filelist(config[0].Runtime_Options__files))
         )
+    else:
+        config[0].Runtime_Options__files = utils.os_sorted(config[0].Runtime_Options__files)
 
     if not config[0].Runtime_Options__enable_embedding_hashes:
         config[0].Runtime_Options__preferred_hash = ""

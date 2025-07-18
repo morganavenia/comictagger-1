@@ -30,7 +30,7 @@ class SettngsNS(settngs.TypedNS):
     Runtime_Options__abort_on_low_confidence: bool
     Runtime_Options__dryrun: bool
     Runtime_Options__summary: bool
-    Runtime_Options__recursive: bool
+    Runtime_Options__directory: bool
     Runtime_Options__glob: bool
     Runtime_Options__darkmode: bool
     Runtime_Options__no_gui: bool
@@ -154,7 +154,7 @@ class Runtime_Options(typing.TypedDict):
     abort_on_low_confidence: bool
     dryrun: bool
     summary: bool
-    recursive: bool
+    directory: bool
     glob: bool
     darkmode: bool
     no_gui: bool
