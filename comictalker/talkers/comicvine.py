@@ -443,7 +443,7 @@ class ComicVineTalker(ComicTalker):
             series = cvc.get_series_info(series_id, self.id, expire_stale=False)
             issues = []
             # Explicitly mark count_of_issues at an impossible value
-            cvseries = CVSeries(id=int(series_id), count_of_issues=-1)
+            cvseries = CVSeries(id=int(series_id), count_of_issues=-1)  # type: ignore[typeddict-item]
 
             # Check if we have the series cached
             if series:
@@ -453,15 +453,11 @@ class ComicVineTalker(ComicTalker):
             for issue, _ in issues:
                 cvissue = cast(CVIssue, json.loads(issue.data))
                 if cvissue.get("issue_number") == issue_number:
+                    comicseries = self._fetch_series([int(cvissue["volume"]["id"])], on_rate_limit=on_rate_limit)[0][0]
                     cached_results.append(
                         self._map_comic_issue_to_metadata(
                             cvissue,
-                            self._fetch_series(
-                                [int(cvissue["volume"]["id"])],
-                                on_rate_limit=on_rate_limit,
-                            )[
-                                0
-                            ][0],
+                            comicseries,
                         ),
                     )
                     issue_found = True

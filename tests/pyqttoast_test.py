@@ -5,12 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
-pytest.importorskip("PyQt5")
+pytest.importorskip("PyQt6")
 if platform.platform != "Darwin":
     raise pytest.skip.Exception("GUI Testing sucks", allow_module_level=True)
-from PyQt5.QtCore import QMargins, QRect, QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QGuiApplication, QPixmap
-from PyQt5.QtWidgets import QMainWindow
+from PyQt6.QtCore import QMargins, QRect, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QGuiApplication, QPixmap
+from PyQt6.QtWidgets import QMainWindow
 
 from comictaggerlib.ui.pyqttoast import Toast, ToastButtonAlignment, ToastIcon, ToastPosition, ToastPreset
 from comictaggerlib.ui.pyqttoast.constants import DROP_SHADOW_SIZE
@@ -368,7 +368,7 @@ def test_set_always_on_main_screen(qtbot):
     assert QGuiApplication.primaryScreen().geometry().contains(toast.geometry())
 
 
-@patch("PyQt5.QtGui.QScreen")
+@patch("PyQt6.QtGui.QScreen")
 def test_set_fixed_screen(MockedQScreen, qtbot):
     """Test setting a fixed screen to show the notifications on"""
 

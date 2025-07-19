@@ -270,6 +270,8 @@ class SeriesSelectionWindow(SelectionWindow):
         autoselect: bool = False,
         literal: bool = False,
     ) -> None:
+        from comictaggerlib.issueselectionwindow import IssueSelectionWindow
+
         super().__init__(
             parent,
             config,
@@ -282,6 +284,7 @@ class SeriesSelectionWindow(SelectionWindow):
             autoselect,
             literal,
         )
+        self.count = 0
         self.series_name = series_name
         self.issue_number = issue_number
         self.year = year
@@ -309,16 +312,9 @@ class SeriesSelectionWindow(SelectionWindow):
 
         self.update_buttons()
 
-    def showEvent(self, event: QtGui.QShowEvent) -> None:
-        self.perform_query()
-        QtCore.QCoreApplication.processEvents()
-        if not self.series_list:
-            QtWidgets.QMessageBox.information(self, "Search Result", "No matches found!")
-            QtCore.QTimer.singleShot(200, self.close_me)
-
-        elif self.immediate_autoselect:
-            # defer the immediate autoselect so this dialog has time to pop up
-            QtCore.QTimer.singleShot(10, self.do_immediate_autoselect)
+        self.selector = IssueSelectionWindow(self, self.config, self.talker, self.series_id, self.issue_number)
+        self.selector.ratelimit.connect(self.ratelimit)
+        self.selector.finished.connect(self.issue_selected)
 
     def perform_query(self, refresh: bool = False) -> None:
         self.search_thread = SearchThread(
@@ -438,7 +434,6 @@ class SeriesSelectionWindow(SelectionWindow):
         if self.issue_number is None or self.issue_number == "":
             QtWidgets.QMessageBox.information(self, "Auto-Select", "Can't auto-select without an issue number (yet!)")
             return
-
         self.iddialog = IDProgressWindow(self)
         self.iddialog.setModal(True)
         self.iddialog.show()
@@ -459,79 +454,75 @@ class SeriesSelectionWindow(SelectionWindow):
         self.id_thread.start()
 
         self.iddialog.exec()
-        self.selector = None
 
     def log_output(self, text: str) -> None:
-        if self.iddialog is not None:
-            self.iddialog.textEdit.append(text.rstrip())
-            self.iddialog.textEdit.ensureCursorVisible()
-            QtCore.QCoreApplication.processEvents()
+        if self.iddialog is None:
+            return
+        self.iddialog.textEdit.append(text.rstrip())
+        self.iddialog.textEdit.ensureCursorVisible()
+        QtCore.QCoreApplication.processEvents()
 
     def identify_progress(self, cur: int, total: int) -> None:
-        if self.iddialog is not None:
-            self.iddialog.progressBar.setMaximum(total)
-            self.iddialog.progressBar.setValue(cur)
+        if self.iddialog is None:
+            return
+        self.iddialog.progressBar.setMaximum(total)
+        self.iddialog.progressBar.setValue(cur)
 
     def identify_complete(self, result: IIResult, issues: list[IssueResult]) -> None:
-        if self.iddialog is not None and self.comic_archive is not None:
+        if not (self.iddialog is not None and self.comic_archive is not None):
+            return
 
-            found_match = None
-            choices = False
-            if result == IIResult.no_matches:
-                QtWidgets.QMessageBox.information(self, "Auto-Select Result", " No issues found :-(")
-            elif result == IIResult.single_bad_cover_score:
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "Auto-Select Result",
-                    " Found a match, but cover doesn't seem the same.  Verify before committing!",
-                )
-                found_match = issues[0]
-            elif result == IIResult.multiple_bad_cover_scores:
-                QtWidgets.QMessageBox.information(
-                    self, "Auto-Select Result", " Found some possibilities, but no confidence. Proceed manually."
-                )
-                choices = True
-            elif result == IIResult.single_good_match:
-                found_match = issues[0]
-            elif result == IIResult.multiple_good_matches:
-                QtWidgets.QMessageBox.information(
-                    self, "Auto-Select Result", " Found multiple likely matches.  Please select."
-                )
-                choices = True
+        found_match = None
+        choices = False
+        if result == IIResult.no_matches:
+            QtWidgets.QMessageBox.information(self, "Auto-Select Result", " No issues found :-(")
+        elif result == IIResult.single_bad_cover_score:
+            QtWidgets.QMessageBox.information(
+                self,
+                "Auto-Select Result",
+                " Found a match, but cover doesn't seem the same.  Verify before committing!",
+            )
+            found_match = issues[0]
+        elif result == IIResult.multiple_bad_cover_scores:
+            QtWidgets.QMessageBox.information(
+                self, "Auto-Select Result", " Found some possibilities, but no confidence. Proceed manually."
+            )
+            choices = True
+        elif result == IIResult.single_good_match:
+            found_match = issues[0]
+        elif result == IIResult.multiple_good_matches:
+            QtWidgets.QMessageBox.information(
+                self, "Auto-Select Result", " Found multiple likely matches.  Please select."
+            )
+            choices = True
 
-            if choices:
-                selector = MatchSelectionWindow(
-                    self, issues, self.comic_archive, talker=self.talker, config=self.config
-                )
-                selector.exec()
-                if selector.result():
-                    # we should now have a list index
-                    found_match = selector.current_match()
+        if choices:
+            selector = MatchSelectionWindow(self, issues, self.comic_archive, talker=self.talker, config=self.config)
+            selector.exec()
+            if selector.result():
+                # we should now have a list index
+                found_match = selector.current_match()
 
-            if found_match is not None:
-                self.iddialog.accept()
+        if found_match is not None:
+            self.iddialog.accept()
 
-                self.series_id = utils.xlate(found_match.series_id) or ""
-                self.issue_number = found_match.issue_number
-                self.select_by_id()
-                self.show_issues()
+            self.series_id = utils.xlate(found_match.series_id) or ""
+            self.issue_number = found_match.issue_number
+            self.select_by_id()
+            self.show_issues()
 
     def show_issues(self) -> None:
-        from comictaggerlib.issueselectionwindow import IssueSelectionWindow
-
-        self.selector = IssueSelectionWindow(self, self.config, self.talker, self.series_id, self.issue_number)
-        self.selector.ratelimit.connect(self.ratelimit)
         title = ""
         for series in self.series_list.values():
             if series.id == self.series_id:
                 title = f"{series.name} ({series.start_year:04}) - " if series.start_year else f"{series.name} - "
                 break
-
         self.selector.setWindowTitle(title + "Select Issue")
-        self.selector.finished.connect(self.issue_selected)
-        self.selector.show()
+        self.selector.series_id = self.series_id
 
-    def issue_selected(self, result) -> None:
+        self.selector.perform_query()
+
+    def issue_selected(self, result: list[GenericMetadata]) -> None:
         if result and self.selector:
             # we should now have a series ID
             self.issue_number = self.selector.issue_number
@@ -547,24 +538,29 @@ class SeriesSelectionWindow(SelectionWindow):
                 break
 
     def search_canceled(self) -> None:
-        if self.progdialog is not None:
-            logger.info("query cancelled")
-            if self.search_thread is not None:
-                self.search_thread.searchComplete.disconnect()
-                self.search_thread.progressUpdate.disconnect()
-            self.progdialog.canceled.disconnect()
-            self.progdialog.reject()
-            QtCore.QTimer.singleShot(200, self.close_me)
+        if self.progdialog is None:
+            return
+        logger.info("query cancelled")
+        if self.search_thread is not None:
+            self.search_thread.searchComplete.disconnect()
+            self.search_thread.progressUpdate.disconnect()
+        self.progdialog.canceled.disconnect()
+        self.progdialog.reject()
+        QtCore.QTimer.singleShot(200, self.close_me)
 
     def close_me(self) -> None:
         self.reject()
 
     def search_progress_update(self, current: int, total: int) -> None:
-        if self.progdialog is not None:
+        if self.progdialog is None:
+            return
+        try:
             QtCore.QCoreApplication.processEvents()
             self.progdialog.setMaximum(total)
             self.progdialog.setValue(current + 1)
             QtCore.QCoreApplication.processEvents()
+        except Exception:
+            ...
 
     def search_complete(self) -> None:
         if self.progdialog is not None:
@@ -677,6 +673,17 @@ class SeriesSelectionWindow(SelectionWindow):
         # Resize row height so the whole series can still be seen
         self.twList.resizeRowsToContents()
 
+        if not self.series_list:
+            QtWidgets.QMessageBox.information(self, "Search Result", "No matches found!\nSeriesSelectionWindow")
+            QtCore.QTimer.singleShot(200, self.close_me)
+
+        elif self.immediate_autoselect:
+            # defer the immediate autoselect so this dialog has time to pop up
+            self.show()
+            QtCore.QTimer.singleShot(10, self.do_immediate_autoselect)
+        else:
+            self.show()
+
     def do_immediate_autoselect(self) -> None:
         self.immediate_autoselect = False
         self.auto_select()
@@ -699,11 +706,3 @@ class SeriesSelectionWindow(SelectionWindow):
         self.log_output(
             f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
         )
-
-    def log_output(self, text: str) -> None:
-        if self.iddialog is not None:
-            self.iddialog.textEdit.append(text.rstrip())
-            self.iddialog.textEdit.ensureCursorVisible()
-            QtCore.QCoreApplication.processEvents()
-            QtCore.QCoreApplication.processEvents()
-            QtCore.QCoreApplication.processEvents()

@@ -65,6 +65,7 @@ class QueryThread(QtCore.QThread):
                 if x.issue_id is not None
             ]
         except TalkerError as e:
+            logger.exception("Failed to retrieve issue list: %s", e)
             # QtWidgets.QApplication.restoreOverrideCursor()
             # QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
             return
@@ -97,9 +98,6 @@ class IssueSelectionWindow(SelectionWindow):
         self.initial_id: str = ""
         self.leFilter.textChanged.connect(self.filter)
         self.finish.connect(self.query_finished)
-
-    def showEvent(self, event: QtGui.QShowEvent) -> None:
-        self.perform_query()
 
     def perform_query(self) -> None:  # type: ignore[override]
         self.querythread = QueryThread(
@@ -138,6 +136,7 @@ class IssueSelectionWindow(SelectionWindow):
                     self.twList.selectRow(r)
                     self.twList.scrollToItem(item, QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible)
                     break
+        self.show()
 
     def cell_double_clicked(self, r: int, c: int) -> None:
         self.accept()
@@ -186,6 +185,6 @@ class IssueSelectionWindow(SelectionWindow):
         # TODO: display the hash to the user so they know it will be used for cover matching
         alt_images = [url.URL for url in issue._alternate_images]
         cover = issue._cover_image.URL if issue._cover_image else ""
-        self.cover_widget.set_issue_details(self.issue_id, [cover, *issue._alternate_images])
+        self.cover_widget.set_issue_details(self.issue_id, [cover, *alt_images])
         self.set_description(self.teDescription, issue.description or "")
         return issue

@@ -75,6 +75,38 @@ def execute(f: Callable[[], Any]) -> None:
     f()
 
 
+class QueryThread(QtCore.QThread):
+    def __init__(
+        self,
+        talker: ComicTalker,
+        issue_id: str,
+        series_id: str,
+        issue_number: str,
+        finish: QtCore.pyqtSignal,
+        on_rate_limit: QtCore.pyqtSignal,
+    ) -> None:
+        super().__init__()
+        self.issue_id = issue_id
+        self.series_id = series_id
+        self.issue_number = issue_number
+        self.talker = talker
+        self.finish = finish
+        self.on_rate_limit = on_rate_limit
+
+    def run(self) -> None:
+        try:
+            new_metadata = self.talker.fetch_comic_data(
+                issue_id=self.issue_id,
+                series_id=self.series_id,
+                issue_number=self.issue_number,
+                on_rate_limit=RLCallBack(lambda x, y: self.on_rate_limit.emit(x, y), 60),
+            )
+        except TalkerError as e:
+            QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
+            return
+        self.finish.emit(new_metadata, self.issue_number)
+
+
 class TaggerWindow(QtWidgets.QMainWindow):
     appName = "ComicTagger"
     version = ctversion.version
@@ -1153,51 +1185,21 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.selector.setWindowTitle(f"Search: '{series_name}' - Select Series")
         self.selector.finished.connect(self.finish_query)
 
-        self.selector.show()
+        self.selector.perform_query()
 
-    def finish_query(self, result) -> None:
-        if result and self.selector:
+    def finish_query(self, result: list[GenericMetadata]) -> None:
+        if not (result and self.selector):
+            return
 
-            class QueryThread(QtCore.QThread):
-                def __init__(
-                    self,
-                    talker: ComicTalker,
-                    issue_id: str,
-                    series_id: str,
-                    issue_number: str,
-                    finish: QtCore.pyqtSignal,
-                    on_rate_limit: QtCore.pyqtSignal,
-                ) -> None:
-                    super().__init__()
-                    self.issue_id = issue_id
-                    self.series_id = series_id
-                    self.issue_number = issue_number
-                    self.talker = talker
-                    self.finish = finish
-                    self.on_rate_limit = on_rate_limit
-
-                def run(self) -> None:
-                    try:
-                        new_metadata = self.talker.fetch_comic_data(
-                            issue_id=self.issue_id,
-                            series_id=self.series_id,
-                            issue_number=self.issue_number,
-                            on_rate_limit=RLCallBack(lambda x, y: self.on_rate_limit.emit(x, y), 60),
-                        )
-                    except TalkerError as e:
-                        QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
-                        return
-                    self.finish.emit(new_metadata, self.issue_number)
-
-            self.querythread = QueryThread(
-                self.current_talker(),
-                self.selector.issue_id,
-                self.selector.series_id,
-                self.selector.issue_number,
-                self.query_finished,
-                self.ratelimit,
-            )
-            self.querythread.start()
+        self.querythread = QueryThread(
+            self.current_talker(),
+            self.selector.issue_id,
+            self.selector.series_id,
+            self.selector.issue_number,
+            self.query_finished,
+            self.ratelimit,
+        )
+        self.querythread.start()
 
     def apply_query_metadata(self, new_metadata: GenericMetadata, issue_number: str) -> None:
         # we should now have a series ID
@@ -1216,7 +1218,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.metadata_to_form()
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
-        self.toast = Toast(self)
+        self.toast = Toast(QtWidgets.QApplication.activeWindow())
         if qtutils.is_dark_mode():
             self.toast.applyPreset(ToastPreset.WARNING_DARK)
         else:

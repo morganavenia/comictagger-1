@@ -9,7 +9,7 @@ import webbrowser
 from collections.abc import Collection, Sequence
 
 from PyQt6.QtCore import QUrl
-from PyQt6.QtGui import QPalette
+from PyQt6.QtGui import QGuiApplication, QPalette
 from PyQt6.QtWidgets import QWidget
 
 logger = logging.getLogger(__name__)
@@ -126,10 +126,7 @@ if qt_available:
         window.move(hpos + main_window_size.left(), vpos + main_window_size.top())
 
     def is_dark_mode() -> bool:
-        palette = QPalette()
-        text = palette.color(QPalette.WindowText)
-        window = palette.color(QPalette.Window)
-        return text.lightness() > window.lightness()
+        return QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
 
     def get_qimage_from_data(image_data: bytes) -> QtGui.QImage:
         img = QtGui.QImage()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QAbstractAnimation,
     QEvent,
     QMargins,
@@ -14,8 +14,8 @@ from PyQt5.QtCore import (
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QPixmap, QScreen
-from PyQt5.QtWidgets import QDialog, QGraphicsOpacityEffect, QLabel, QPushButton, QWidget
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QPixmap, QScreen
+from PyQt6.QtWidgets import QDialog, QGraphicsOpacityEffect, QLabel, QPushButton, QWidget
 
 from .constants import (
     DEFAULT_ACCENT_COLOR,
@@ -87,7 +87,7 @@ class Toast(QDialog):
         self.__fade_in_duration = 250
         self.__fade_out_duration = 250
         self.__reset_duration_on_hover = True
-        self.__stay_on_top = False
+        self.__stay_on_top = True
         self.__border_radius = 0
         self.__background_color = DEFAULT_BACKGROUND_COLOR
         self.__title_color = DEFAULT_TITLE_COLOR
@@ -487,10 +487,10 @@ class Toast(QDialog):
 
         # Calculate title and text width and height
         title_font_metrics = QFontMetrics(self.__title_font)
-        title_width = title_font_metrics.width(self.__title_label.text())
+        title_width = title_font_metrics.boundingRect(self.__title_label.text()).width()
         title_height = title_font_metrics.boundingRect(self.__title_label.text()).height()
         text_font_metrics = QFontMetrics(self.__text_font)
-        text_width = text_font_metrics.width(self.__text_label.text())
+        text_width = text_font_metrics.boundingRect(self.__text_label.text()).width()
         text_height = text_font_metrics.boundingRect(self.__text_label.text()).height()
         text_section_spacing = self.__text_section_spacing
         if self.__title == "" or self.__text == "":
@@ -1324,14 +1324,14 @@ class Toast(QDialog):
 
         if on:
             self.setWindowFlags(
-                Qt.WindowType.Popup
+                Qt.WindowType.Tool
                 | Qt.WindowType.CustomizeWindowHint
                 | Qt.WindowType.FramelessWindowHint
                 | Qt.WindowType.WindowStaysOnTopHint
             )
         else:
             self.setWindowFlags(
-                Qt.WindowType.Popup | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.FramelessWindowHint
+                Qt.WindowType.Tool | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.FramelessWindowHint
             )
 
     def getBorderRadius(self) -> int:

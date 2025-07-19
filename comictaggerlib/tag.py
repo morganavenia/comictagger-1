@@ -103,7 +103,7 @@ def identify_comic(
     try:
         ct_md = talker.fetch_comic_data(issue_id=matches[0].issue_id, on_rate_limit=on_rate_limit)
     except TalkerError as e:
-        logger.exception(f"Error retrieving issue details. Save aborted.\n{e}")
+        logger.exception("Error retrieving issue details. Save aborted. %s", e)
         ct_md = GenericMetadata()
 
     ct_md = prepare_metadata(md, ct_md, config)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt5.QtGui import QColor
+from PyQt6.QtGui import QColor
 
 UPDATE_POSITION_DURATION = 200
 DROP_SHADOW_SIZE = 5

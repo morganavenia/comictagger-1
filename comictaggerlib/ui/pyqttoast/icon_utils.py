@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt5.QtGui import QColor, QImage, QPixmap, qRgba
+from PyQt6.QtGui import QColor, QImage, QPixmap, qRgba
 
 from .icons import icon_path
 from .toast_enums import ToastIcon
