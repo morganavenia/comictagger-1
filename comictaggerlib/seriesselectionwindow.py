@@ -428,11 +428,11 @@ class SeriesSelectionWindow(SelectionWindow):
 
     def auto_select(self) -> None:
         if self.comic_archive is None:
-            QtWidgets.QMessageBox.information(self, "Auto-Select", "You need to load a comic first!")
+            qtutils.information(self, "Auto-Select", "You need to load a comic first!")
             return
 
         if self.issue_number is None or self.issue_number == "":
-            QtWidgets.QMessageBox.information(self, "Auto-Select", "Can't auto-select without an issue number (yet!)")
+            qtutils.information(self, "Auto-Select", "Can't auto-select without an issue number (yet!)")
             return
         self.iddialog = IDProgressWindow(self)
 
@@ -564,13 +564,14 @@ class SeriesSelectionWindow(SelectionWindow):
             self.progdialog.accept()
             self.progdialog = None
         if self.search_thread is not None and self.search_thread.ct_error:
-            # TODO Currently still opens the window
-            QtWidgets.QMessageBox.critical(
-                self,
+            parent = self.parent()
+            if not isinstance(parent, QtWidgets.QWidget):
+                parent = None
+            return qtutils.critical(
+                parent,
                 f"{self.search_thread.error_e.source} {self.search_thread.error_e.code_name} Error",
                 f"{self.search_thread.error_e}",
             )
-            return
 
         tmp_list = self.search_thread.ct_search_results if self.search_thread is not None else []
         self.series_list = {x.id: x for x in tmp_list}
@@ -671,8 +672,7 @@ class SeriesSelectionWindow(SelectionWindow):
         self.twList.resizeRowsToContents()
 
         if not self.series_list:
-            QtWidgets.QMessageBox.information(self, "Search Result", "No matches found!\nSeriesSelectionWindow")
-            QtCore.QTimer.singleShot(200, self.close_me)
+            return qtutils.information(self, "Search Result", "No matches found!\nSeriesSelectionWindow")
 
         elif self.immediate_autoselect:
             # defer the immediate autoselect so this dialog has time to pop up

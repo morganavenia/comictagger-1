@@ -10,6 +10,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns, group_for_plugin
+from comictaggerlib.ui import qtutils
 from comictalker.comictalker import ComicTalker
 
 logger = logging.getLogger(__name__)
@@ -76,9 +77,9 @@ def generate_api_widgets(
     def call_check_api(*args: Any, tab: TalkerTab, talker: ComicTalker, definitions: settngs.Definitions) -> None:
         check_text, check_bool = talker.check_status(get_config_from_tab(tab, definitions[group_for_plugin(talker)]))
         if check_bool:
-            QtWidgets.QMessageBox.information(None, "API Test Success", check_text)
-        else:
-            QtWidgets.QMessageBox.warning(None, "API Test Failed", check_text)
+            return qtutils.information(TalkerTab.tab, "API Test Success", check_text)
+
+        qtutils.warning(TalkerTab.tab, "API Test Failed", check_text)
 
     # get the actual config objects in case they have overwritten the default
     btn_test_row = None

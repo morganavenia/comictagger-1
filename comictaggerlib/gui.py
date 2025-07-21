@@ -23,17 +23,16 @@ try:
         If unavailable (non-console application), log an additional notice.
         """
         if QtWidgets.QApplication.instance() is not None:
-            errorbox = QtWidgets.QMessageBox()
+            errorbox = QtWidgets.QMessageBox(QtWidgets.QApplication.activeWindow())
             errorbox.setStandardButtons(
                 QtWidgets.QMessageBox.StandardButton.Abort | QtWidgets.QMessageBox.StandardButton.Ignore
             )
             errorbox.setTextFormat(QtCore.Qt.TextFormat.MarkdownText)
             errorbox.setText(log_msg)
             errorbox.setDetailedText(details + " ")  # Forces text formatting on macOS
-            if errorbox.exec() == QtWidgets.QMessageBox.StandardButton.Abort:
-                QtWidgets.QApplication.exit(1)
-            else:
-                logger.warning("Exception ignored")
+            errorbox.rejected.connect(lambda: QtWidgets.QApplication.exit(1))
+            errorbox.accepted.connect(lambda: logger.warning("Exception ignored"))
+            errorbox.show()
         else:
             logger.debug("No QApplication instance available.")
 

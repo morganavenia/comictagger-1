@@ -26,7 +26,7 @@ from PyQt6 import QtCore, QtWidgets, uic
 from comicapi import utils
 from comicapi.comicarchive import tags
 from comicapi.genericmetadata import Credit
-from comictaggerlib.ui import ui_path
+from comictaggerlib.ui import qtutils, ui_path
 from comictaggerlib.ui.qtutils import enable_widget
 
 logger = logging.getLogger(__name__)
@@ -124,12 +124,7 @@ class CreditEditorWindow(QtWidgets.QDialog):
 
     def accept(self) -> None:
         if self.leName.text() == "":
-            qmsg = QtWidgets.QMessageBox()
-            qmsg.setInformativeText("Whoops")
-            qmsg.setText("You need to enter a name for a credit.")
-            qmsg.setIcon(qmsg.Icon.Warning)
-            qmsg.open()
-            return
+            return qtutils.warning(self, "Whoops", "You need to enter a name for a credit.")
 
         QtWidgets.QDialog.accept(self)
         new = self.get_credit()

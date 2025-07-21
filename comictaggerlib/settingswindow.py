@@ -37,7 +37,7 @@ from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.ctsettings.plugin import group_for_plugin
 from comictaggerlib.filerenamer import FileRenamer, Replacement, Replacements
 from comictaggerlib.imagefetcher import ImageFetcher
-from comictaggerlib.ui import ui_path
+from comictaggerlib.ui import qtutils, ui_path
 from comictalker.comiccacher import ComicCacher
 from comictalker.comictalker import ComicTalker
 
@@ -535,7 +535,7 @@ class SettingsWindow(QtWidgets.QDialog):
                 logger.error(
                     "Invalid format string: %s", self.config[0].File_Rename__template, exc_info=self.rename_error
                 )
-                QtWidgets.QMessageBox.critical(
+                return qtutils.critical(
                     self,
                     "Invalid format string!",
                     "Your rename template is invalid!"
@@ -545,23 +545,21 @@ class SettingsWindow(QtWidgets.QDialog):
                     + "<a href='https://docs.python.org/3/library/string.html#format-string-syntax'>"
                     + "https://docs.python.org/3/library/string.html#format-string-syntax</a>",
                 )
-                return
-            else:
-                logger.error(
-                    "Formatter failure: %s metadata: %s",
-                    self.config[0].File_Rename__template,
-                    self.renamer.metadata,
-                    exc_info=self.rename_error,
-                )
-                QtWidgets.QMessageBox.critical(
-                    self,
-                    "The formatter had an issue!",
-                    "The formatter has experienced an unexpected error!"
-                    + f"<br/><br/>{type(self.rename_error).__name__}: {self.rename_error}<br/><br/>"
-                    + "Please open an issue at "
-                    + "<a href='https://github.com/comictagger/comictagger'>"
-                    + "https://github.com/comictagger/comictagger</a>",
-                )
+            logger.error(
+                "Formatter failure: %s metadata: %s",
+                self.config[0].File_Rename__template,
+                self.renamer.metadata,
+                exc_info=self.rename_error,
+            )
+            return qtutils.critical(
+                self,
+                "The formatter had an issue!",
+                "The formatter has experienced an unexpected error!"
+                + f"<br/><br/>{type(self.rename_error).__name__}: {self.rename_error}<br/><br/>"
+                + "Please open an issue at "
+                + "<a href='https://github.com/comictagger/comictagger'>"
+                + "https://github.com/comictagger/comictagger</a>",
+            )
 
         # Copy values from form to settings and save
         archive_group = group_for_plugin(Archiver)
@@ -654,12 +652,12 @@ class SettingsWindow(QtWidgets.QDialog):
         cache_folder.mkdir(parents=True, exist_ok=True)
         ComicCacher(cache_folder, "0")
         ImageFetcher(cache_folder)
-        QtWidgets.QMessageBox.information(self, self.name, "Cache has been cleared.")
+        qtutils.information(self, self.name, "Cache has been cleared.")
 
     def reset_settings(self) -> None:
         self.config = cast(settngs.Config[ct_ns], settngs.get_namespace(settngs.defaults(self.config[1])))
         self.settings_to_form()
-        QtWidgets.QMessageBox.information(self, self.name, self.name + " have been returned to default values.")
+        qtutils.information(self, self.name, self.name + " have been returned to default values.")
 
     def select_file(self, control: QtWidgets.QLineEdit, name: str) -> None:
         dialog = QtWidgets.QFileDialog(self)

@@ -102,8 +102,7 @@ class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifica
                 on_rate_limit=RLCallBack(lambda x, y: self.on_rate_limit.emit(x, y), 60),
             )
         except TalkerError as e:
-            QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
-            return
+            return qtutils.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
         self.finish.emit(new_metadata, self.issue_number)
 
 
@@ -575,9 +574,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         to_zip = [ca for ca in ca_list if not ca.is_zip()]
 
         if not to_zip:
-            QtWidgets.QMessageBox.information(self, "Export as Zip Archive", "Only ZIP archives are selected!")
             logger.warning("Export as Zip Archive. Only ZIP archives are selected")
-            return
+            return qtutils.information(self, "Export as Zip Archive", "Only ZIP archives are selected!")
 
         if not self.dirty_flag_verification(
             "Export as Zip Archive",
@@ -692,7 +690,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         )
 
         msg_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msg_box.open()  # Doesn't work with show
+        msg_box.show()
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         self.droppedFiles = []
@@ -1132,8 +1130,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def auto_identify_search(self) -> None:
         if self.comic_archive is None:
-            QtWidgets.QMessageBox.warning(self, "Automatic Identify Search", "You need to load a comic first!")
-            return
+            return qtutils.warning(self, "Automatic Identify Search", "You need to load a comic first!")
 
         self.query_online(autoselect=True)
 
@@ -1145,18 +1142,16 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         # Only need this check is the source has issue level data.
         if autoselect and issue_number == "":
-            QtWidgets.QMessageBox.information(
+            return qtutils.information(
                 self,
                 "Automatic Identify Search",
                 "Can't auto-identify without an issue number. The auto-tag function has the 'If no issue number, assume \"1\"' option if desired.",
             )
-            return
 
         if str(self.leSeries.text()).strip() != "":
             series_name = str(self.leSeries.text()).strip()
         else:
-            QtWidgets.QMessageBox.information(self, "Online Search", "Need to enter a series name to search.")
-            return
+            return qtutils.information(self, "Online Search", "Need to enter a series name to search.")
 
         year = utils.xlate_int(self.lePubYear.text())
 
@@ -1204,8 +1199,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.form_to_metadata()
 
         if new_metadata is None or new_metadata.is_empty:
-            QtWidgets.QMessageBox.critical(None, "Search", f"Could not find an issue {new_metadata} for that series")
-            return
+            return qtutils.critical(self, "Search", f"Could not find an issue {new_metadata} for that series")
 
         self.metadata = prepare_metadata(self.metadata, new_metadata, self.config[0])
         # Now push the new combined data into the edit controls
@@ -1230,59 +1224,59 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.toast.show()
 
     def write_tags(self) -> None:
-        if self.metadata is not None and self.comic_archive is not None:
-            if self.config[0].General__prompt_on_save:
-                reply = QtWidgets.QMessageBox.question(
-                    self,
-                    "Save Tags",
-                    f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.selected_write_tags])} tags to this archive?",
-                    QtWidgets.QMessageBox.StandardButton.Yes,
-                    QtWidgets.QMessageBox.StandardButton.No,
-                )
-            else:
-                reply = QtWidgets.QMessageBox.StandardButton.Yes
+        if self.metadata is None or self.comic_archive is None:
+            return qtutils.information(self, "Whoops!", "No data to write!")
 
-            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-                return
-            QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
-            self.form_to_metadata()
-
-            failed_tag: str = ""
-            # Save each tag
-            for tag_id in self.selected_write_tags:
-                success = self.comic_archive.write_tags(self.metadata, tag_id)
-                if not success:
-                    failed_tag = tags[tag_id].name()
-                    break
-
-            self.comic_archive.load_cache(set(tags))
-            QtWidgets.QApplication.restoreOverrideCursor()
-
-            if failed_tag:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Save failed",
-                    f"The tag save operation seemed to fail for: {failed_tag}",
-                )
-            else:
-                self.clear_dirty_flag()
-                self.update_info_box()
-                self.update_menus()
-
-                # Only try to read if write was successful
-                self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
-                if error is not None:
-                    QtWidgets.QMessageBox.warning(
-                        self,
-                        "Read Failed!",
-                        f"One or more of the selected read tags failed to load for {self.comic_archive.path}, check log for details",
-                    )
-                    logger.error("Failed to load metadata for %s: %s", self.ca.path, error)
-
-            self.fileSelectionList.update_current_row()
-            self.update_ui_for_archive()
+        if self.config[0].General__prompt_on_save:
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Save Tags",
+                f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.selected_write_tags])} tags to this archive?",
+                QtWidgets.QMessageBox.StandardButton.Yes,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
         else:
-            QtWidgets.QMessageBox.information(self, "Whoops!", "No data to write!")
+            reply = QtWidgets.QMessageBox.StandardButton.Yes
+
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+        self.form_to_metadata()
+
+        failed_tag: str = ""
+        # Save each tag
+        for tag_id in self.selected_write_tags:
+            success = self.comic_archive.write_tags(self.metadata, tag_id)
+            if not success:
+                failed_tag = tags[tag_id].name()
+                break
+
+        self.comic_archive.load_cache(set(tags))
+        QtWidgets.QApplication.restoreOverrideCursor()
+
+        if failed_tag:
+            qtutils.warning(
+                self,
+                "Save failed",
+                f"The tag save operation seemed to fail for: {failed_tag}",
+            )
+        else:
+            self.clear_dirty_flag()
+            self.update_info_box()
+            self.update_menus()
+
+            # Only try to read if write was successful
+            self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
+            if error is not None:
+                logger.error("Failed to load metadata for %s: %s", self.ca.path, error)
+                qtutils.warning(
+                    self,
+                    "Read Failed!",
+                    f"One or more of the selected read tags failed to load for {self.comic_archive.path}, check log for details",
+                )
+
+        self.fileSelectionList.update_current_row()
+        self.update_ui_for_archive()
 
     def select_read_tags(self, tag_ids: list[str]) -> None:
         """Should only be called from the combobox signal"""
@@ -1453,7 +1447,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             utils.parse_url(web_link)
             webbrowser.open_new_tab(web_link)
         except utils.LocationParseError:
-            QtWidgets.QMessageBox.warning(self, "Web Link", "Web Link is invalid.")
+            qtutils.warning(self, "Web Link", "Web Link is invalid.")
 
     def show_settings(self) -> None:
         settingswin = SettingsWindow(self, self.config, self.talkers)
@@ -1631,12 +1625,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     file_md_count[tag_id] += 1
 
         if has_md_count == 0:
-            QtWidgets.QMessageBox.information(
+            qtutils.information(
                 self,
                 "Remove Tags",
                 f"No archives with {', '.join([tags[tag_id].name() for tag_id in tag_ids])} tags selected!",
             )
-            return
 
         if has_md_count != 0 and not self.dirty_flag_verification(
             "Remove Tags", "If you remove tags now, unsaved data in the form will be lost.  Are you sure?"
@@ -1709,10 +1702,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
             dest_tag_ids.remove(src_tag_ids[0])
 
         if not dest_tag_ids:
-            QtWidgets.QMessageBox.information(
+            return qtutils.information(
                 self, "Copy Tags", "Can't copy tag tag onto itself.  Read tag and modify tag must be different."
             )
-            return
 
         for ca in ca_list:
             for tag_id in src_tag_ids:
@@ -1721,12 +1713,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     continue
 
         if has_src_count == 0:
-            QtWidgets.QMessageBox.information(
+            return qtutils.information(
                 self,
                 "Copy Tags",
                 f"No archives with {', '.join([tags[tag_id].name() for tag_id in src_tag_ids])} tags selected!",
             )
-            return
 
         if has_src_count != 0 and not self.dirty_flag_verification(
             "Copy Tags", "If you copy tags now, unsaved data in the form may be lost.  Are you sure?"
@@ -1816,8 +1807,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
 
         if not ca_list:
-            QtWidgets.QMessageBox.information(self, "Auto-Tag", "No archives selected!")
-            return
+            return qtutils.information(self, "Auto-Tag", "No archives selected!")
 
         if not self.dirty_flag_verification(
             "Auto-Tag", "If you auto-tag now, unsaved data in the form will be lost.  Are you sure?"

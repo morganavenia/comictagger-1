@@ -8,21 +8,16 @@ import traceback
 import webbrowser
 from collections.abc import Collection, Sequence
 
-from PyQt6.QtCore import QUrl
-from PyQt6.QtGui import QGuiApplication, QPalette
-from PyQt6.QtWidgets import QWidget
-
 logger = logging.getLogger(__name__)
 
 try:
     from PyQt6 import QtGui, QtWidgets
-    from PyQt6.QtCore import Qt
+    from PyQt6.QtCore import Qt, QUrl
+    from PyQt6.QtGui import QGuiApplication, QPalette
+    from PyQt6.QtWidgets import QWidget
 
     qt_available = True
-except ImportError:
-    qt_available = False
 
-if qt_available:
     try:
         from PIL import Image
 
@@ -30,6 +25,7 @@ if qt_available:
     except ImportError:
         pil_available = False
     active_palette: QPalette | None = None
+
     try:
         from PyQt6.QtWebEngineCore import QWebEnginePage
         from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -156,7 +152,7 @@ if qt_available:
         if e:
             trace = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
 
-        QtWidgets.QMessageBox.critical(QtWidgets.QMainWindow(), "Error", msg + trace)
+        return critical(QtWidgets.QMainWindow(), "Error", msg + trace)
 
     def enable_widget(widget: QtWidgets.QWidget | Collection[QtWidgets.QWidget], enable: bool) -> None:
         if isinstance(widget, Sequence):
@@ -240,3 +236,27 @@ if qt_available:
         # QSplitter has issues with replacing a widget before it's been first shown. Assume it should be visible
         new_widget.show()
         return new_widget
+
+    def critical(parent: QWidget | None, title: str, text: str) -> None:
+        qmsg = QtWidgets.QMessageBox(parent)
+        qmsg.setIcon(qmsg.Icon.Critical)
+        qmsg.setText(title)
+        qmsg.setInformativeText(text)
+        return qmsg.show()
+
+    def warning(parent: QWidget | None, title: str, text: str) -> None:
+        qmsg = QtWidgets.QMessageBox(parent)
+        qmsg.setIcon(qmsg.Icon.Warning)
+        qmsg.setText(title)
+        qmsg.setInformativeText(text)
+        return qmsg.show()
+
+    def information(parent: QWidget | None, title: str, text: str) -> None:
+        qmsg = QtWidgets.QMessageBox(parent)
+        qmsg.setIcon(qmsg.Icon.Information)
+        qmsg.setText(title)
+        qmsg.setInformativeText(text)
+        return qmsg.show()
+
+except ImportError:
+    qt_available = False

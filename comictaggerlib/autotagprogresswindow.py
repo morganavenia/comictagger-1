@@ -31,7 +31,7 @@ from comictaggerlib.issueidentifier import IssueIdentifierCancelled
 from comictaggerlib.md import read_selected_tags
 from comictaggerlib.resulttypes import Action, OnlineMatchResults, Result, Status
 from comictaggerlib.tag import identify_comic
-from comictaggerlib.ui import ui_path
+from comictaggerlib.ui import qtutils, ui_path
 from comictalker.comictalker import ComicTalker, RLCallBack
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
         # read in tags, and parse file name if not there
         md, tags_used, error = read_selected_tags(self.config.internal__read_tags, ca)
         if error is not None:
-            QtWidgets.QMessageBox.warning(
+            qtutils.critical(
                 None,
                 "Aborting...",
                 f"One or more of the read tags failed to load for {ca.path}. Aborting to prevent any possible further damage. Check log for details.",
