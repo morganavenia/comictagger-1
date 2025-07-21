@@ -146,6 +146,8 @@ class SettingsWindow(QtWidgets.QDialog):
         with (ui_path / "settingswindow.ui").open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
 
+        self.leRarExePath: QtWidgets.QLineEdit
+
         self.setWindowFlags(
             QtCore.Qt.WindowType(self.windowFlags() & ~QtCore.Qt.WindowType.WindowContextHelpButtonHint)
         )
@@ -153,6 +155,8 @@ class SettingsWindow(QtWidgets.QDialog):
         self.config = config
         self.talkers = talkers
         self.name = "Settings"
+
+        self.setModal(True)
 
         if platform.system() == "Windows":
             self.lblRarHelp.setText(windowsRarHelp)
@@ -676,9 +680,11 @@ class SettingsWindow(QtWidgets.QDialog):
         else:
             dialog.setWindowTitle(f"Find {name} library")
 
-        if dialog.exec():
-            file_list = dialog.selectedFiles()
-            control.setText(str(file_list[0]))
+        dialog.fileSelected.connect(self.set_rar_path)
+        dialog.open()
+
+    def set_rar_path(self, path: str) -> None:
+        self.leRarExePath.setText(str(path))
 
     def show_rename_tab(self) -> None:
         self.tabWidget.setCurrentIndex(5)

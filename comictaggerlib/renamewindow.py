@@ -182,9 +182,11 @@ class RenameWindow(QtWidgets.QDialog):
         settingswin = SettingsWindow(self, self.config, self.talkers)
         settingswin.setModal(True)
         settingswin.show_rename_tab()
-        settingswin.exec()
-        if settingswin.result():
-            self.do_preview()
+        settingswin.accepted.connect(self.settings_closed)
+        settingswin.show()
+
+    def settings_closed(self) -> None:
+        self.do_preview()
 
     def accept(self) -> None:
         prog_dialog = QtWidgets.QProgressDialog("", "Cancel", 0, len(self.rename_list), self)

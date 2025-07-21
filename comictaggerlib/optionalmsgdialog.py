@@ -1,15 +1,4 @@
-"""A PyQt6 dialog to show a message and let the user check a box
-
-Example usage:
-
-checked = OptionalMessageDialog.msg(self, "Disclaimer",
-                            "This is beta software, and you are using it at your own risk!",
-                         )
-
-said_yes, checked = OptionalMessageDialog.question(self, "QtWidgets.Question",
-                            "Are you sure you wish to do this?",
-                         )
-"""
+"""A PyQt6 dialog to show a message and let the user check a box"""
 
 #
 # Copyright 2012-2014 ComicTagger Authors
@@ -28,6 +17,7 @@ said_yes, checked = OptionalMessageDialog.question(self, "QtWidgets.Question",
 from __future__ import annotations
 
 import logging
+from typing import Callable
 
 from PyQt6 import QtCore, QtWidgets
 
@@ -39,7 +29,14 @@ StyleQuestion = 1
 
 class OptionalMessageDialog(QtWidgets.QDialog):
     def __init__(
-        self, parent: QtWidgets.QWidget, style: int, title: str, msg: str, checked: bool = False, check_text: str = ""
+        self,
+        parent: QtWidgets.QWidget,
+        style: int,
+        title: str,
+        msg: str,
+        *,
+        checked: bool = False,
+        check_text: str = "",
     ) -> None:
         super().__init__(parent)
 
@@ -85,36 +82,54 @@ class OptionalMessageDialog(QtWidgets.QDialog):
         layout.addWidget(self.theButtonBox)
 
     def accept(self) -> None:
-        self.was_accepted = True
         QtWidgets.QDialog.accept(self)
 
     def reject(self) -> None:
-        self.was_accepted = False
         QtWidgets.QDialog.reject(self)
 
     @staticmethod
-    def msg(parent: QtWidgets.QWidget, title: str, msg: str, checked: bool = False, check_text: str = "") -> bool:
+    def msg(
+        parent: QtWidgets.QWidget,
+        title: str,
+        msg: str,
+        *,
+        callback: Callable[[bool], None],
+        checked: bool = False,
+        check_text: str = "",
+    ) -> None:
         d = OptionalMessageDialog(parent, StyleMessage, title, msg, checked=checked, check_text=check_text)
 
-        d.exec()
-        return d.theCheckBox.isChecked()
+        def finished(i: int) -> None:
+            callback(d.theCheckBox.isChecked())
+
+        d.finished.connect(finished)
+
+        d.show()
 
     @staticmethod
     def question(
-        parent: QtWidgets.QWidget, title: str, msg: str, checked: bool = False, check_text: str = ""
-    ) -> tuple[bool, bool]:
+        parent: QtWidgets.QWidget,
+        title: str,
+        msg: str,
+        *,
+        callback: Callable[[bool, bool], None],
+        checked: bool = False,
+        check_text: str = "",
+    ) -> None:
         d = OptionalMessageDialog(parent, StyleQuestion, title, msg, checked=checked, check_text=check_text)
 
-        d.exec()
+        def finished(i: int) -> None:
+            callback(i == QtWidgets.QDialog.DialogCode.Accepted, d.theCheckBox.isChecked())
 
-        return d.was_accepted, d.theCheckBox.isChecked()
+        d.finished.connect(finished)
+
+        d.show()
 
     @staticmethod
     def msg_no_checkbox(
-        parent: QtWidgets.QWidget, title: str, msg: str, checked: bool = False, check_text: str = ""
-    ) -> bool:
+        parent: QtWidgets.QWidget, title: str, msg: str, *, checked: bool = False, check_text: str = ""
+    ) -> None:
         d = OptionalMessageDialog(parent, StyleMessage, title, msg, checked=checked, check_text=check_text)
         d.theCheckBox.hide()
 
-        d.exec()
-        return d.theCheckBox.isChecked()
+        d.show()

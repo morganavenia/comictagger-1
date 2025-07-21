@@ -56,7 +56,7 @@ class FileSelectionList(QtWidgets.QWidget):
             uic.loadUi(uifile, self)
 
         self.config = config
-
+        self.twList: QtWidgets.QTableWidget
         self.twList.horizontalHeader().setMinimumSectionSize(50)
         self.twList.currentItemChanged.connect(self.current_item_changed_cb)
 
@@ -107,6 +107,17 @@ class FileSelectionList(QtWidgets.QWidget):
         self.twList.setRangeSelected(
             QtWidgets.QTableWidgetSelectionRange(0, 0, self.twList.rowCount() - 1, self.twList.columnCount() - 1), False
         )
+
+    def remove_deleted(self) -> None:
+        deleted = []
+        for row in range(self.twList.rowCount()):
+            row_ca = self.get_archive_by_row(row)
+            if not row_ca:
+                continue
+            if not row_ca.path.exists():
+                deleted.append(row_ca)
+
+        self.remove_archive_list(deleted)
 
     def remove_archive_list(self, ca_list: list[ComicArchive]) -> None:
         self.twList.setSortingEnabled(False)
@@ -339,10 +350,15 @@ class FileSelectionList(QtWidgets.QWidget):
             ca: ComicArchive = self.twList.item(row, FileSelectionList.dataColNum).data(QtCore.Qt.ItemDataRole.UserRole)
 
             filename_item = self.twList.item(row, FileSelectionList.fileColNum)
+            assert filename_item
             folder_item = self.twList.item(row, FileSelectionList.folderColNum)
+            assert folder_item
             md_item = self.twList.item(row, FileSelectionList.MDFlagColNum)
+            assert md_item
             type_item = self.twList.item(row, FileSelectionList.typeColNum)
+            assert type_item
             readonly_item = self.twList.item(row, FileSelectionList.readonlyColNum)
+            assert readonly_item
 
             item_text = os.path.split(ca.path)[1]
             filename_item.setText(item_text)
@@ -397,6 +413,10 @@ class FileSelectionList(QtWidgets.QWidget):
                 old_idx = prev.row()
 
             if old_idx == new_idx:
+                return
+            ca = self.get_archive_by_row(new_idx)
+            if not ca or not ca.path.exists():
+                self.remove_deleted()
                 return
 
             # don't allow change if modified

@@ -25,7 +25,7 @@ from comicapi.comicarchive import ComicArchive
 logger = logging.getLogger(__name__)
 
 
-class PageLoader(QtCore.QThread):
+class PageLoader(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
     """
     This class holds onto a reference of each instance in a list since
     problems occur if the ref count goes to zero and the GC tries to reap

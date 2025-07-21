@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum, auto
+from typing import NamedTuple
 
 from PyQt6 import QtCore, QtWidgets, uic
 
@@ -25,19 +27,35 @@ from comictaggerlib.ui import ui_path
 logger = logging.getLogger(__name__)
 
 
-class ExportConflictOpts:
-    dontCreate = 1
-    overwrite = 2
-    createUnique = 3
+class ExportConflictOpts(Enum):
+    DONT_CREATE = auto()
+    OVERWRITE = auto()
+    CREATE_UNIQUE = auto()
+
+
+class ExportConfig(NamedTuple):
+    conflict: ExportConflictOpts
+    add_to_list: bool
+    delete_original: bool
 
 
 class ExportWindow(QtWidgets.QDialog):
-    def __init__(self, parent: QtWidgets.QWidget, msg: str) -> None:
+    export = QtCore.pyqtSignal(ExportConfig)
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         with (ui_path / "exportwindow.ui").open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
-        self.label.setText(msg)
+        self.label: QtWidgets.QLabel
+        self.cbxDeleteOriginal: QtWidgets.QCheckBox
+        self.cbxAddToList: QtWidgets.QCheckBox
+        self.radioDontCreate: QtWidgets.QRadioButton
+        self.radioCreateNew: QtWidgets.QRadioButton
+        self.msg = """You have selected {count} archive(s) to export to Zip format.  New archives will be created in the same folder as the original.
+
+                   Please choose config below, and select OK.
+                   """
 
         self.setWindowFlags(
             QtCore.Qt.WindowType(self.windowFlags() & ~QtCore.Qt.WindowType.WindowContextHelpButtonHint)
@@ -46,17 +64,20 @@ class ExportWindow(QtWidgets.QDialog):
         self.cbxDeleteOriginal.setChecked(False)
         self.cbxAddToList.setChecked(True)
         self.radioDontCreate.setChecked(True)
+        self.setModal(True)
 
-        self.deleteOriginal = False
-        self.addToList = True
-        self.fileConflictBehavior = ExportConflictOpts.dontCreate
+    def show(self, count: int) -> None:
+        self.label.setText(self.msg.format(count=count))
+        self.adjustSize()
+        QtWidgets.QDialog.show(self)
 
     def accept(self) -> None:
-        QtWidgets.QDialog.accept(self)
 
-        self.deleteOriginal = self.cbxDeleteOriginal.isChecked()
-        self.addToList = self.cbxAddToList.isChecked()
+        conflict = ExportConflictOpts.DONT_CREATE
         if self.radioDontCreate.isChecked():
-            self.fileConflictBehavior = ExportConflictOpts.dontCreate
+            conflict = ExportConflictOpts.DONT_CREATE
         elif self.radioCreateNew.isChecked():
-            self.fileConflictBehavior = ExportConflictOpts.createUnique
+            conflict = ExportConflictOpts.CREATE_UNIQUE
+
+        QtWidgets.QDialog.accept(self)
+        self.export.emit(ExportConfig(conflict, self.cbxAddToList.isChecked(), self.cbxDeleteOriginal.isChecked()))

@@ -37,7 +37,7 @@ from comictalker.comictalker import ComicTalker, RLCallBack
 logger = logging.getLogger(__name__)
 
 
-class AutoTagThread(QtCore.QThread):
+class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifically with signals
     autoTagComplete = QtCore.pyqtSignal(OnlineMatchResults, list)
     autoTagLogMsg = QtCore.pyqtSignal(str)
     autoTagProgress = QtCore.pyqtSignal(object, object, object, bytes, bytes)  # see progress_callback

@@ -17,16 +17,28 @@
 from __future__ import annotations
 
 import logging
+from typing import NamedTuple
 
 from PyQt6 import QtCore, QtWidgets, uic
 
-from comictaggerlib.ctsettings import ct_ns
+from comicapi.genericmetadata import GenericMetadata
+from comictaggerlib.ctsettings import ct_ns, settngs_namespace
 from comictaggerlib.ui import ui_path
 
 logger = logging.getLogger(__name__)
 
 
+class AutoTagSettings(NamedTuple):
+    settings: settngs_namespace.Auto_Tag
+    remove_after_success: bool
+    series_match_identify_thresh: bool
+    split_words: bool
+    search_string: str
+
+
 class AutoTagStartWindow(QtWidgets.QDialog):
+    startAutoTag = QtCore.pyqtSignal(AutoTagSettings)
+
     def __init__(self, parent: QtWidgets.QWidget, config: ct_ns, msg: str) -> None:
         super().__init__(parent)
 
@@ -77,6 +89,8 @@ class AutoTagStartWindow(QtWidgets.QDialog):
         self.search_string = ""
         self.name_length_match_tolerance = self.config.Issue_Identifier__series_match_search_thresh
         self.split_words = self.cbxSplitWords.isChecked()
+        self.adjustSize()
+        self.setModal(True)
 
     def search_string_toggle(self) -> None:
         enable = self.cbxSpecifySearchString.isChecked()
@@ -85,20 +99,26 @@ class AutoTagStartWindow(QtWidgets.QDialog):
     def accept(self) -> None:
         QtWidgets.QDialog.accept(self)
 
-        self.auto_save_on_low = self.cbxSaveOnLowConfidence.isChecked()
-        self.dont_use_year = self.cbxDontUseYear.isChecked()
-        self.assume_issue_one = self.cbxAssumeIssueOne.isChecked()
-        self.ignore_leading_digits_in_filename = self.cbxIgnoreLeadingDigitsInFilename.isChecked()
-        self.remove_after_success = self.cbxRemoveAfterSuccess.isChecked()
-        self.name_length_match_tolerance = self.sbNameMatchSearchThresh.value()
-        self.split_words = self.cbxSplitWords.isChecked()
-
-        # persist some settings
-        self.config.Auto_Tag__save_on_low_confidence = self.auto_save_on_low
-        self.config.Auto_Tag__use_year_when_identifying = not self.dont_use_year
-        self.config.Auto_Tag__assume_issue_one = self.assume_issue_one
-        self.config.Auto_Tag__ignore_leading_numbers_in_filename = self.ignore_leading_digits_in_filename
-        self.config.internal__remove_archive_after_successful_match = self.remove_after_success
-
-        if self.cbxSpecifySearchString.isChecked():
-            self.search_string = self.leSearchString.text()
+        self.startAutoTag.emit(
+            AutoTagSettings(
+                settings=settngs_namespace.Auto_Tag(
+                    online=self.config.Auto_Tag__online,
+                    save_on_low_confidence=self.cbxSaveOnLowConfidence.isChecked(),
+                    use_year_when_identifying=not self.cbxDontUseYear.isChecked(),
+                    assume_issue_one=self.cbxAssumeIssueOne.isChecked(),
+                    ignore_leading_numbers_in_filename=self.cbxIgnoreLeadingDigitsInFilename.isChecked(),
+                    parse_filename=self.config.Auto_Tag__parse_filename,
+                    prefer_filename=self.config.Auto_Tag__prefer_filename,
+                    issue_id=None,
+                    metadata=GenericMetadata(),
+                    clear_tags=self.config.Auto_Tag__clear_tags,
+                    publisher_filter=self.config.Auto_Tag__publisher_filter,
+                    use_publisher_filter=self.config.Auto_Tag__use_publisher_filter,
+                    auto_imprint=self.cbxAutoImprint.isChecked(),
+                ),
+                remove_after_success=self.cbxRemoveAfterSuccess.isChecked(),
+                series_match_identify_thresh=self.sbNameMatchSearchThresh.value(),
+                split_words=self.cbxSplitWords.isChecked(),
+                search_string=self.leSearchString.text(),
+            )
+        )

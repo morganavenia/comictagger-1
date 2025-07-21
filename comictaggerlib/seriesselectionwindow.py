@@ -42,7 +42,7 @@ from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 logger = logging.getLogger(__name__)
 
 
-class SearchThread(QtCore.QThread):
+class SearchThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
     searchComplete = pyqtSignal()
     progressUpdate = pyqtSignal(int, int)
     ratelimit = pyqtSignal(float, float)
@@ -86,7 +86,7 @@ class SearchThread(QtCore.QThread):
         self.ratelimit.emit(full_time, sleep_time)
 
 
-class IdentifyThread(QtCore.QThread):
+class IdentifyThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
     ratelimit = pyqtSignal(float, float)
     identifyComplete = pyqtSignal(IIResult, list)
     identifyLogMsg = pyqtSignal(str)
@@ -336,7 +336,7 @@ class SeriesSelectionWindow(SelectionWindow):
         self.progdialog.setMinimumDuration(300)
 
         if refresh or self.search_thread.isRunning():
-            self.progdialog.exec()
+            self.progdialog.open()
         else:
             self.progdialog = None
 
@@ -435,8 +435,6 @@ class SeriesSelectionWindow(SelectionWindow):
             QtWidgets.QMessageBox.information(self, "Auto-Select", "Can't auto-select without an issue number (yet!)")
             return
         self.iddialog = IDProgressWindow(self)
-        self.iddialog.setModal(True)
-        self.iddialog.show()
 
         md = GenericMetadata()
         md.series = self.series_name
@@ -453,7 +451,7 @@ class SeriesSelectionWindow(SelectionWindow):
 
         self.id_thread.start()
 
-        self.iddialog.exec()
+        self.iddialog.open()
 
     def log_output(self, text: str) -> None:
         if self.iddialog is None:
@@ -469,47 +467,46 @@ class SeriesSelectionWindow(SelectionWindow):
         self.iddialog.progressBar.setValue(cur)
 
     def identify_complete(self, result: IIResult, issues: list[IssueResult]) -> None:
-        if not (self.iddialog is not None and self.comic_archive is not None):
+        if self.iddialog is None or self.comic_archive is None:
             return
 
-        found_match = None
-        choices = False
+        if result == IIResult.single_good_match:
+            return self.update_match(issues[0])
+
+        qmsg = QtWidgets.QMessageBox(parent=self)
+        qmsg.setIcon(qmsg.Icon.Information)
+        qmsg.setText("Auto-Select Result")
+        qmsg.setInformativeText(" Manual interaction needed :-(")
+        qmsg.finished.connect(self.iddialog.close)
+
         if result == IIResult.no_matches:
-            QtWidgets.QMessageBox.information(self, "Auto-Select Result", " No issues found :-(")
-        elif result == IIResult.single_bad_cover_score:
-            QtWidgets.QMessageBox.information(
-                self,
-                "Auto-Select Result",
-                " Found a match, but cover doesn't seem the same.  Verify before committing!",
-            )
-            found_match = issues[0]
-        elif result == IIResult.multiple_bad_cover_scores:
-            QtWidgets.QMessageBox.information(
-                self, "Auto-Select Result", " Found some possibilities, but no confidence. Proceed manually."
-            )
-            choices = True
-        elif result == IIResult.single_good_match:
-            found_match = issues[0]
+            qmsg.setInformativeText(" No matches found :-(")
+            return qmsg.show()
+
+        if result == IIResult.single_bad_cover_score:
+            qmsg.setInformativeText(" Found a match, but cover doesn't seem the same. Verify before committing!")
+            qmsg.finished.connect(lambda: self.update_match(issues[0]))
+            return qmsg.show()
+
+        selector = MatchSelectionWindow(self, issues, self.comic_archive, talker=self.talker, config=self.config)
+        selector.match_selected.connect(self.update_match)
+        qmsg.finished.connect(selector.open)
+
+        if result == IIResult.multiple_bad_cover_scores:
+            qmsg.setInformativeText(" Found some possibilities, but no confidence. Proceed manually.")
         elif result == IIResult.multiple_good_matches:
-            QtWidgets.QMessageBox.information(
-                self, "Auto-Select Result", " Found multiple likely matches.  Please select."
-            )
-            choices = True
+            qmsg.setInformativeText(" Found multiple likely matches. Please select.")
 
-        if choices:
-            selector = MatchSelectionWindow(self, issues, self.comic_archive, talker=self.talker, config=self.config)
-            selector.exec()
-            if selector.result():
-                # we should now have a list index
-                found_match = selector.current_match()
+        qmsg.show()
 
-        if found_match is not None:
-            self.iddialog.accept()
+    def update_match(self, match: IssueResult) -> None:
+        if self.iddialog is not None:
+            self.iddialog.close()
 
-            self.series_id = utils.xlate(found_match.series_id) or ""
-            self.issue_number = found_match.issue_number
-            self.select_by_id()
-            self.show_issues()
+        self.series_id = utils.xlate(match.series_id) or ""
+        self.issue_number = match.issue_number
+        self.select_by_id()
+        self.show_issues()
 
     def show_issues(self) -> None:
         title = ""

@@ -249,12 +249,13 @@ class CoverImageWidget(QtWidgets.QWidget):
         self.set_display_pixmap()
 
     def load_page(self) -> None:
-        if self.comic_archive is not None:
-            if self.page_loader is not None:
-                self.page_loader.abandoned = True
-            self.page_loader = PageLoader(self.comic_archive, self.imageIndex)
-            self.page_loader.loadComplete.connect(self.page_load_complete)
-            self.page_loader.start()
+        if self.comic_archive is None:
+            return
+        if self.page_loader is not None:
+            self.page_loader.abandoned = True
+        self.page_loader = PageLoader(self.comic_archive, self.imageIndex)
+        self.page_loader.loadComplete.connect(self.page_load_complete)
+        self.page_loader.start()
 
     def page_load_complete(self, image_data: bytes) -> None:
         img = get_qimage_from_data(image_data)

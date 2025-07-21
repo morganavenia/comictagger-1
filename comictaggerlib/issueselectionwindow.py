@@ -39,7 +39,7 @@ class IssueNumberTableWidgetItem(QtWidgets.QTableWidgetItem):
         return (IssueString(self_str).as_float() or 0) < (IssueString(other_str).as_float() or 0)
 
 
-class QueryThread(QtCore.QThread):
+class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
     def __init__(
         self,
         talker: ComicTalker,
@@ -54,7 +54,6 @@ class QueryThread(QtCore.QThread):
         self.on_ratelimit = on_ratelimit
 
     def run(self) -> None:
-        # QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
 
         try:
             issue_list = [
@@ -66,11 +65,8 @@ class QueryThread(QtCore.QThread):
             ]
         except TalkerError as e:
             logger.exception("Failed to retrieve issue list: %s", e)
-            # QtWidgets.QApplication.restoreOverrideCursor()
-            # QtWidgets.QMessageBox.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
             return
 
-        # QtWidgets.QApplication.restoreOverrideCursor()
         self.finish.emit(issue_list)
 
 

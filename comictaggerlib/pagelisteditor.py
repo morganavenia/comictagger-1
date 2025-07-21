@@ -351,7 +351,7 @@ class PageListEditor(QtWidgets.QWidget):
         self.comic_archive = comic_archive
         self.pages_list = pages_list
         if pages_list:
-            self.select_read_tags(self.tag_ids)
+            self.select_write_tags(self.tag_ids)
         else:
             self.cbPageType.setEnabled(False)
             self.chkDoublePage.setEnabled(False)
@@ -396,7 +396,7 @@ class PageListEditor(QtWidgets.QWidget):
             self.first_front_page = self.get_first_front_cover()
             self.firstFrontCoverChanged.emit(self.first_front_page)
 
-    def select_read_tags(self, tag_ids: list[str]) -> None:
+    def select_write_tags(self, tag_ids: list[str]) -> None:
         # depending on the current tags, certain fields are disabled
         if not tag_ids:
             return

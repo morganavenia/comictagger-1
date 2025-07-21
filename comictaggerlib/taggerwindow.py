@@ -44,12 +44,12 @@ from comictaggerlib import ctsettings, ctversion
 from comictaggerlib.applicationlogwindow import ApplicationLogWindow, QTextEditLogger
 from comictaggerlib.autotagmatchwindow import AutoTagMatchWindow
 from comictaggerlib.autotagprogresswindow import AutoTagProgressWindow, AutoTagThread
-from comictaggerlib.autotagstartwindow import AutoTagStartWindow
+from comictaggerlib.autotagstartwindow import AutoTagSettings, AutoTagStartWindow
 from comictaggerlib.cbltransformer import CBLTransformer
 from comictaggerlib.coverimagewidget import CoverImageWidget
-from comictaggerlib.crediteditorwindow import CreditEditorWindow
+from comictaggerlib.crediteditorwindow import CreditEditorWindow, EditMode
 from comictaggerlib.ctsettings import ct_ns
-from comictaggerlib.exportwindow import ExportConflictOpts, ExportWindow
+from comictaggerlib.exportwindow import ExportConfig, ExportConflictOpts, ExportWindow
 from comictaggerlib.fileselectionlist import FileSelectionList
 from comictaggerlib.graphics import graphics_path
 from comictaggerlib.gtinvalidator import is_valid_gtin
@@ -75,7 +75,7 @@ def execute(f: Callable[[], Any]) -> None:
     f()
 
 
-class QueryThread(QtCore.QThread):
+class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
     def __init__(
         self,
         talker: ComicTalker,
@@ -359,7 +359,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.fileSelectionList.add_path_list(file_list)
 
         if self.config[0].Dialog_Flags__show_disclaimer:
-            checked = OptionalMessageDialog.msg(
+
+            def set_checked(checked: bool) -> None:
+                self.config[0].Dialog_Flags__show_disclaimer = not checked
+
+            OptionalMessageDialog.msg(
                 self,
                 "Welcome!",
                 """
@@ -378,10 +382,14 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 for more information.<br><br>
                 Have fun!
                 """,
+                callback=set_checked,
             )
-            self.config[0].Dialog_Flags__show_disclaimer = not checked
-        if self.config[0].Dialog_Flags__notify_plugin_changes and getattr(sys, "frozen", False):
-            checked = OptionalMessageDialog.msg(
+        if self.config[0].Dialog_Flags__notify_plugin_changes and True:
+
+            def set_checked(checked: bool) -> None:
+                self.config[0].Dialog_Flags__notify_plugin_changes = not checked
+
+            OptionalMessageDialog.msg(
                 self,
                 "Plugins Have moved!",
                 f"""
@@ -391,22 +399,18 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 Metron: <a href="https://github.com/comictagger/metron_talker/releases">https://github.com/comictagger/metron_talker/releases</a><br/><br/>
                 For more information on installing plugins see the wiki page:<br/><a href="https://github.com/comictagger/comictagger/wiki/Installing-plugins">https://github.com/comictagger/comictagger/wiki/Installing-plugins</a>
                 """,
+                callback=set_checked,
             )
-            self.config[0].Dialog_Flags__notify_plugin_changes = not checked
         if self.enabled_tags():
+            # This should never be false
             self.selected_write_tags = [self.enabled_tags()[0]]
             self.selected_read_tags = [self.enabled_tags()[0]]
-        else:
-            checked = OptionalMessageDialog.msg_no_checkbox(
-                self,
-                "No tags enabled",
-                """
-                There are no tags enabled!<br/><br/>
-                Go to the "Metadata Options" tab in settings to enable the builtin "Comic Rack" tags
-                """,
-            )
+
         if self.config[0].General__check_for_new_version:
             self.check_latest_version_online()
+
+        self.export_window = ExportWindow(self)
+        self.export_window.export.connect(self._repackage_archive)
 
     def enabled_tags(self) -> Sequence[str]:
         return [tag.id for tag in tags.values() if tag.enabled]
@@ -568,18 +572,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def repackage_archive(self) -> None:
         ca_list = self.fileSelectionList.get_selected_archive_list()
-        non_zip_count = 0
-        to_zip = []
-        largest_page_size = 0
-        for ca in ca_list:
-            largest_page_size = max(largest_page_size, len(ca.get_page_name_list()))
-            if not ca.is_zip():
-                to_zip.append(ca)
+        to_zip = [ca for ca in ca_list if not ca.is_zip()]
 
         if not to_zip:
-            QtWidgets.QMessageBox.information(
-                self, self.tr("Export as Zip Archive"), self.tr("Only ZIP archives are selected!")
-            )
+            QtWidgets.QMessageBox.information(self, "Export as Zip Archive", "Only ZIP archives are selected!")
             logger.warning("Export as Zip Archive. Only ZIP archives are selected")
             return
 
@@ -589,98 +585,90 @@ class TaggerWindow(QtWidgets.QMainWindow):
         ):
             return
 
-        if to_zip:
-            EW = ExportWindow(
-                self,
-                (
-                    f"You have selected {len(to_zip)} archive(s) to export  to Zip format. "
-                    """ New archives will be created in the same folder as the original.
+        self.export_window.show(len(to_zip))
 
-   Please choose config below, and select OK.
-   """
-                ),
-            )
-            EW.adjustSize()
-            EW.setModal(True)
-            if not EW.exec():
-                return
+    def _repackage_archive(self, export_config: ExportConfig) -> None:
+        largest_page_size = 0
+        ca_list = self.fileSelectionList.get_selected_archive_list()
+        to_zip = []
+        for ca in ca_list:
+            if not ca.is_zip():
+                to_zip.append(ca)
+            if ca.get_number_of_pages() > largest_page_size:
+                largest_page_size = ca.get_number_of_pages()
 
-            prog_dialog = None
-            if len(to_zip) > 3 or largest_page_size > 24:
-                prog_dialog = QtWidgets.QProgressDialog("", "Cancel", 0, non_zip_count, self)
-                prog_dialog.setWindowTitle("Exporting as ZIP")
-                prog_dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
-                prog_dialog.setMinimumDuration(300)
-                center_window_on_parent(prog_dialog)
-            QtCore.QCoreApplication.processEvents()
+        prog_dialog = None
+        if len(to_zip) > 3 or largest_page_size > 24:
+            prog_dialog = QtWidgets.QProgressDialog("", "Cancel", 0, len(to_zip), self)
+            prog_dialog.setWindowTitle("Exporting as ZIP")
+            prog_dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+            prog_dialog.setMinimumDuration(300)
+            center_window_on_parent(prog_dialog)
+        QtCore.QCoreApplication.processEvents()
 
-            new_archives_to_add = []
-            archives_to_remove = []
-            skipped_list = []
-            failed_list = []
-            success_count = 0
-            logger.debug("Exporting %d comics to zip", len(to_zip))
+        new_archives_to_add = []
+        archives_to_remove = []
+        skipped_list = []
+        failed_list = []
+        success_count = 0
+        logger.debug("Exporting %d comics to zip", len(to_zip))
 
-            for prog_idx, ca in enumerate(to_zip, 1):
-                logger.debug("Exporting comic %d: %s", prog_idx, ca.path)
-                if prog_idx % 10 == 0:
-                    QtCore.QCoreApplication.processEvents()
-                if prog_dialog is not None:
-                    if prog_dialog.wasCanceled():
-                        break
+        for prog_idx, ca in enumerate(to_zip, 1):
+            logger.debug("Exporting comic %d: %s", prog_idx, ca.path)
+            if prog_dialog is not None:
+                if prog_dialog.wasCanceled():
+                    break
+                if prog_idx % 10 == 0 or len(ca_list) < 50:
                     prog_dialog.setValue(prog_idx)
                     prog_dialog.setLabelText(str(ca.path))
+                    QtCore.QCoreApplication.processEvents()
 
-                export_name = ca.path.with_suffix(".cbz")
-                export = True
+            export_name = ca.path.with_suffix(".cbz")
+            export = True
 
-                if export_name.exists():
-                    if EW.fileConflictBehavior == ExportConflictOpts.dontCreate:
-                        export = False
-                        skipped_list.append(ca.path)
-                    elif EW.fileConflictBehavior == ExportConflictOpts.createUnique:
-                        export_name = utils.unique_file(export_name)
+            if export_name.exists():
+                if export_config.conflict == ExportConflictOpts.DONT_CREATE:
+                    export = False
+                    skipped_list.append(ca.path)
+                elif export_config.conflict == ExportConflictOpts.CREATE_UNIQUE:
+                    export_name = utils.unique_file(export_name)
 
-                if export:
-                    logger.debug("Exporting %s to %s", ca.path, export_name)
-                    if ca.export_as_zip(export_name):
-                        success_count += 1
-                        if EW.addToList:
-                            new_archives_to_add.append(str(export_name))
-                        if EW.deleteOriginal:
-                            archives_to_remove.append(ca)
-                            ca.path.unlink(missing_ok=True)
+            if export:
+                logger.debug("Exporting %s to %s", ca.path, export_name)
+                if ca.export_as_zip(export_name):
+                    success_count += 1
+                    if export_config.add_to_list:
+                        new_archives_to_add.append(str(export_name))
+                    if export_config.delete_original:
+                        archives_to_remove.append(ca)
+                        ca.path.unlink(missing_ok=True)
 
-                    else:
-                        # last export failed, so remove the zip, if it exists
-                        failed_list.append(ca.path)
-                        if export_name.exists():
-                            export_name.unlink(missing_ok=True)
+                else:
+                    # last export failed, so remove the zip, if it exists
+                    failed_list.append(ca.path)
+                    if export_name.exists():
+                        export_name.unlink(missing_ok=True)
 
-            if prog_dialog is not None:
-                prog_dialog.hide()
-            self.fileSelectionList.remove_archive_list(archives_to_remove)
+        if prog_dialog is not None:
+            prog_dialog.hide()
+        self.fileSelectionList.remove_archive_list(archives_to_remove)
 
-            summary = f"Successfully created {success_count} Zip archive(s)."
-            if skipped_list:
-                summary += (
-                    f"\n\nThe following {len(skipped_list)} archive(s) were skipped due to file name conflicts:\n"
-                )
-                for f in skipped_list:
-                    summary += f"\t{f}\n"
-            if failed_list:
-                summary += (
-                    f"\n\nThe following {len(failed_list)} archive(s) failed to export due to read/write errors:\n"
-                )
-                for f in failed_list:
-                    summary += f"\t{f}\n"
+        summary = f"Successfully created {success_count} Zip archive(s)."
+        if skipped_list:
+            summary += f"\n\nThe following {len(skipped_list)} archive(s) were skipped due to file name conflicts:\n"
+            for f in skipped_list:
+                summary += f"\t{f}\n"
+        if failed_list:
+            summary += f"\n\nThe following {len(failed_list)} archive(s) failed to export due to read/write errors:\n"
+            for f in failed_list:
+                summary += f"\t{f}\n"
 
-            logger.info(summary)
-            dlg = LogWindow(self)
-            dlg.set_text(summary)
-            dlg.setWindowTitle("Archive Export to Zip Summary")
-            dlg.exec()
-            self.fileSelectionList.add_path_list(new_archives_to_add)
+        logger.info(summary)
+        dlg = LogWindow(self)
+        dlg.set_text(summary)
+        dlg.setWindowTitle("Archive Export to Zip Summary")
+        dlg.show()
+        self.fileSelectionList.add_path_list(new_archives_to_add)
 
     def about_app(self) -> None:
         website = "https://github.com/comictagger/comictagger"
@@ -688,7 +676,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         license_link = "http://www.apache.org/licenses/LICENSE-2.0"
         license_name = "Apache License 2.0"
 
-        msg_box = QtWidgets.QMessageBox()
+        msg_box = QtWidgets.QMessageBox(self)
         msg_box.setWindowTitle("About " + self.appName)
         msg_box.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msg_box.setIconPixmap(QtGui.QPixmap(":/graphics/about.png"))
@@ -704,7 +692,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         )
 
         msg_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msg_box.exec()
+        msg_box.open()  # Doesn't work with show
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         self.droppedFiles = []
@@ -1107,17 +1095,23 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.select_file(folder_mode=True)
 
     def select_folder_archive(self) -> None:
-        dialog = self.file_dialog(folder_mode=True)
-        if dialog.exec():
-            file_list = dialog.selectedFiles()
-            if file_list:
-                self.fileSelectionList.twList.selectRow(self.fileSelectionList.add_path_item(file_list[0])[0])
+        self.select_file(folder_mode=True, recursive=True)
 
-    def select_file(self, folder_mode: bool = False) -> None:
+    def select_file(self, folder_mode: bool = False, recursive: bool = True) -> None:
         dialog = self.file_dialog(folder_mode=folder_mode)
-        if dialog.exec():
-            file_list = dialog.selectedFiles()
-            self.fileSelectionList.add_path_list(file_list)
+        if recursive:
+            dialog.filesSelected.connect(self._load_files)
+        else:
+            dialog.fileSelected.connect(self._load_single_file)
+        dialog.open()
+
+    def _load_single_file(self, file: str) -> None:
+        if file:
+            self.fileSelectionList.twList.selectRow(self.fileSelectionList.add_path_item(file)[0])
+
+    def _load_files(self, files: list[str]) -> None:
+        if files:
+            self.fileSelectionList.add_path_list(files)
 
     def file_dialog(self, folder_mode: bool = False) -> QtWidgets.QFileDialog:
         dialog = QtWidgets.QFileDialog(self)
@@ -1346,7 +1340,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 enable_widget(widget, md_field in enabled_widgets)
 
         self.update_credit_colors()
-        self.page_list_editor.select_read_tags(self.selected_write_tags)
+        self.page_list_editor.select_write_tags(self.selected_write_tags)
         self.toggle_enable_embedding_hashes()
 
     def cell_double_clicked(self, r: int, c: int) -> None:
@@ -1381,7 +1375,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def modify_credits(self, edit: bool) -> None:
         row = self.twCredits.rowCount()
         old = Credit()
+        mode = EditMode.NEW
         if edit:
+            mode = EditMode.EDIT
             row = self.twCredits.currentRow()
             lang = str(
                 self.twCredits.item(row, self.md_attributes["credits.language"]).data(QtCore.Qt.ItemDataRole.UserRole)
@@ -1394,55 +1390,51 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 lang,
             )
 
-        editor = CreditEditorWindow(self, CreditEditorWindow.ModeEdit, old)
-        editor.setModal(True)
-        editor.exec()
-        if editor.result():
-            new = editor.get_credit()
+        editor = CreditEditorWindow(self, self.selected_write_tags, row, mode, old)
+        editor.creditChanged.connect(self._credit_changed)
+        editor.show()
 
-            if new == old:
-                # nothing has changed, just quit
-                return
+    def _edit_credit(self, credit: Credit, row: int) -> None:
+        lang = utils.get_language_from_iso(credit.language) or credit.language
+        self.twCredits.item(row, self.md_attributes["credits.role"]).setText(credit.role)
+        self.twCredits.item(row, self.md_attributes["credits.person"]).setText(credit.person)
+        self.twCredits.item(row, self.md_attributes["credits.language"]).setText(lang)
+        self.twCredits.item(row, self.md_attributes["credits.language"]).setData(
+            QtCore.Qt.ItemDataRole.UserRole, credit.language
+        )
+        self.update_credit_primary_flag(row, credit.primary)
 
-            # check for dupes
-            ok_to_mod = True
-            if self.is_dupe_credit(row, new.role, new.person):
-                # delete the dupe credit from list
-                qmsg = QtWidgets.QMessageBox()
-                qmsg.setText("Duplicate Credit!")
-                qmsg.setInformativeText(
-                    "This will create a duplicate credit entry. Would you like to merge the entries, or create a duplicate?"
-                )
-                qmsg.addButton("Merge", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-                qmsg.addButton("Duplicate", QtWidgets.QMessageBox.ButtonRole.NoRole)
+        self.update_credit_colors()
+        self.set_dirty_flag()
 
-                if qmsg.exec() == 0:
-                    # merge
-                    if edit:
-                        # just remove the row that would be same
-                        self.twCredits.removeRow(row)
-                        # TODO -- need to find the row of the dupe, and possible change the primary flag
+    def _add_credit(self, credit: Credit) -> None:
+        # add new entry
+        row = self.twCredits.rowCount()
+        self.add_new_credit_entry(row, credit)
 
-                    ok_to_mod = False
+        self.update_credit_colors()
+        self.set_dirty_flag()
 
-            if ok_to_mod:
-                # modify it
-                if edit:
-                    lang = utils.get_language_from_iso(new.language) or new.language
-                    self.twCredits.item(row, self.md_attributes["credits.role"]).setText(new.role)
-                    self.twCredits.item(row, self.md_attributes["credits.person"]).setText(new.person)
-                    self.twCredits.item(row, self.md_attributes["credits.language"]).setText(lang)
-                    self.twCredits.item(row, self.md_attributes["credits.language"]).setData(
-                        QtCore.Qt.ItemDataRole.UserRole, new.language
-                    )
-                    self.update_credit_primary_flag(row, new.primary)
-                else:
-                    # add new entry
-                    row = self.twCredits.rowCount()
-                    self.add_new_credit_entry(row, new)
+    def _credit_changed(self, credit: Credit, row: int, mode: EditMode) -> None:
 
-            self.update_credit_colors()
-            self.set_dirty_flag()
+        if self.is_dupe_credit(row, credit.role, credit.person):
+            # delete the dupe credit from list
+            qmsg = QtWidgets.QMessageBox()
+            qmsg.setText("Duplicate Credit!")
+            qmsg.setInformativeText(
+                "This will create a duplicate credit entry. Would you like to merge the entries, or create a duplicate?"
+            )
+            qmsg.addButton("Merge", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+            qmsg.addButton("Duplicate", QtWidgets.QMessageBox.ButtonRole.NoRole)
+
+            if qmsg.exec() == 0 and mode == EditMode.EDIT:
+                # just remove the row that would be same
+                self.twCredits.removeRow(row)
+                mode = EditMode.NEW
+
+        if mode == EditMode.EDIT:
+            return self._edit_credit(credit, row)
+        self._add_credit(credit)
 
     def remove_credit(self) -> None:
         row = self.twCredits.currentRow()
@@ -1465,9 +1457,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def show_settings(self) -> None:
         settingswin = SettingsWindow(self, self.config, self.talkers)
-        settingswin.exec()
-        settingswin.result()
-        self.adjust_source_combo()
+        settingswin.finished.connect(self.adjust_source_combo)
+        settingswin.show()
 
     def set_app_position(self) -> None:
         if self.config[0].internal__window_width != 0:
@@ -1690,7 +1681,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
                 progdialog.hide()
                 QtCore.QCoreApplication.processEvents()
-                self.fileSelectionList.update_selected_rows()
+                self._reload_page()
                 self.update_info_box()
                 self.update_menus()
 
@@ -1703,7 +1694,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 dlg = LogWindow(self)
                 dlg.set_text(summary)
                 dlg.setWindowTitle("Tag Remove Summary")
-                dlg.exec()
+                dlg.show()
 
     def copy_tags(self) -> None:
         # copy the indicated tags in the archive
@@ -1799,7 +1790,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
                 prog_dialog.hide()
                 QtCore.QCoreApplication.processEvents()
-                self.fileSelectionList.update_selected_rows()
+                self._reload_page()
                 self.update_info_box()
                 self.update_menus()
 
@@ -1812,7 +1803,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 dlg = LogWindow(self)
                 dlg.set_text(summary)
                 dlg.setWindowTitle("Tag Copy Summary")
-                dlg.exec()
+                dlg.show()
 
     def auto_tag_log(self, text: str) -> None:
         if self.atprogdialog is not None:
@@ -1842,28 +1833,35 @@ class TaggerWindow(QtWidgets.QMainWindow):
             ),
         )
 
-        atstartdlg.adjustSize()
-        atstartdlg.setModal(True)
-        if not atstartdlg.exec():
-            return
+        atstartdlg.startAutoTag.connect(self._start_auto_tag)
 
+        atstartdlg.open()
+
+    def _start_auto_tag(self, auto_tag: AutoTagSettings) -> None:
+        # persist some settings because it's probably going to be used next time
+        self.config[0].Auto_Tag__save_on_low_confidence = auto_tag.settings["save_on_low_confidence"]
+        self.config[0].Auto_Tag__use_year_when_identifying = auto_tag.settings["use_year_when_identifying"]
+        self.config[0].Auto_Tag__assume_issue_one = auto_tag.settings["assume_issue_one"]
+        self.config[0].Auto_Tag__ignore_leading_numbers_in_filename = auto_tag.settings[
+            "ignore_leading_numbers_in_filename"
+        ]
+        self.config[0].internal__remove_archive_after_successful_match = auto_tag.remove_after_success
+
+        ca_list = self.fileSelectionList.get_selected_archive_list()
         self.atprogdialog = AutoTagProgressWindow(self, self.current_talker())
-        self.atprogdialog.open()
         self.atprogdialog.progressBar.setMaximum(len(ca_list))
         self.atprogdialog.setWindowTitle("Auto-Tagging")
 
         center_window_on_parent(self.atprogdialog)
         temp_opts = cast(ct_ns, settngs.get_namespace(self.config, True, True, True, False)[0])
-        temp_opts.Auto_Tag__clear_tags = atstartdlg.cbxClearMetadata.isChecked()
-        temp_opts.Issue_Identifier__series_match_identify_thresh = atstartdlg.name_length_match_tolerance
-        temp_opts.Auto_Tag__ignore_leading_numbers_in_filename = atstartdlg.ignore_leading_digits_in_filename
-        temp_opts.Auto_Tag__use_year_when_identifying = not atstartdlg.dont_use_year
-        temp_opts.Auto_Tag__assume_issue_one = atstartdlg.assume_issue_one
-        temp_opts.internal__remove_archive_after_successful_match = atstartdlg.remove_after_success
+        temp_opts.Auto_Tag__clear_tags = auto_tag.settings["clear_tags"]
+
+        temp_opts.Issue_Identifier__series_match_identify_thresh = auto_tag.series_match_identify_thresh
+
         temp_opts.Runtime_Options__tags_read = self.selected_read_tags
         temp_opts.Runtime_Options__tags_write = self.selected_write_tags
 
-        self.autotagthread = AutoTagThread(atstartdlg.search_string, ca_list, self.config[0], self.current_talker())
+        self.autotagthread = AutoTagThread(auto_tag.search_string, ca_list, self.config[0], self.current_talker())
 
         self.autotagthread.autoTagComplete.connect(self.auto_tag_finished)
         self.autotagthread.autoTagLogMsg.connect(self.auto_tag_log)
@@ -1875,6 +1873,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.auto_tag_log("==========================================================================\n")
         self.auto_tag_log(f"Auto-Tagging Started for {len(ca_list)} items\n")
         self.autotagthread.start()
+        self.atprogdialog.open()
 
     def auto_tag_finished(self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive]) -> None:
         tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
@@ -1882,11 +1881,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.atprogdialog.close()
 
         self.fileSelectionList.remove_archive_list(archives_to_remove)
-        self.fileSelectionList.update_selected_rows()
-
-        new_ca = self.fileSelectionList.get_current_archive()
-        if new_ca is not None:
-            self.load_archive(new_ca)
+        self._reload_page()
         self.atprogdialog = None
 
         summary = f"<p>{self.current_talker().attribution}</p>"
@@ -1908,42 +1903,51 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.auto_tag_log(summary)
 
         selectable = match_results.multiple_matches or match_results.low_confidence_matches
-        if selectable:
-            summary += (
-                "\n\nDo you want to manually select the ones with multiple matches and/or low-confidence matches now?"
-            )
+        if not selectable:
+            dlg = LogWindow(self)
+            dlg.set_text(summary)
+            dlg.setWindowTitle("Tag Remove Summary")
+            dlg.show()
+            logger.info(summary)
+            return
 
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Auto-Tag Summary",
-                summary,
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-
-            match_results.multiple_matches.extend(match_results.low_confidence_matches)
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                matchdlg = AutoTagMatchWindow(
-                    self,
-                    match_results.multiple_matches,
-                    self.selected_write_tags,
-                    self.config[0],
-                    self.current_talker(),
-                )
-                matchdlg.exec()
-                self.fileSelectionList.update_selected_rows()
-                new_ca = self.fileSelectionList.get_current_archive()
-                if new_ca is not None:
-                    self.load_archive(new_ca)
-
-        else:
-            QtWidgets.QMessageBox.information(self, self.tr("Auto-Tag Summary"), self.tr(summary))
+        summary += (
+            "\n\nDo you want to manually select the ones with multiple matches and/or low-confidence matches now?"
+        )
         logger.info(summary)
+
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Auto-Tag Summary",
+            summary,
+            QtWidgets.QMessageBox.StandardButton.Yes,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+
+        match_results.multiple_matches.extend(match_results.low_confidence_matches)
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            matchdlg = AutoTagMatchWindow(
+                self,
+                match_results.multiple_matches,
+                self.selected_write_tags,
+                self.config[0],
+                self.current_talker(),
+            )
+
+            matchdlg.open()
+            matchdlg.finished.connect(self._reload_page)
+        return
+
+    def _reload_page(self) -> None:
+        self.fileSelectionList.update_selected_rows()
+        new_ca = self.fileSelectionList.get_current_archive()
+        if new_ca is not None:
+            self.load_archive(new_ca)
 
     def exception(self, message: str) -> None:
         errorbox = QtWidgets.QMessageBox()
         errorbox.setText(message)
-        errorbox.exec()
+        errorbox.open()
 
     def dirty_flag_verification(self, title: str, desc: str) -> bool:
         if self.dirty_flag:
@@ -2004,7 +2008,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             dlg = LogWindow(self)
             dlg.set_text(self.comic_archive.read_raw_tags(tag.id))
             dlg.setWindowTitle(f"Raw {tag.name()} Tag View")
-            dlg.exec()
+            dlg.open()
 
     def show_wiki(self) -> None:
         webbrowser.open("https://github.com/comictagger/comictagger/wiki")
@@ -2057,9 +2061,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
             "File Rename", "If you rename files now, unsaved data in the form will be lost.  Are you sure?"
         ):
             dlg = RenameWindow(self, ca_list, self.selected_read_tags, self.config, self.talkers)
-            if dlg.exec() and self.comic_archive is not None:
-                self.fileSelectionList.update_selected_rows()
-                self.load_archive(self.comic_archive)
+            dlg.finished.connect(self._reload_page)
+            dlg.open()
 
     def load_archive(self, comic_archive: ComicArchive) -> None:
         self.comic_archive = None
@@ -2068,8 +2071,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         if not os.path.exists(comic_archive.path):
             self.fileSelectionList.dirty_flag = False
-            self.fileSelectionList.remove_archive_list([comic_archive])
-            QtCore.QTimer.singleShot(1, self.fileSelectionList.revert_selection)
+            self.fileSelectionList.remove_deleted()
             return
 
         self.config[0].internal__last_opened_folder = os.path.abspath(os.path.split(comic_archive.path)[0])
@@ -2123,16 +2125,20 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def version_check_complete(self, new_version: tuple[str, str]) -> None:
         if new_version[0] not in (self.version, self.config[0].Dialog_Flags__dont_notify_about_this_version):
             website = "https://github.com/comictagger/comictagger"
-            checked = OptionalMessageDialog.msg(
+
+            def set_checked(checked: bool) -> None:
+                if checked:
+                    self.config[0].Dialog_Flags__dont_notify_about_this_version = new_version[0]
+
+            OptionalMessageDialog.msg(
                 self,
                 "New version available!",
                 f"New version ({new_version[1]}) available!<br>(You are currently running {self.version})<br><br>"
                 f"Visit <a href='{website}/releases/latest'>{website}/releases/latest</a> for more info.<br><br>",
-                False,
-                "Don't tell me about this version again",
+                callback=set_checked,
+                checked=False,
+                check_text="Don't tell me about this version again",
             )
-            if checked:
-                self.config[0].Dialog_Flags__dont_notify_about_this_version = new_version[0]
 
     def on_incoming_socket_connection(self) -> None:
         # Accept connection from other instance.

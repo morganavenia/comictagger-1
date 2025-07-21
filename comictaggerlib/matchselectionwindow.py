@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 
 class MatchSelectionWindow(QtWidgets.QDialog):
+    match_selected = QtCore.pyqtSignal(IssueResult)
+
     def __init__(
         self,
         parent: QtWidgets.QWidget,
@@ -70,6 +72,7 @@ class MatchSelectionWindow(QtWidgets.QDialog):
 
         self.twList.currentItemChanged.connect(self.current_item_changed)
         self.twList.cellDoubleClicked.connect(self.cell_double_clicked)
+        self.accepted.connect(self.select)
 
         self.update_data()
 
@@ -160,3 +163,6 @@ class MatchSelectionWindow(QtWidgets.QDialog):
         row = self.twList.currentRow()
         match: IssueResult = self.twList.item(row, 0).data(QtCore.Qt.ItemDataRole.UserRole)[0]
         return match
+
+    def selected(self) -> None:
+        self.match_selected.emit(self.current_match())
