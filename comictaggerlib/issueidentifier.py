@@ -310,13 +310,12 @@ class IssueIdentifier:
         primary_img_url: ImageHash | None,
         alt_urls: list[ImageHash],
         local_hashes: list[tuple[str, int]],
-        use_alt_urls: bool = False,
     ) -> Score:
         # local_hashes is a list of pre-calculated hashes.
         # use_alt_urls - indicates to use alternate covers
 
         # If there is no ImageHash or no URL and Kind, return 100 for a bad match
-        if primary_img_url is None or (not primary_img_url.Kind and not primary_img_url.URL and not use_alt_urls):
+        if primary_img_url is None or (not primary_img_url.Kind and not primary_img_url.URL):
             return Score(score=100, url="", remote_hash=0, local_hash=0, local_hash_name="0")
 
         self._user_canceled()
@@ -332,17 +331,17 @@ class IssueIdentifier:
             remote_hashes = self._get_remote_hashes([primary_img_url.URL])
             self.log_msg(f"Downloading image for cover matching: {primary_img_url.URL}")
 
-        if use_alt_urls and alt_urls:
-            only_urls = []
-            for alt_url in alt_urls:
-                if alt_url.Kind:
-                    remote_hashes.append((alt_url.URL, alt_url.Hash))
-                elif alt_url.URL:
-                    only_urls.append(alt_url.URL)
-            if only_urls:
-                remote_hashes.extend(self._get_remote_hashes(only_urls))
+        only_urls = []
+        for alt_url in alt_urls:
+            if alt_url.Kind:
+                remote_hashes.append((alt_url.URL, alt_url.Hash))
+            elif alt_url.URL:
+                only_urls.append(alt_url.URL)
+        if only_urls:
+            remote_hashes.extend(self._get_remote_hashes(only_urls))
 
-            self.log_msg(f"[{len(remote_hashes) - 1} alt. covers]")
+        if alt_urls:
+            self.log_msg(f"[{len(alt_urls) - 1} alt. covers]")
 
         score_list = []
         done = False
@@ -367,6 +366,8 @@ class IssueIdentifier:
                     break
             if done:
                 break
+        if not score_list:
+            return Score(score=100, url="", remote_hash=0, local_hash=0, local_hash_name="0")
 
         best_score_item = min(score_list, key=lambda x: x["score"])
 
@@ -537,9 +538,9 @@ class IssueIdentifier:
                 # TODO: display the hash to the user so they know a direct hash was used instead of downloading an image
                 alt_urls: list[str] = [img.URL for img in issue._alternate_images]
 
-                score_item = self._get_issue_cover_match_score(
-                    issue._cover_image, issue._alternate_images, hashes, use_alt_urls=use_alternates
-                )
+                alt_images = issue._alternate_images if use_alternates else []
+
+                score_item = self._get_issue_cover_match_score(issue._cover_image, alt_images, hashes)
             except Exception:
                 logger.exception("Scoring series%s covers failed", alternate)
                 return []
