@@ -51,7 +51,6 @@ def test_get_issue_cover_match_score(
         primary_img_url=data[0],
         alt_urls=data[1],
         local_hashes=[("Cover 1", ii.calculate_hash(cbz.get_page(0)))],
-        use_alt_urls=data[2],
     )
     assert expected == score
 

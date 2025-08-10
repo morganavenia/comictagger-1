@@ -312,7 +312,6 @@ class IssueIdentifier:
         local_hashes: list[tuple[str, int]],
     ) -> Score:
         # local_hashes is a list of pre-calculated hashes.
-        # use_alt_urls - indicates to use alternate covers
 
         # If there is no ImageHash or no URL and Kind, return 100 for a bad match
         if primary_img_url is None or (not primary_img_url.Kind and not primary_img_url.URL):
