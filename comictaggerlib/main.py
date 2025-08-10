@@ -31,6 +31,7 @@ from typing import cast
 import settngs
 
 import comicapi.comicarchive
+import comicapi.filenamelexer
 import comicapi.utils
 import comictalker
 from comictaggerlib import cli, ctsettings, pillow_plugins
@@ -268,6 +269,13 @@ class App:
         comicapi.utils.load_publishers()
         update_publishers(self.config)
 
+        def add_publisher_to_lexer(publisher: str) -> None:
+            publisher = publisher.casefold()
+            if " " not in publisher and publisher not in comicapi.filenamelexer.key:
+                comicapi.filenamelexer.key[publisher] = comicapi.filenamelexer.ItemType.Publisher
+
+        for publisher in comicapi.utils.publishers:
+            add_publisher_to_lexer(publisher)
         if self.config[0].Commands__command == Action.list_plugins:
             self.list_plugins(
                 list(self.talkers.values()),

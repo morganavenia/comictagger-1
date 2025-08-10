@@ -9,7 +9,7 @@ from testing.filenames import newfnames, oldfnames
 
 
 @pytest.mark.parametrize("filename, reason, expected, xfail", newfnames)
-def test_file_name_parser_new(filename, reason, expected, xfail):
+def test_file_name_parser_new(filename, reason, expected, xfail, load_publishers):
     lex = comicapi.filenamelexer.Lex(filename, "protofolius_issue_number_scheme" == reason)
     p = comicapi.filenameparser.Parse(
         lex.items,

@@ -15,6 +15,7 @@ from PIL import Image
 from pyrate_limiter import Limiter, RequestRate
 
 import comicapi.comicarchive
+import comicapi.filenamelexer
 import comicapi.genericmetadata
 import comictaggerlib.cli
 import comictaggerlib.ctsettings
@@ -54,6 +55,19 @@ def cbz_double_cover(tmp_path, tmp_comic):
 
     tmp_comic.archiver.write_file("double_cover.jpg", double_cover.tobytes("jpeg", "RGB"))
     yield tmp_comic
+
+
+@pytest.fixture
+def load_publishers() -> None:
+    utils.load_publishers()
+
+    def add_publisher_to_lexer(publisher: str) -> None:
+        publisher = publisher.casefold()
+        if " " not in publisher and publisher not in comicapi.filenamelexer.key:
+            comicapi.filenamelexer.key[publisher] = comicapi.filenamelexer.ItemType.Publisher
+
+    for publisher, imprints in utils.publishers.items():
+        add_publisher_to_lexer(publisher)
 
 
 @pytest.fixture(autouse=True)

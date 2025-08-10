@@ -15,16 +15,40 @@ from __future__ import annotations
 import datetime
 import importlib.resources
 import os
-import os.path
 import pathlib
 from contextlib import nullcontext as does_not_raise
+from typing import NamedTuple
 
 import pytest
 
 datadir = importlib.resources.files(__package__).joinpath("data")
 cbz_path = datadir.joinpath("Cory Doctorow's Futuristic Tales of the Here and Now #001 - Anda's Game (2007).cbz")
 
-names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
+
+class XFail(NamedTuple):
+    expected_fail: bool
+    remove_hash: bool
+
+
+names: list[tuple[str, str, dict[str, str | bool], XFail]] = [
+    (
+        "Nickel Comics 08 [Fawcett][Aug23'1940][paper+1fiche][ibc upgraded]-c2c -RH+ML.cbz",
+        "'",
+        {
+            "issue": "8",
+            "series": "Nickel Comics",
+            "title": "",
+            "volume": "",
+            "year": "1940",
+            "remainder": "[paper+1fiche][ibc upgraded] RH+ML",
+            "publisher": "Fawcett",
+            "issue_count": "",
+            "alternate": "",
+            "archive": "cbz",
+            "c2c": True,
+        },
+        XFail(expected_fail=True, remove_hash=True),
+    ),
     (
         "De Psy #6 Bonjour l'angoisse!.cbz",
         "'",
@@ -39,7 +63,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "alternate": "",
             "archive": "cbz",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Airfiles #4 The 'Big Show'.cbz",
@@ -55,7 +79,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "alternate": "",
             "archive": "cbz",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Conceptions #1 Conceptions I.cbz",
@@ -71,7 +95,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "alternate": "",
             "archive": "cbz",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Series #1 Stop it!.cbz",
@@ -87,7 +111,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "alternate": "",
             "archive": "cbz",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Drystan & Esyllt #3",
@@ -102,7 +126,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Michel Vaillant #5 Nr. 13 aan de start",
@@ -117,7 +141,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Karl May #001 Old Shatterhand.cbr",
@@ -134,7 +158,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #8 De 8ste man",
@@ -149,7 +173,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #13 Mach 1 voor Steve Warson",
@@ -164,7 +188,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #19 5 Meisjes in de race",
@@ -179,7 +203,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #34 Steve Warson gaat K.O.",
@@ -194,7 +218,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #40 F.1 in oproer",
@@ -209,7 +233,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #42 300 kmu door Parijs",
@@ -224,7 +248,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #52 F 3000",
@@ -239,7 +263,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Michel Vaillant #66 100.000.000 $ voor Steve Warson",
@@ -254,7 +278,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "batman #B01 title (DC).cbz",
@@ -272,7 +296,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "alternate": "",
             "format": "biography/best of",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "batman #3 title (DC).cbz",
@@ -289,7 +313,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "batman #3 title DC.cbz",
@@ -306,7 +330,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "batman #3 title (DC.cbz",
@@ -323,7 +347,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "ms. Marvel #3.cbz",
@@ -340,7 +364,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Dr. Doom And The Masters Of Evil #1 (2009).cbz",
@@ -357,7 +381,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         f"action comics #{datetime.datetime.now().year}.cbz",
@@ -374,7 +398,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "action comics 1024.cbz",
@@ -391,7 +415,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Action Comics 1001 (2018).cbz",
@@ -408,7 +432,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "january jones #2.cbz",
@@ -424,7 +448,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "#52.cbz",
@@ -440,7 +464,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "alternate": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "52 Monster_Island_v1_#2__repaired__c2c.cbz",
@@ -457,7 +481,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "alternate": "52",
             "c2c": True,
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "Monster_Island_v1_#2__repaired__c2c.cbz",
@@ -473,7 +497,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "c2c": True,
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Monster Island v1 #3 (1957) -- The Revenge Of King Klong (noads).cbz",
@@ -488,7 +512,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "The Revenge Of King Klong (noads)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Foobar-Man Annual #121 - The Wrath of Foobar-Man, Part 1 of 2.cbz",
@@ -504,7 +528,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "annual": True,
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Plastic Man v1 #002 (1942).cbz",
@@ -519,7 +543,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Blue Beetle #02.cbr",
@@ -534,7 +558,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Blue Beetle #½.cbr",
@@ -549,7 +573,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Monster Island vol. 2 #2.cbz",
@@ -564,7 +588,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Crazy Weird Comics #2 (of 2) (1969).rar",
@@ -579,7 +603,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "2",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Super Strange Yarns (1957) #92 (1969).cbz",
@@ -594,7 +618,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Action Spy Tales v1965 #3.cbr",
@@ -609,7 +633,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         " X-Men-V1-#067.cbr",
@@ -624,7 +648,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Amazing Spider-Man #078.BEY (2022) (Digital) (Zone-Empire).cbr",
@@ -639,7 +663,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (Zone-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Angel Wings #02 - Black Widow (2015) (Scanlation) (phillywilly).cbr",
@@ -654,7 +678,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Scanlation) (phillywilly)",
             "issue_count": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Aquaman - Green Arrow - Deep Target #01 (of 07) (2021) (digital) (Son of Ultron-Empire).cbr",
@@ -669,7 +693,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "7",
             "remainder": "(digital) (Son of Ultron-Empire)",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Aquaman 80th Anniversary 100-Page Super Spectacular (2021) #001 (2021) (Digital) (BlackManta-Empire).cbz",
@@ -684,7 +708,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (BlackManta-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Avatar - The Last Airbender - The Legend of Korra (FCBD 2021) (Digital) (mv-DCP).cbr",
@@ -700,7 +724,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "fcbd": True,
         },
-        (True, False),
+        XFail(expected_fail=True, remove_hash=False),
     ),
     (
         "Avengers By Brian Michael Bendis volume 03 (2013) (Digital) (F2) (Kileko-Empire).cbz",
@@ -715,7 +739,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (F2) (Kileko-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Avengers By Brian Michael Bendis v03 (2013) (Digital) (F2) (Kileko-Empire).cbz",
@@ -730,7 +754,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (F2) (Kileko-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Batman '89 (2021) (Webrip) (The Last Kryptonian-DCP).cbr",
@@ -745,7 +769,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Webrip) (The Last Kryptonian-DCP)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Batman_-_Superman_#020_(2021)_(digital)_(NeverAngel-Empire).cbr",
@@ -760,7 +784,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital) (NeverAngel-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Black Widow #009 (2021) (Digital) (Zone-Empire).cbr",
@@ -775,7 +799,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (Zone-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Blade Runner 2029 #006 (2021) (3 covers) (digital) (Son of Ultron-Empire).cbr",
@@ -790,7 +814,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(3 covers) (digital) (Son of Ultron-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Blade Runner Free Comic Book Day 2021 (2021) (digital-Empire).cbr",
@@ -806,7 +830,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "fcbd": True,
         },
-        (True, False),
+        XFail(expected_fail=True, remove_hash=False),
     ),
     (
         "Bloodshot Book 03 (2020) (digital) (Son of Ultron-Empire).cbr",
@@ -821,7 +845,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital) (Son of Ultron-Empire)",
             "issue_count": "",
         },
-        (True, False),
+        XFail(expected_fail=True, remove_hash=False),
     ),
     (
         "book of eli #1 (2020) (digital) (Son of Ultron-Empire).cbr",
@@ -836,7 +860,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital) (Son of Ultron-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Cyberpunk 2077 - You Have My Word #02 (2021) (digital) (Son of Ultron-Empire).cbr",
@@ -851,7 +875,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "remainder": "(digital) (Son of Ultron-Empire)",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "Elephantmen 2259 #008 - Simple Truth 03 (of 06) (2021) (digital) (Son of Ultron-Empire).cbr",
@@ -867,7 +891,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital) (Son of Ultron-Empire)",
             "issue_count": "",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "Free Comic Book Day - Avengers.Hulk (2021) (2048px) (db).cbz",
@@ -883,7 +907,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "fcbd": True,
         },
-        (True, False),
+        XFail(expected_fail=True, remove_hash=False),
     ),
     (
         "Goblin (2021) (digital) (Son of Ultron-Empire).cbr",
@@ -898,7 +922,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital) (Son of Ultron-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Marvel Previews #002 (January 2022) (Digital-Empire).cbr",
@@ -914,7 +938,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital-Empire)",
             "issue_count": "",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "Marvel Two In One V1 #090  c2c (Comixbear-DCP).cbr",
@@ -931,7 +955,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "c2c": True,
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Star Wars - War of the Bounty Hunters - IG-88 (2021) (Digital) (Kileko-Empire).cbz",
@@ -946,7 +970,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (Kileko-Empire)",
             "issue_count": "",
         },
-        (True, False),
+        XFail(expected_fail=True, remove_hash=False),
     ),
     (
         "Star Wars - War of the Bounty Hunters - IG-88 #1 (2021) (Digital) (Kileko-Empire).cbz",
@@ -961,7 +985,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (Kileko-Empire)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "The Defenders v1 #058 (1978) (digital).cbz",
@@ -976,7 +1000,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital)",
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "The Defenders v1 Annual #01 (1976) (Digital) (Minutemen-Slayer).cbr",
@@ -992,7 +1016,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "issue_count": "",
             "annual": True,
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "The Magic Order 2 #06 (2022) (Digital) (Zone-Empire)[__913302__].cbz",
@@ -1007,7 +1031,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(Digital) (Zone-Empire)[913302]",  # Don't really care about double underscores
             "issue_count": "",
         },
-        (False, False),
+        XFail(expected_fail=False, remove_hash=False),
     ),
     (
         "Wonder Woman #001 Wonder Woman Day Special Edition (2021) (digital-Empire).cbr",
@@ -1022,7 +1046,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital-Empire)",
             "issue_count": "",
         },
-        (False, True),
+        XFail(expected_fail=False, remove_hash=True),
     ),
     (
         "Wonder Woman #49 DC Sep-Oct 1951 digital [downsized, lightened, 4 missing story pages restored] (Shadowcat-Empire).cbz",
@@ -1038,7 +1062,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "[downsized, lightened, 4 missing story pages restored] (Shadowcat-Empire)",
             "issue_count": "",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "X-Men, 2021-08-04 (#02) (digital) (Glorith-HD).cbz",
@@ -1053,7 +1077,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "(digital) (Glorith-HD)",
             "issue_count": "",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "Cory Doctorow's Futuristic Tales of the Here and Now: Anda's Game #001 (2007).cbz",
@@ -1068,7 +1092,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
     (
         "Cory Doctorow's Futuristic Tales of the Here and Now $1$2 3 #0.0.1 (2007).cbz",
@@ -1083,7 +1107,7 @@ names: list[tuple[str, str, dict[str, str | bool], tuple[bool, bool]]] = [
             "remainder": "",
             "issue_count": "",
         },
-        (True, True),
+        XFail(expected_fail=True, remove_hash=True),
     ),
 ]
 
@@ -1109,43 +1133,50 @@ for p in names:
         format="",
     )
     filenameinfo.update(info)
-    nxfail = xfail[0]
-    newfnames.append(pytest.param(filename, reason, filenameinfo.copy(), nxfail))
+    newfnames.append(pytest.param(filename, reason, filenameinfo.copy(), xfail.expected_fail))
     oldfnames.append(
         pytest.param(
             filename,
             reason,
             filenameinfo.copy(),
-            nxfail,
-            marks=pytest.mark.xfail(condition=nxfail, reason="old parser"),
+            xfail.expected_fail,
+            marks=pytest.mark.xfail(condition=xfail.expected_fail, reason="old parser"),
         )
     )
     if "#" in filename:
         filename = filename.replace("#", "")
-        nxfail = xfail[1]
         if reason in ("protofolius_issue_number_scheme", "number starting title"):
             newfnames.append(
                 pytest.param(
                     filename,
                     reason,
                     filenameinfo.copy(),
-                    nxfail,
-                    marks=pytest.mark.xfail(condition=nxfail, reason=reason),
+                    xfail.remove_hash,
+                    marks=pytest.mark.xfail(condition=xfail.remove_hash, reason=reason),
                 )
             )
         else:
-            newfnames.append(pytest.param(filename, reason, filenameinfo.copy(), nxfail))
+            newfnames.append(pytest.param(filename, reason, filenameinfo.copy(), xfail.remove_hash))
         oldfnames.append(
             pytest.param(
                 filename,
                 reason,
                 filenameinfo.copy(),
-                nxfail,
-                marks=pytest.mark.xfail(condition=nxfail, reason="old parser"),
+                xfail.remove_hash,
+                marks=pytest.mark.xfail(condition=xfail.remove_hash, reason="old parser"),
             )
         )
 
 file_renames = [
+    (
+        "{series} #{issue} ({year}) {credits}",
+        True,
+        False,
+        True,
+        "universal",
+        "Cory Doctorow's Futuristic Tales of the Here and Now #001 (2007).cbz",
+        does_not_raise(),
+    ),
     (
         "{series} ({volume})({publisher})/{series} #{issue} ({year}){title+ - }{title}",
         True,

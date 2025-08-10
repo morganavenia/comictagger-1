@@ -395,6 +395,12 @@ class Parser:
         self.in_brace = 0  # In {}
         self.in_s_brace = 0  # In []
         self.in_paren = 0  # In ()
+        self.bracket_count = {
+            "": 0,
+            filenamelexer.ItemType.LeftParen: 0,
+            filenamelexer.ItemType.LeftBrace: 0,
+            filenamelexer.ItemType.LeftSBrace: 0,
+        }
         self.year_candidates: list[tuple[bool, bool, filenamelexer.Item]] = []
         self.series: list[list[filenamelexer.Item]] = []
         self.series_parts: list[filenamelexer.Item] = []
@@ -492,6 +498,8 @@ def parse(p: Parser) -> ParserFunc:
                 # operator rejected used later to add back to the series/title
         # It is more likely to be a year if it is inside parentheses.
         if p.in_something > 0:
+            if item.val[0] == "'" and len(item.val) == 5 and item.val[1:].isnumeric():
+                item.val = item.val[1:]
             likely_year = len(item.val.lstrip("0")) == 4
             likely_issue_number = not likely_year
 
@@ -571,6 +579,8 @@ def parse(p: Parser) -> ParserFunc:
     # Matches c2c. Not added to p.used_items so it will show in "remainder"
     elif item.typ == filenamelexer.ItemType.C2C:
         p.filename_info["c2c"] = True
+        # TODO: make skip configurable
+        p.skip = True
 
     # Matches the extension if it is known to be an archive format e.g. cbt,cbz,zip,rar
     elif item.typ == filenamelexer.ItemType.ArchiveType:
@@ -656,6 +666,17 @@ def parse(p: Parser) -> ParserFunc:
         # Month and day are currently irrelevant if they are inside parentheses e.g. (January 2002)
         if p.in_something > 0:
             p.irrelevant.append(item)
+            if p.peek().typ == filenamelexer.ItemType.Space:
+                p.get()
+            if p.peek().typ == filenamelexer.ItemType.Number:
+                item = p.get()
+                # possibly the day definitely not the year
+                # TODO: check number < 32
+                if len(item.val) < 3:
+                    p.irrelevant.append(item)
+                else:
+                    p.backup()
+                    return parse
 
         # assume Sep-Oct is not useful in the series/title
         elif p.peek().typ in [filenamelexer.ItemType.Symbol, filenamelexer.ItemType.Operator]:
@@ -682,12 +703,18 @@ def parse(p: Parser) -> ParserFunc:
     elif item.typ == filenamelexer.ItemType.LeftParen:
         p.in_paren += 1
         p.in_something += 1
+        p.bracket_count[""] += 1
+        p.bracket_count[filenamelexer.ItemType.LeftParen] += 1
     elif item.typ == filenamelexer.ItemType.LeftBrace:
         p.in_brace += 1
         p.in_something += 1
+        p.bracket_count[""] += 1
+        p.bracket_count[filenamelexer.ItemType.LeftBrace] += 1
     elif item.typ == filenamelexer.ItemType.LeftSBrace:
         p.in_s_brace += 1
         p.in_something += 1
+        p.bracket_count[""] += 1
+        p.bracket_count[filenamelexer.ItemType.LeftSBrace] += 1
 
     elif item.typ == filenamelexer.ItemType.RightParen:
         p.in_paren -= 1
@@ -710,6 +737,10 @@ def parse(p: Parser) -> ParserFunc:
         p.in_something += p.in_brace * -1
     if p.in_s_brace < 0:
         p.in_something += p.in_s_brace * -1
+
+    if p.bracket_count[""] >= 3:
+        # TODO: make skip configurable
+        p.skip = True
 
     return parse
 

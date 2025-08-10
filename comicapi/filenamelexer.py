@@ -315,6 +315,10 @@ def lex_text(lex: Lexer) -> LexerFunc:
                     lex.backup()
                     lex.emit(key[word.casefold()])
                     return lex_filename
+                elif cal(word):
+                    lex.backup()
+                    lex.emit(ItemType.Calendar)
+                    return lex_filename
         else:
             lex.backup()
             word = lex.input[lex.start : lex.pos + 1]
