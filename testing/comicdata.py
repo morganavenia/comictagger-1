@@ -217,8 +217,8 @@ metadata_keys = [
 ]
 
 credits = [
-    (comicapi.genericmetadata.md_test, "writer", "Dara Naraghi"),
-    (comicapi.genericmetadata.md_test, "writeR", "Dara Naraghi"),
+    (comicapi.genericmetadata.md_test, "writer", comicapi.genericmetadata.Credit(person="Dara Naraghi", role="Writer")),
+    (comicapi.genericmetadata.md_test, "writeR", comicapi.genericmetadata.Credit(person="Dara Naraghi", role="Writer")),
     (
         comicapi.genericmetadata.md_test.replace(
             credits=[
@@ -227,7 +227,7 @@ credits = [
             ]
         ),
         "writeR",
-        "Dara Naraghi",
+        comicapi.genericmetadata.Credit(person="Dara Naraghi", role="writer"),  # TODO: normalize casing
     ),
 ]
 
@@ -294,7 +294,6 @@ issueidentifier_score = (  # type: ignore[var-annotated]
         (
             None,
             [],
-            False,
         ),
         {
             "remote_hash": 0,
@@ -313,7 +312,6 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                 URL="",
             ),
             [],
-            False,
         ),
         {
             "remote_hash": 0,
@@ -338,7 +336,6 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                     Kind="",
                 )
             ],
-            True,
         ),
         {
             "remote_hash": 212201432349720,
@@ -363,7 +360,6 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                     URL="",
                 ),
             ],
-            True,
         ),
         {
             "remote_hash": 212201432349720,
@@ -381,7 +377,6 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                 URL="",
             ),
             [],
-            False,
         ),
         {
             "remote_hash": 212201432349720,
@@ -399,7 +394,6 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                 URL="https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
             ),
             [],
-            False,
         ),
         {
             "remote_hash": 212201432349720,

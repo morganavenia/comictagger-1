@@ -44,7 +44,21 @@ logger = logging.getLogger(__name__)
 REMOVE = object()
 
 
-Credit = merge.Credit
+@dataclasses.dataclass
+class Credit:
+    person: str = ""
+    role: str = ""
+    primary: bool = False
+    language: str = ""  # Should be ISO 639 language code
+
+    def __str__(self) -> str:
+        lang = ""
+        role = ""
+        if self.role:
+            role = f"{self.role}: "
+        if self.language:
+            lang = f" [{self.language}]"
+        return f"{role}{self.person}{lang}"
 
 
 class PageType(merge.StrEnum):
@@ -467,13 +481,12 @@ class GenericMetadata:
         if not found:
             self.credits.append(credit)
 
-    def get_primary_credit(self, role: str) -> str:
-        primary = ""
+    def get_primary_credit(self, role: str) -> Credit | None:
+        primary = None
+        role = role.casefold()
         for credit in self.credits:
-            if (primary == "" and credit.role.casefold() == role.casefold()) or (
-                credit.role.casefold() == role.casefold() and credit.primary
-            ):
-                primary = credit.person
+            if (not primary and credit.role.casefold() == role) or (credit.primary and credit.role.casefold() == role):
+                primary = credit
         return primary
 
     def __str__(self) -> str:

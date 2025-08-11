@@ -37,6 +37,9 @@ from comictaggerlib.defaults import DEFAULT_REPLACEMENTS, Replacement, Replaceme
 logger = logging.getLogger(__name__)
 
 
+STANDARD_CREDIT_ROLES = ("writer", "penciller", "inker", "colorist", "letterer", "cover artist", "editor", "translator")
+
+
 def get_rename_dir(ca: ComicArchive, rename_dir: str | pathlib.Path | None) -> pathlib.Path:
     folder = ca.path.parent.absolute()
     if rename_dir is not None:
@@ -68,6 +71,7 @@ class MetadataFormatter(string.Formatter):
         self.smart_cleanup = smart_cleanup
         self.platform = normalize_platform(platform)
         self.replacements = replacements
+        self.warnings: list[str] = []
 
     def format_field(self, value: Any, format_spec: str) -> str:
         if value is None or value == "":
@@ -85,9 +89,7 @@ class MetadataFormatter(string.Formatter):
             if conversion and conversion.isdecimal():
                 if not isinstance(value, Collection):
                     return ""
-                i = int(conversion) - 1
-                if i < 0:
-                    i = 0
+                i = int(conversion)
                 if i < len(value):
                     try:
                         return sorted(value)[i]
@@ -95,13 +97,17 @@ class MetadataFormatter(string.Formatter):
                         ...
                     return list(value)[i]
                 return ""
+            reverse = False
+            if conversion == "R":
+                reverse = True
+                conversion = "s"
             if conversion == "j":
                 conversion = "s"
             try:
-                return ", ".join(list(self.convert_field(v, conversion) for v in sorted(value) if v is not None))
+                value = sorted((v for v in value if v is not None), reverse=reverse)
             except Exception:
                 ...
-            return ", ".join(list(self.convert_field(v, conversion) for v in value if v is not None))
+            return ", ".join(list(str(self.convert_field(v, conversion)) for v in value if v is not None))
         if not conversion:
             return cast(str, super().convert_field(value, conversion))
         if conversion == "u":
@@ -125,6 +131,8 @@ class MetadataFormatter(string.Formatter):
         return string
 
     def __get_object(self, original: str, field_name: str, args: Sequence[Any], kwargs: Mapping[str, Any]) -> str:
+        if field_name.startswith("_"):
+            return field_name[1:]
         if field_name not in kwargs or field_name == original:
             return field_name
         try:
@@ -160,6 +168,14 @@ class MetadataFormatter(string.Formatter):
     def is_strict(self) -> bool:
         return self.platform in [Platform.UNIVERSAL, Platform.WINDOWS]
 
+    def _re_format(self, field_name: str, format_spec: str | None, conversion: str | None) -> str:
+        s = "{" + field_name
+        if conversion:
+            s += "!" + conversion
+        if format_spec:
+            s += ":" + format_spec
+        return s + "}"
+
     def _vformat(
         self,
         format_string: str,
@@ -193,51 +209,64 @@ class MetadataFormatter(string.Formatter):
                 result.append(literal_text)
 
             lstrip = False
-            # if there's a field, output it
-            if field_name is not None and field_name != "":
-                field_name, r, replacement = self.split_replacement(field_name)
-                field_name = field_name.casefold()
-                # this is some markup, find the object and do the formatting
+            # if there's not a field, skip to the next item
+            if not field_name:
+                continue
 
-                # handle arg indexing when digit field_names are given.
-                if field_name.isdigit():
-                    raise ValueError("cannot use a number as a field name")
-
-                # given the field_name, find the object it references
-                #  and the argument it came from
-                try:
-                    obj, arg_used = self.get_field(field_name, args, kwargs)
-                    used_args.add(arg_used)
-                except Exception:
-                    obj = None
-
-                obj = self.none_replacement(obj, field_name, replacement, r, args, kwargs)
-                # do any conversion on the resulting object
-                obj = self.convert_field(obj, conversion)
-                if r == "-":
-                    obj = self.none_replacement(obj, field_name, replacement, r, args, kwargs)
-
-                # expand the format spec, if needed
-                format_spec, _ = self._vformat(
-                    cast(str, format_spec), args, kwargs, used_args, recursion_depth - 1, auto_arg_index=False
+            field_name, r, replacement = self.split_replacement(field_name)
+            field_name = field_name.casefold()
+            # Needs to happen before self.get_field. Otherwise errors will swallow this warning
+            if field_name.endswith("]"):
+                self.warnings.append(
+                    "You appear to be trying to get an item from a list instead of {story_arc[2]} use {story_arc!2}"
                 )
 
-                # format the object and append to the result
-                fmt_obj = self.format_field(obj, format_spec)
-                if fmt_obj == "" and result and self.smart_cleanup:
+            # Disallow index based fields
+            if field_name.isdigit():
+                raise ValueError("cannot use a number as a field name")
 
-                    if self.str_contains(result[-1], "({["):
-                        lstrip = True  # trailing braces are handled above
+            # given the field_name, find the object it references
+            #  and the argument it came from
+            try:
+                obj, arg_used = self.get_field(field_name, args, kwargs)
+                used_args.add(arg_used)
+                if arg_used in STANDARD_CREDIT_ROLES:
+                    self.warnings.append(f"Please use {{credit_{arg_used}}} instead of {{{arg_used}}}")
+                # this is an error specifically so that mising fields show an obvious error.
+                if arg_used not in kwargs:
+                    result.append(self._re_format(f"{field_name}{r}{replacement}", format_spec, conversion))
+                    continue
+            except Exception:
+                result.append(self._re_format(f"{field_name}{r}{replacement}", format_spec, conversion))
+                continue
 
-                    if result[-1].startswith(" "):
-                        result[-1] = ""  # handles `v{volume}` where volume is None
+            obj = self.none_replacement(obj, field_name, replacement, r, args, kwargs)
+            # do any conversion on the resulting object
+            obj = self.convert_field(obj, conversion)
+            if r == "-":
+                obj = self.none_replacement(obj, field_name, replacement, r, args, kwargs)
 
-                    result[-1] = self.rstrip(result[-1])  # cleans up opening punctuation, spaces, dashes
-                if self.smart_cleanup:
-                    # colons and slashes get special treatment
-                    fmt_obj = self.handle_replacements(fmt_obj, self.replacements.format_value)
-                    fmt_obj = self.strip_internal(fmt_obj)
-                result.append(fmt_obj)
+            # expand the format spec, if needed
+            format_spec, _ = self._vformat(
+                cast(str, format_spec), args, kwargs, used_args, recursion_depth - 1, auto_arg_index=False
+            )
+
+            # format the object and append to the result
+            fmt_obj = self.format_field(obj, format_spec)
+            if fmt_obj == "" and result and self.smart_cleanup:
+
+                if self.str_contains(result[-1], "({["):
+                    lstrip = True  # trailing braces are handled above
+
+                if result[-1].startswith(" "):
+                    result[-1] = ""  # handles `v{volume}` where volume is None
+
+                result[-1] = self.rstrip(result[-1])  # cleans up opening punctuation, spaces, dashes
+            if self.smart_cleanup:
+                # colons and slashes get special treatment
+                fmt_obj = self.handle_replacements(fmt_obj, self.replacements.format_value)
+                fmt_obj = self.strip_internal(fmt_obj)
+            result.append(fmt_obj)
 
         return "".join(result), False
 
@@ -282,6 +311,7 @@ class FileRenamer:
         self.replacements = replacements
         self.original_name = ""
         self.move_only = False
+        self.warnings: list[str] = []
 
     def set_metadata(self, metadata: GenericMetadata, original_name: str) -> None:
         self.metadata = metadata
@@ -298,8 +328,13 @@ class FileRenamer:
 
     def determine_name(self, ext: str) -> str:
         class Default(dict[str, Any]):
-            def __missing__(self, key: str) -> str:
+            def __missing__(self, key: str) -> str | None:
+                if key.startswith("credit_"):
+                    self[key] = None
+                    return None
                 return "{" + key + "}"
+
+        self.warnings.clear()
 
         md = self.metadata
 
@@ -325,8 +360,6 @@ class FileRenamer:
         )
 
         md_dict["issue"] = IssueString(md.issue).as_string(pad=self.issue_zero_padding)
-        for role in ["writer", "penciller", "inker", "colorist", "letterer", "cover artist", "editor", "translator"]:
-            md_dict[role] = md.get_primary_credit(role)
 
         if (isinstance(md.month, int) or isinstance(md.month, str) and md.month.isdigit()) and 0 < int(md.month) < 13:
             md_dict["month_name"] = calendar.month_name[int(md.month)]
@@ -350,11 +383,29 @@ class FileRenamer:
         if md.locations:
             md_dict["location"] = sorted(md.locations)[0]
 
+        for role in {c.role.casefold() for c in md.credits}:
+            if f"credit_{role}" in md_dict:
+                continue
+            credit = md.get_primary_credit(role)
+            if credit is None:
+                continue
+            if role in STANDARD_CREDIT_ROLES:
+                md_dict[role] = credit.person
+            md_dict[f"credit_{role}"] = credit.person
+            md_dict[f"credit_item_{role}"] = credit
+
+        # Ensure standard credit roles are always defined
+        for role in STANDARD_CREDIT_ROLES:
+            if role not in md_dict:
+                md_dict[role] = None
+                md_dict[f"credit_{role}"] = None
+                md_dict[f"credit_item_{role}"] = None
+
         new_basename = ""
         for component in pathlib.PureWindowsPath(template).parts:
-            new_basename = str(
-                sanitize_filename(fmt.vformat(component, args=[], kwargs=Default(md_dict)), platform=self.platform)
-            ).strip()
+            new_component = fmt.vformat(component, args=[], kwargs=Default(md_dict))
+            self.warnings.extend(fmt.warnings)
+            new_basename = str(sanitize_filename(new_component, platform=self.platform)).strip()
             new_name = os.path.join(new_name, new_basename)
 
         if self.move_only:

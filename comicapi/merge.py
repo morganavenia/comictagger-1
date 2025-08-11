@@ -1,25 +1,10 @@
 from __future__ import annotations
 
-import dataclasses
 from collections.abc import Collection
 from enum import auto
 from typing import Any, Callable
 
 from comicapi.utils import DefaultDict, StrEnum, norm_fold
-
-
-@dataclasses.dataclass
-class Credit:
-    person: str = ""
-    role: str = ""
-    primary: bool = False
-    language: str = ""  # Should be ISO 639 language code
-
-    def __str__(self) -> str:
-        lang = ""
-        if self.language:
-            lang = f" [{self.language}]"
-        return f"{self.role}: {self.person}{lang}"
 
 
 class Mode(StrEnum):

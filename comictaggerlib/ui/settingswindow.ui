@@ -1015,11 +1015,8 @@ Example Merge:
            </item>
            <item row="2" column="1">
             <widget class="QLabel" name="lblRenameTest">
-             <property name="text">
-              <string/>
-             </property>
              <property name="textFormat">
-              <enum>Qt::PlainText</enum>
+              <enum>Qt::RichText</enum>
              </property>
              <property name="textInteractionFlags">
               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>

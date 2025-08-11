@@ -393,11 +393,16 @@ class SettingsWindow(QtWidgets.QDialog):
         fr.set_issue_zero_padding(int(self.leIssueNumPadding.text()))
         fr.set_smart_cleanup(self.cbxSmartCleanup.isChecked())
         try:
-            self.lblRenameTest.setText(fr.determine_name(".cbz"))
+            new_name = "<pre>"
+            new_name += fr.determine_name(".cbz")
+            new_name += "</pre>"
+            if fr.warnings:
+                new_name += '<span style="color: red"> Warnings:</span><br/>' + "<br/>".join(fr.warnings)
+            self.lblRenameTest.setText(new_name)
             self.rename_error = None
         except Exception as e:
             self.rename_error = e
-            self.lblRenameTest.setText(str(e))
+            self.lblRenameTest.setText(f'<span style="color: red">Error:</span><br/> {e}')
 
     def update_rar_path(self, *args: Any, **kwargs: Any) -> None:
         rar_path: Any = pathlib.Path(self.leRarExePath.text())
