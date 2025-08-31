@@ -581,7 +581,7 @@ def languages() -> dict[str | None, str | None]:
     if not _languages:
         import isocodes
 
-        for alpha_2, lng in isocodes.extendend_languages._sorted_by_index(index="alpha_2"):
+        for alpha_2, lng in isocodes.extended_languages._sorted_by_index(index="alpha_2"):
             _languages[alpha_2] = lng["name"]
     return _languages.copy()
 
@@ -602,7 +602,7 @@ def get_language_iso(string: str | None) -> str | None:
 
     found = None
 
-    for lng in isocodes.extendend_languages.items:
+    for lng in isocodes.extended_languages.items:
         for x in ("alpha_2", "alpha_3", "bibliographic", "common_name", "name"):
             if x in lng and lng[x].casefold() == lang:
                 found = lng
