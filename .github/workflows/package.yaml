@@ -44,9 +44,12 @@ jobs:
 
       - name: Build, Install and Test PyPi packages
         run: |
+          export TOX_OVERRIDE='testenv.install_command=python -I -m pip install --only-binary PyQt6 --only-binary PyQt6-WebEngine {opts} {packages}'
           export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/icu4c/lib/pkgconfig${PKG_CONFIG_PATH+:$PKG_CONFIG_PATH}";
           export PATH="/usr/local/opt/icu4c/bin:/usr/local/opt/icu4c/sbin${PATH+:$PATH}"
-          python -m tox p
+          python -m tox r -m build
+        shell: bash
+
 
       - name: Release PyPi package
         run: |
