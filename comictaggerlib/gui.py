@@ -18,7 +18,7 @@ try:
     qt_available = True
     from PyQt6 import QtCore, QtGui, QtWidgets
 
-    def show_exception_box(log_msg: str) -> None:
+    def show_exception_box(log_msg: str, details: str) -> None:
         """Checks if a QApplication instance is available and shows a messagebox with the exception message.
         If unavailable (non-console application), log an additional notice.
         """
@@ -27,7 +27,9 @@ try:
             errorbox.setStandardButtons(
                 QtWidgets.QMessageBox.StandardButton.Abort | QtWidgets.QMessageBox.StandardButton.Ignore
             )
+            errorbox.setTextFormat(QtCore.Qt.TextFormat.MarkdownText)
             errorbox.setText(log_msg)
+            errorbox.setDetailedText(details + " ")  # Forces text formatting on macOS
             if errorbox.exec() == QtWidgets.QMessageBox.StandardButton.Abort:
                 QtWidgets.QApplication.exit(1)
             else:
@@ -59,11 +61,11 @@ try:
             else:
                 exc_info = (exc_type, exc_value, exc_traceback)
                 trace_back = "".join(traceback.format_tb(exc_traceback))
-                log_msg = f"{exc_type.__name__}: {exc_value}\n\n{trace_back}"
                 logger.critical("Uncaught exception: %s: %s", exc_type.__name__, exc_value, exc_info=exc_info)
+                log_msg = f"{exc_type.__name__}: {exc_value}"
 
                 # trigger message box show
-                self._exception_caught.emit(f"Oops. An unexpected error occurred:\n{log_msg}")
+                self._exception_caught.emit(f"Oops. An unexpected error occurred:\n{log_msg}", trace_back)
 
     qt_exception_hook = UncaughtHook()
     from comictaggerlib.taggerwindow import TaggerWindow
@@ -89,7 +91,7 @@ try:
 
 except ImportError as e:
 
-    def show_exception_box(log_msg: str) -> None: ...
+    def show_exception_box(log_msg: str, details: str) -> None: ...
 
     logger.exception("Qt unavailable")
     qt_available = False
@@ -105,7 +107,7 @@ def open_tagger_window(
         args.extend(["-platform", "windows:darkmode=2"])
     app = Application(args)
     if error is not None:
-        show_exception_box(error[0])
+        show_exception_box(error[0], " ")
         if error[1]:
             raise SystemExit(1)
 

@@ -117,6 +117,7 @@ class App:
         self.initial_arg_parser = ctsettings.initial_commandline_parser()
         self.config_load_success = False
         self.talkers: dict[str, ComicTalker]
+        self.metron_location = ""
 
     def run(self) -> None:
         configure_locale()
@@ -131,11 +132,22 @@ class App:
     def load_plugins(self, opts: argparse.Namespace) -> None:
         local_plugins = plugin_finder.find_plugins(opts.config.user_plugin_dir)
 
+        for talker in local_plugins.talkers.copy():
+            if (
+                talker.entry_name == "metron"
+                or "metron" in talker.obj.website.casefold()
+                or "metron" in talker.obj.__module__.casefold()
+            ):
+                self.metron_location = f"Local package {str(talker.plugin.path.absolute())}"
+                local_plugins.talkers.remove(talker)
+                continue
+
         comicapi.comicarchive.load_archive_plugins(local_plugins=[p.obj for p in local_plugins.archivers])
         comicapi.comicarchive.load_tag_plugins(version=version, local_plugins=[p.obj for p in local_plugins.tags])
-        self.talkers = comictalker.get_talkers(
+        self.talkers, metron_location = comictalker.get_talkers(
             version, opts.config.user_cache_dir, local_plugins=[p.obj for p in local_plugins.talkers]
         )
+        self.metron_location = metron_location or self.metron_location
 
     def list_plugins(
         self,
@@ -301,6 +313,11 @@ class App:
             )
 
         if not self.config[0].Runtime_Options__no_gui:
+            if self.metron_location:
+                error = (
+                    f"Metron is no longer supported please remove the metron plugin: {self.metron_location}.\n\nSee https://github.com/comictagger/comictagger/issues/783 for more details.",
+                    True,
+                )
             try:
                 from comictaggerlib import gui
 
@@ -311,6 +328,12 @@ class App:
                 self.config[0].Runtime_Options__no_gui = True
                 logger.warning("PyQt6 is not available. ComicTagger is limited to command-line mode.")
 
+        if self.metron_location:
+            print(  # noqa: T201
+                f"Metron is no longer supported please remove the metron plugin: {self.metron_location}.\nSee https://github.com/comictagger/comictagger/issues/783 for more details.",
+                True,
+            )
+            raise SystemExit(9)
         # GUI mode is not available or CLI mode was requested
         if error and error[1]:
             print(f"A fatal error occurred please check the log for more information: {error[0]}")  # noqa: T201
