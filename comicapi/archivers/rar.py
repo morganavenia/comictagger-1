@@ -339,7 +339,7 @@ class RarArchiver(Archiver):
             try:
                 rarc = rarfile.RarFile(str(self.path))
                 self._rar = rarc
-            except (OSError, rarfile.RarFileError) as e:
+            except (OSError, rarfile.Error) as e:
                 logger.error("Unable to get rar object [%s]: %s", e, self.path)
             else:
                 return rarc
