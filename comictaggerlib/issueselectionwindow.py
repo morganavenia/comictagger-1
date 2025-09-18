@@ -40,18 +40,17 @@ class IssueNumberTableWidgetItem(QtWidgets.QTableWidgetItem):
 
 
 class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
+    finish = QtCore.pyqtSignal(list)
+    ratelimit = QtCore.pyqtSignal(float, float)
+
     def __init__(
         self,
         talker: ComicTalker,
         series_id: str,
-        finish: QtCore.pyqtSignal,
-        on_ratelimit: QtCore.pyqtSignal,
     ) -> None:
         super().__init__()
         self.series_id = series_id
         self.talker = talker
-        self.finish = finish
-        self.on_ratelimit = on_ratelimit
 
     def run(self) -> None:
 
@@ -59,7 +58,7 @@ class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifica
             issue_list = [
                 x
                 for x in self.talker.fetch_issues_in_series(
-                    self.series_id, on_rate_limit=RLCallBack(lambda x, y: self.on_ratelimit.emit(x, y), 10)
+                    self.series_id, on_rate_limit=RLCallBack(lambda x, y: self.ratelimit.emit(x, y), 10)
                 )
                 if x.issue_id is not None
             ]
@@ -99,9 +98,9 @@ class IssueSelectionWindow(SelectionWindow):
         self.querythread = QueryThread(
             self.talker,
             self.series_id,
-            self.finish,
-            self.ratelimit,
         )
+        self.querythread.finish.connect(self.finish)
+        self.querythread.ratelimit.connect(self.ratelimit)
         self.querythread.start()
 
     def query_finished(self, issues: list[GenericMetadata]) -> None:

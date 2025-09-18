@@ -486,7 +486,8 @@ class SeriesSelectionWindow(SelectionWindow):
         if result == IIResult.single_good_match:
             return self.update_match(issues[0])
 
-        qmsg = QtWidgets.QMessageBox(parent=self)
+        qmsg = QtWidgets.QMessageBox(parent=self.iddialog)
+        qmsg.setModal(False)
         qmsg.setIcon(qmsg.Icon.Information)
         qmsg.setText("Auto-Select Result")
         qmsg.setInformativeText(" Manual interaction needed :-(")

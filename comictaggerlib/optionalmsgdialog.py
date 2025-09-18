@@ -98,6 +98,7 @@ class OptionalMessageDialog(QtWidgets.QDialog):
         check_text: str = "",
     ) -> None:
         d = OptionalMessageDialog(parent, StyleMessage, title, msg, checked=checked, check_text=check_text)
+        d.setModal(True)
 
         def finished(i: int) -> None:
             callback(d.theCheckBox.isChecked())
@@ -117,6 +118,7 @@ class OptionalMessageDialog(QtWidgets.QDialog):
         check_text: str = "",
     ) -> None:
         d = OptionalMessageDialog(parent, StyleQuestion, title, msg, checked=checked, check_text=check_text)
+        d.setModal(True)
 
         def finished(i: int) -> None:
             callback(i == QtWidgets.QDialog.DialogCode.Accepted, d.theCheckBox.isChecked())
@@ -130,6 +132,7 @@ class OptionalMessageDialog(QtWidgets.QDialog):
         parent: QtWidgets.QWidget, title: str, msg: str, *, checked: bool = False, check_text: str = ""
     ) -> None:
         d = OptionalMessageDialog(parent, StyleMessage, title, msg, checked=checked, check_text=check_text)
+        d.setModal(True)
         d.theCheckBox.hide()
 
         d.show()
