@@ -405,6 +405,19 @@ class SeriesSelectionWindow(SelectionWindow):
             except TalkerError:
                 pass
         self.set_description(self.teDescription, series.description or "")
+        series_link = ""
+        if series.web_links:
+            url = (
+                series.web_links[0]
+                .url.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("'", "&apos;")
+                .replace('"', "&quot;")
+            )
+
+            series_link = f'<a href="{url}">Link To Series</a>'
+        self.lblSeriesLink.setText(series_link)
         self.cover_widget.set_url(series.image_url)
         return series
 

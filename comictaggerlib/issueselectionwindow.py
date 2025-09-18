@@ -183,4 +183,17 @@ class IssueSelectionWindow(SelectionWindow):
         cover = issue._cover_image.URL if issue._cover_image else ""
         self.cover_widget.set_issue_details(self.issue_id, [cover, *alt_images])
         self.set_description(self.teDescription, issue.description or "")
+        series_link = ""
+        if issue.web_links:
+            url = (
+                issue.web_links[0]
+                .url.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("'", "&apos;")
+                .replace('"', "&quot;")
+            )
+
+            series_link = f'<a href="{url}">Link To Issue</a>'
+        self.lblIssueLink.setText(series_link)
         return issue

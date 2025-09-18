@@ -302,7 +302,7 @@ class ComicVineTalker(ComicTalker):
             "format": "json",
             "resources": "volume",
             "query": search_series_name,
-            "field_list": "volume,name,id,start_year,publisher,image,description,count_of_issues,aliases",
+            "field_list": "volume,name,id,start_year,publisher,image,description,count_of_issues,aliases,site_detail_url",
             "page": 1,
             "limit": 100,
         }
@@ -801,7 +801,7 @@ class ComicVineTalker(ComicTalker):
 
         aliases = record.get("aliases") or ""
 
-        return ComicSeries(
+        series = ComicSeries(
             aliases=set(utils.split(aliases, "\n")),
             count_of_issues=record.get("count_of_issues"),
             count_of_volumes=None,
@@ -813,6 +813,13 @@ class ComicVineTalker(ComicTalker):
             start_year=start_year,
             format=None,
         )
+        url = utils.xlate(record.get("site_detail_url"))
+        if url:
+            try:
+                series.web_links = [parse_url(url)]
+            except LocationParseError:
+                ...
+        return series
 
     def _fetch_issues_in_series(
         self,
