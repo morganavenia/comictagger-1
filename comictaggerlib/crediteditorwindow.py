@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import logging
 import operator
-from enum import Enum, auto
 
 import natsort
 from PyQt6 import QtCore, QtWidgets, uic
@@ -32,15 +31,12 @@ from comictaggerlib.ui.qtutils import enable_widget
 logger = logging.getLogger(__name__)
 
 
-class EditMode(Enum):
-    EDIT = auto()
-    NEW = auto()
-
-
 class CreditEditorWindow(QtWidgets.QDialog):
-    creditChanged = QtCore.pyqtSignal(Credit, int, EditMode)
+    creditChanged = QtCore.pyqtSignal(Credit, int)
 
-    def __init__(self, parent: QtWidgets.QWidget, tags: list[str], row: int, mode: EditMode, credit: Credit) -> None:
+    def __init__(
+        self, parent: QtWidgets.QWidget, tags: list[str], row: int, credit: Credit, title: str = "New Credit"
+    ) -> None:
         super().__init__(parent)
 
         with (ui_path / "crediteditorwindow.ui").open(encoding="utf-8") as uifile:
@@ -53,15 +49,11 @@ class CreditEditorWindow(QtWidgets.QDialog):
             "credits.primary": self.cbPrimary,
         }
 
-        self.mode = mode
         self.credit = credit
         self.row = row
         self.tags = tags
 
-        if self.mode == EditMode.EDIT:
-            self.setWindowTitle("Edit Credit")
-        else:
-            self.setWindowTitle("New Credit")
+        self.setWindowTitle(title)
         self.setModal(True)
 
         # Add the entries to the role combobox
@@ -129,4 +121,4 @@ class CreditEditorWindow(QtWidgets.QDialog):
         QtWidgets.QDialog.accept(self)
         new = self.get_credit()
         if self.credit != new:
-            self.creditChanged.emit(new, self.row, self.mode)
+            self.creditChanged.emit(new, self.row)

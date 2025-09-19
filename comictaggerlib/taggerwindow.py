@@ -47,7 +47,7 @@ from comictaggerlib.autotagprogresswindow import AutoTagProgressWindow, AutoTagT
 from comictaggerlib.autotagstartwindow import AutoTagSettings, AutoTagStartWindow
 from comictaggerlib.cbltransformer import CBLTransformer
 from comictaggerlib.coverimagewidget import CoverImageWidget
-from comictaggerlib.crediteditorwindow import CreditEditorWindow, EditMode
+from comictaggerlib.crediteditorwindow import CreditEditorWindow
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.exportwindow import ExportConfig, ExportConflictOpts, ExportWindow
 from comictaggerlib.fileselectionlist import FileSelectionList
@@ -937,7 +937,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
             for row, credit in enumerate(md.credits):
                 # if the role-person pair already exists, just skip adding it to the list
-                if self.is_dupe_credit(None, credit.role.title(), credit.person):
+                if self.get_dupe_credit(None, credit.role.title(), credit.person):
                     continue
 
                 self.add_new_credit_entry(row, credit)
@@ -973,7 +973,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.twCredits.setItem(row, self.md_attributes["credits.primary"], item)
         self.update_credit_primary_flag(row, credit.primary)
 
-    def is_dupe_credit(self, row: int | None, role: str, name: str) -> bool:
+    def get_dupe_credit(self, row: int | None, role: str, name: str) -> int:
         for r in range(self.twCredits.rowCount()):
             if r == row:
                 continue
@@ -982,9 +982,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.twCredits.item(r, self.md_attributes["credits.role"]).text() == role
                 and self.twCredits.item(r, self.md_attributes["credits.person"]).text() == name
             ):
-                return True
+                return r
 
-        return False
+        return -1
 
     def form_to_metadata(self) -> None:
         # copy the data from the form into the metadata
@@ -1337,15 +1337,29 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.page_list_editor.select_write_tags(self.selected_write_tags)
         self.toggle_enable_embedding_hashes()
 
-    def cell_double_clicked(self, r: int, c: int) -> None:
-        self.edit_credit()
-
     def add_credit(self) -> None:
-        self.modify_credits(False)
+        row = self.twCredits.rowCount()
+        editor = CreditEditorWindow(self, self.selected_write_tags, row, Credit())
+        editor.creditChanged.connect(self._credit_added)
+        editor.show()
 
     def edit_credit(self) -> None:
-        if self.twCredits.currentRow() > -1:
-            self.modify_credits(True)
+        if self.twCredits.currentRow() < 0:
+            return
+        row = self.twCredits.currentRow()
+        lang = str(
+            self.twCredits.item(row, self.md_attributes["credits.language"]).data(QtCore.Qt.ItemDataRole.UserRole)
+            or utils.get_language_iso(self.twCredits.item(row, self.md_attributes["credits.language"]).text())
+        )
+        old = Credit(
+            self.twCredits.item(row, self.md_attributes["credits.person"]).text(),
+            self.twCredits.item(row, self.md_attributes["credits.role"]).text(),
+            self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != "",
+            lang,
+        )
+        editor = CreditEditorWindow(self, self.selected_write_tags, row, old, "Edit Credit")
+        editor.creditChanged.connect(self._credit_changed)
+        editor.show()
 
     def update_credit_primary_flag(self, row: int, primary: bool) -> None:
         # if we're clearing a flag do it and quit
@@ -1366,29 +1380,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         # Now set our new primary
         self.twCredits.item(row, self.md_attributes["credits.primary"]).setText("Yes")
 
-    def modify_credits(self, edit: bool) -> None:
-        row = self.twCredits.rowCount()
-        old = Credit()
-        mode = EditMode.NEW
-        if edit:
-            mode = EditMode.EDIT
-            row = self.twCredits.currentRow()
-            lang = str(
-                self.twCredits.item(row, self.md_attributes["credits.language"]).data(QtCore.Qt.ItemDataRole.UserRole)
-                or utils.get_language_iso(self.twCredits.item(row, self.md_attributes["credits.language"]).text())
-            )
-            old = Credit(
-                self.twCredits.item(row, self.md_attributes["credits.person"]).text(),
-                self.twCredits.item(row, self.md_attributes["credits.role"]).text(),
-                self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != "",
-                lang,
-            )
-
-        editor = CreditEditorWindow(self, self.selected_write_tags, row, mode, old)
-        editor.creditChanged.connect(self._credit_changed)
-        editor.show()
-
-    def _edit_credit(self, credit: Credit, row: int) -> None:
+    def _update_credit(self, credit: Credit, row: int) -> None:
+        assert isinstance(row, int)
         lang = utils.get_language_from_iso(credit.language) or credit.language
         self.twCredits.item(row, self.md_attributes["credits.role"]).setText(credit.role)
         self.twCredits.item(row, self.md_attributes["credits.person"]).setText(credit.person)
@@ -1409,26 +1402,44 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.update_credit_colors()
         self.set_dirty_flag()
 
-    def _credit_changed(self, credit: Credit, row: int, mode: EditMode) -> None:
+    def _credit_changed(self, credit: Credit, row: int) -> None:
+        dupe_index = self.get_dupe_credit(row, credit.role, credit.person)
+        if dupe_index < 0:
+            return self._update_credit(credit, row)
+        # delete the dupe credit from list
+        qmsg = QtWidgets.QMessageBox(parent=self)
+        qmsg.setText("Duplicate Credit!")
+        qmsg.setInformativeText(
+            "This will create a duplicate credit entry. Would you like to merge the entries, or create a duplicate?"
+        )
+        qmsg.addButton("Merge", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        qmsg.addButton("Duplicate", QtWidgets.QMessageBox.ButtonRole.RejectRole)
 
-        if self.is_dupe_credit(row, credit.role, credit.person):
-            # delete the dupe credit from list
-            qmsg = QtWidgets.QMessageBox()
-            qmsg.setText("Duplicate Credit!")
-            qmsg.setInformativeText(
-                "This will create a duplicate credit entry. Would you like to merge the entries, or create a duplicate?"
-            )
-            qmsg.addButton("Merge", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-            qmsg.addButton("Duplicate", QtWidgets.QMessageBox.ButtonRole.NoRole)
+        def _merge(credit: Credit, row: int, existing: int) -> None:
+            self.twCredits.removeRow(row)
+            self._update_credit(credit, existing)
 
-            if qmsg.exec() == 0 and mode == EditMode.EDIT:
-                # just remove the row that would be same
-                self.twCredits.removeRow(row)
-                mode = EditMode.NEW
+        qmsg.accepted.connect(functools.partial(_merge, credit, row, dupe_index))
+        qmsg.rejected.connect(functools.partial(self._update_credit, credit, row))
 
-        if mode == EditMode.EDIT:
-            return self._edit_credit(credit, row)
-        self._add_credit(credit)
+        qmsg.show()
+
+    def _credit_added(self, credit: Credit) -> None:
+        dupe_index = self.get_dupe_credit(None, credit.role, credit.person)
+        if dupe_index < 0:
+            self._add_credit(credit)
+            return
+        # delete the dupe credit from list
+        qmsg = QtWidgets.QMessageBox(parent=self)
+        qmsg.setText("Duplicate Credit!")
+        qmsg.setInformativeText(
+            "This will create a duplicate credit entry. Would you like to merge the entries, or create a duplicate?"
+        )
+        qmsg.addButton("Merge", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        qmsg.addButton("Duplicate", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+        qmsg.accepted.connect(functools.partial(self._update_credit, credit, dupe_index))
+        qmsg.rejected.connect(functools.partial(self._add_credit, credit))
+        qmsg.show()
 
     def remove_credit(self) -> None:
         row = self.twCredits.currentRow()
