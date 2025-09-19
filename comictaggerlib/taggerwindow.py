@@ -1207,6 +1207,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
         self.toast = Toast(QtWidgets.QApplication.activeWindow())
+        self.toast.__position_relative_to_widget = self
         if qtutils.is_dark_mode():
             self.toast.applyPreset(ToastPreset.WARNING_DARK)
         else:
@@ -1951,26 +1952,26 @@ class TaggerWindow(QtWidgets.QMainWindow):
         errorbox.open()
 
     def dirty_flag_verification(self, title: str, desc: str) -> bool:
-        if self.dirty_flag:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                title,
-                desc,
-                (
-                    QtWidgets.QMessageBox.StandardButton.Save
-                    | QtWidgets.QMessageBox.StandardButton.Cancel
-                    | QtWidgets.QMessageBox.StandardButton.Discard
-                ),
-                QtWidgets.QMessageBox.StandardButton.Cancel,
-            )
+        if not self.dirty_flag:
+            return True
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            title,
+            desc,
+            (
+                QtWidgets.QMessageBox.StandardButton.Save
+                | QtWidgets.QMessageBox.StandardButton.Cancel
+                | QtWidgets.QMessageBox.StandardButton.Discard
+            ),
+            QtWidgets.QMessageBox.StandardButton.Cancel,
+        )
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Discard:
-                return True
-            if reply == QtWidgets.QMessageBox.StandardButton.Save:
-                self.write_tags()
-                return True
-            return False
-        return True
+        if reply == QtWidgets.QMessageBox.StandardButton.Discard:
+            return True
+        if reply == QtWidgets.QMessageBox.StandardButton.Save:
+            self.write_tags()
+            return True
+        return False
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         if self.dirty_flag_verification(
