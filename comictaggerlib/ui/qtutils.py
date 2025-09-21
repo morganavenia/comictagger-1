@@ -238,21 +238,21 @@ try:
         return new_widget
 
     def critical(parent: QWidget | None, title: str, text: str) -> None:
-        qmsg = QtWidgets.QMessageBox(parent)
+        qmsg = QtWidgets.QMessageBox(parent=parent)
         qmsg.setIcon(qmsg.Icon.Critical)
         qmsg.setText(title)
         qmsg.setInformativeText(text)
         return qmsg.show()
 
     def warning(parent: QWidget | None, title: str, text: str) -> None:
-        qmsg = QtWidgets.QMessageBox(parent)
+        qmsg = QtWidgets.QMessageBox(parent=parent)
         qmsg.setIcon(qmsg.Icon.Warning)
         qmsg.setText(title)
         qmsg.setInformativeText(text)
         return qmsg.show()
 
     def information(parent: QWidget | None, title: str, text: str) -> None:
-        qmsg = QtWidgets.QMessageBox(parent)
+        qmsg = QtWidgets.QMessageBox(parent=parent)
         qmsg.setIcon(qmsg.Icon.Information)
         qmsg.setText(title)
         qmsg.setInformativeText(text)
