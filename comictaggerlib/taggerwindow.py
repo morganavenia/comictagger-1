@@ -249,7 +249,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         self.scrollAreaWidgetContents.adjustSize()
 
-        self.setWindowIcon(QtGui.QIcon(str(graphics_path / "app.png")))
+        self.qicon = QtGui.QIcon(str(graphics_path / "app.png"))
+        self.setWindowIcon(self.qicon)
+        self.tray = QtWidgets.QSystemTrayIcon(self)
+        self.tray.show()  # this shouldn't actually make a tray icon as there is no icon set
 
         # respect the command line selected tags
         if config[0].Runtime_Options__tags_write:
@@ -1206,8 +1209,16 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.metadata_to_form()
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
-        self.toast = Toast(QtWidgets.QApplication.activeWindow())
-        self.toast.__position_relative_to_widget = self
+        if QtWidgets.QSystemTrayIcon.supportsMessages():
+            self.tray.showMessage(
+                "Rate Limit Hit!",
+                f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit",
+                self.qicon,
+                abs(int(sleep_time * 1000) + 200),
+            )
+            return
+        self.toast = Toast(self)
+        # self.toast.__position_relative_to_widget = self
         if qtutils.is_dark_mode():
             self.toast.applyPreset(ToastPreset.WARNING_DARK)
         else:
@@ -1221,7 +1232,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.toast.setText(
             f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
         )
-        self.toast.setPositionRelativeToWidget(self)
+        self.toast.setAlwaysOnMainScreen(True)
         self.toast.show()
 
     def write_tags(self) -> None:

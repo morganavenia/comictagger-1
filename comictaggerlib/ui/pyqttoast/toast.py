@@ -1324,14 +1324,14 @@ class Toast(QDialog):
 
         if on:
             self.setWindowFlags(
-                Qt.WindowType.Tool
+                Qt.WindowType.Popup
                 | Qt.WindowType.CustomizeWindowHint
                 | Qt.WindowType.FramelessWindowHint
                 | Qt.WindowType.WindowStaysOnTopHint
             )
         else:
             self.setWindowFlags(
-                Qt.WindowType.Tool | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.FramelessWindowHint
+                Qt.WindowType.Popup | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.FramelessWindowHint
             )
 
     def getBorderRadius(self) -> int:

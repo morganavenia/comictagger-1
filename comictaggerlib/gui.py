@@ -10,6 +10,7 @@ import types
 import settngs
 
 from comictaggerlib.ctsettings import ct_ns
+from comictaggerlib.ctversion import version
 from comictaggerlib.graphics import graphics_path
 from comictalker.comictalker import ComicTalker
 
@@ -114,6 +115,9 @@ def open_tagger_window(
     app.openFileRequest.connect(lambda x: config[0].Runtime_Options__files.append(x.toLocalFile()))
     # The window Icon needs to be set here. It's also set in taggerwindow.ui but it doesn't seem to matter
     app.setWindowIcon(QtGui.QIcon(":/graphics/app.png"))
+    app.setApplicationName("ComicTagger")
+    app.setApplicationDisplayName("ComicTagger")
+    app.setApplicationVersion(version)
 
     if platform.system() == "Windows":
         # For pure python, tell windows that we're not python,
