@@ -252,7 +252,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.qicon = QtGui.QIcon(str(graphics_path / "app.png"))
         self.setWindowIcon(self.qicon)
         self.tray = QtWidgets.QSystemTrayIcon(self)
-        self.tray.show()  # this shouldn't actually make a tray icon as there is no icon set
+        self.tray.show()
+        self.tray.hide()  # QT doesn't initialize until you call show. on_ratelimit calls .show, .showMessage, and then .hide so that a tray item is not persistent. Specifically macOS will make an invisible tray icon if you keep it visible, even without an icon
 
         # respect the command line selected tags
         if config[0].Runtime_Options__tags_write:
@@ -1210,12 +1211,14 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
         if QtWidgets.QSystemTrayIcon.supportsMessages():
+            self.tray.show()
             self.tray.showMessage(
                 "Rate Limit Hit!",
                 f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit",
                 self.qicon,
                 abs(int(sleep_time * 1000) + 200),
             )
+            self.tray.hide()
             return
         self.toast = Toast(self)
         # self.toast.__position_relative_to_widget = self
