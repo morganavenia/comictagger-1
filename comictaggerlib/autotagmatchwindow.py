@@ -36,7 +36,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
     def __init__(
         self,
         parent: QtWidgets.QWidget,
-        match_set_list: list[Result],
+        match_set_list: list[tuple[Result, ComicArchive]],
         read_tags: list[str],
         config: ct_ns,
         talker: ComicTalker,
@@ -48,7 +48,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
         self.config = config
 
-        self.current_match_set: Result = match_set_list[0]
+        self.current_match_set: tuple[Result, ComicArchive] = match_set_list[0]
 
         self.altCoverWidget = CoverImageWidget(
             self.altCoverContainer, CoverImageWidget.AltCoverMode, config.Runtime_Options__config.user_cache_dir
@@ -98,7 +98,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.twList.resizeColumnsToContents()
         self.twList.selectRow(0)
 
-        path = self.current_match_set.original_path
+        path = self.current_match_set[0].original_path
         self.setWindowTitle(
             "Select correct match or skip ({} of {}): {}".format(
                 self.current_match_set_idx + 1,
@@ -115,7 +115,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
         self.twList.setSortingEnabled(False)
 
-        for row, match in enumerate(self.current_match_set.online_results):
+        for row, match in enumerate(self.current_match_set[0].online_results):
             self.twList.insertRow(row)
 
             item_text = match.series
@@ -179,10 +179,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             self.teDescription.setText(match.description)
 
     def set_cover_image(self) -> None:
-        ca = ComicArchive(
-            self.current_match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash
-        )
-        self.archiveCoverWidget.set_archive(ca)
+        self.archiveCoverWidget.set_archive(self.current_match_set[1])
 
     def current_match(self) -> IssueResult:
         row = self.twList.currentRow()
@@ -222,10 +219,8 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
     def save_match(self) -> None:
         match = self.current_match()
-        ca = ComicArchive(
-            self.current_match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash
-        )
-        md, error = self.parent().read_selected_tags(self._tags, ca)
+        ca = self.current_match_set[1]
+        md, _, error = self.parent().read_selected_tags(self._tags, ca)
         if error is not None:
             logger.error("Failed to load tags for %s: %s", ca.path, error)
 
@@ -247,7 +242,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         # now get the particular issue data
 
         try:
-            self.current_match_set.md = ct_md = self.talker.fetch_comic_data(issue_id=match.issue_id)
+            self.current_match_set[0].md = ct_md = self.talker.fetch_comic_data(issue_id=match.issue_id)
         except TalkerError as e:
             QtWidgets.QApplication.restoreOverrideCursor()
             qtutils.critical(self, f"{e.source} {e.code_name} Error", str(e))

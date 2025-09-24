@@ -65,6 +65,8 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
         match_results = OnlineMatchResults()
         archives_to_remove = []
         for prog_idx, ca in enumerate(self.ca_list):
+            if self.canceled:
+                return
             self.log_output("==========================================================================\n")
             self.log_output(f"Auto-Tagging {prog_idx} of {len(self.ca_list)}\n")
             self.log_output(f"{ca.path}\n")
@@ -75,14 +77,13 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
                 logger.error("Failed to load metadata for %s: %s", ca.path, e)
             image_data = ca.get_page(cover_idx)
             self.progress_callback(prog_idx, len(self.ca_list), ca.path, image_data, b"")
-
             if self.canceled:
-                break
+                return
 
             if ca.is_writable():
                 success, match_results = self.identify_and_tag_single_archive(ca, match_results)
                 if self.canceled:
-                    break
+                    return
 
                 if success and self.config.internal__remove_archive_after_successful_match:
                     archives_to_remove.append(ca)

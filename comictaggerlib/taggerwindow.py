@@ -1941,10 +1941,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
         )
 
         match_results.multiple_matches.extend(match_results.low_confidence_matches)
+        auto_tagged_archives = {a.path: a for a in self.fileSelectionList.get_selected_archive_list()}
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             matchdlg = AutoTagMatchWindow(
                 self,
-                match_results.multiple_matches,
+                [(m, auto_tagged_archives[m.original_path]) for m in match_results.multiple_matches],
                 self.selected_write_tags,
                 self.config[0],
                 self.current_talker(),
