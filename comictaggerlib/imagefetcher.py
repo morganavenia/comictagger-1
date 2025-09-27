@@ -23,7 +23,9 @@ import pathlib
 import shutil
 import sqlite3 as lite
 import tempfile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
+
+from PyQt6.QtCore import QByteArray
 
 try:
     import niquests as requests
@@ -45,7 +47,7 @@ def fetch_complete(url: str, image_data: bytes | QtCore.QByteArray) -> None: ...
 
 
 class ImageFetcher:
-    image_fetch_complete = fetch_complete
+    image_fetch_complete: Callable[[str, bytes | QByteArray], None] = fetch_complete
     qt_available = True
 
     def __init__(self, cache_folder: pathlib.Path) -> None:
@@ -67,6 +69,7 @@ class ImageFetcher:
 
         if self.qt_available:
             self.nam = QtNetwork.QNetworkAccessManager()
+            self.nam.finished.connect(self.finish_request)
 
     def clear_cache(self) -> None:
         os.unlink(self.db_file)
@@ -90,7 +93,9 @@ class ImageFetcher:
         if blocking or not self.qt_available:
             if not image_data:
                 try:
-                    image_data = requests.get(url, headers={"user-agent": "comictagger/" + ctversion.version}).content
+                    image_data = requests.get(
+                        url, headers={"user-agent": "comictagger image fetcher/" + ctversion.version}
+                    ).content
                     # save the image to the cache
                     self.add_image_to_cache(self.fetched_url, image_data)
                 except Exception as e:
@@ -103,11 +108,10 @@ class ImageFetcher:
 
             # if we found it, just emit the signal asap
             if image_data:
-                ImageFetcher.image_fetch_complete(url, QtCore.QByteArray(image_data))
+                self.image_fetch_complete(url, QtCore.QByteArray(image_data))
                 return b""
 
             # didn't find it.  look online
-            self.nam.finished.connect(self.finish_request)
             self.nam.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
 
             # we'll get called back when done...
@@ -115,13 +119,15 @@ class ImageFetcher:
 
     def finish_request(self, reply: QtNetwork.QNetworkReply) -> None:
         # read in the image data
-        logger.debug("request finished")
+        url = reply.request().url().toString()
+        length = reply.header(QtNetwork.QNetworkRequest.KnownHeaders.ContentLengthHeader)
+        logger.debug("request finished: %s: %s", url, length or "")
         image_data = reply.readAll()
 
         # save the image to the cache
-        self.add_image_to_cache(reply.request().url().toString(), image_data)
+        self.add_image_to_cache(url, image_data)
 
-        ImageFetcher.image_fetch_complete(reply.request().url().toString(), image_data)
+        self.image_fetch_complete(url, image_data)
 
     def create_image_db(self) -> None:
         # this will wipe out any existing version

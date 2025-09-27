@@ -26,6 +26,7 @@ from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.seriesselectionwindow import SelectionWindow
 from comictaggerlib.ui import ui_path
+from comictaggerlib.ui.qtutils import center_window_on_parent
 from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 
 logger = logging.getLogger(__name__)
@@ -93,13 +94,24 @@ class IssueSelectionWindow(SelectionWindow):
         self.initial_id: str = ""
         self.leFilter.textChanged.connect(self.filter)
         self.finish.connect(self.query_finished)
+        self.prog_dialog = None
 
     def perform_query(self) -> None:  # type: ignore[override]
+        if self.prog_dialog:
+            self.prog_dialog.deleteLater()
+        self.prog_dialog = QtWidgets.QProgressDialog("Retrieving issues", "Cancel", 0, 100, self)
+        self.prog_dialog.setWindowTitle("Retrieving issues")
+        self.prog_dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        self.prog_dialog.setMinimumDuration(1000)
+        center_window_on_parent(self.prog_dialog)
+        self.prog_dialog.show()
+
         self.querythread = QueryThread(
             self.talker,
             self.series_id,
         )
         self.querythread.finish.connect(self.finish)
+        self.querythread.finish.connect(self.prog_dialog.close)
         self.querythread.ratelimit.connect(self.ratelimit)
         self.querythread.start()
 

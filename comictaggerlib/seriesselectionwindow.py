@@ -534,13 +534,13 @@ class SeriesSelectionWindow(SelectionWindow):
         self.selector.perform_query()
 
     def issue_selected(self, result: list[GenericMetadata]) -> None:
-        if result and self.selector:
-            # we should now have a series ID
-            self.issue_number = self.selector.issue_number
-            self.issue_id = self.selector.issue_id
-            self.accept()
-        else:
+        if not result or not self.selector:
             self.cover_widget.update_content()
+            return
+        # we should now have a series ID
+        self.issue_number = self.selector.issue_number
+        self.issue_id = self.selector.issue_id
+        self.accept()
 
     def select_by_id(self) -> None:
         for r in range(self.twList.rowCount()):
@@ -568,7 +568,7 @@ class SeriesSelectionWindow(SelectionWindow):
         try:
             QtCore.QCoreApplication.processEvents()
             self.progdialog.setMaximum(total)
-            self.progdialog.setValue(current + 1)
+            self.progdialog.setValue(min(current + 1, total))
             QtCore.QCoreApplication.processEvents()
         except Exception:
             ...
@@ -576,6 +576,7 @@ class SeriesSelectionWindow(SelectionWindow):
     def search_complete(self) -> None:
         if self.progdialog is not None:
             self.progdialog.accept()
+            self.progdialog.deleteLater()
             self.progdialog = None
         if self.search_thread is not None and self.search_thread.ct_error:
             parent = self.parent()

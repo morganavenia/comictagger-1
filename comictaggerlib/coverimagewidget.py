@@ -76,6 +76,7 @@ class CoverImageWidget(QtWidgets.QWidget):
             self.talker = None
         else:
             self.cover_fetcher = ImageFetcher(cache_folder)
+            self.cover_fetcher.image_fetch_complete = self.image_fetch_complete.emit
             self.talker = None
         with (ui_path / "coverimagewidget.ui").open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
@@ -234,15 +235,16 @@ class CoverImageWidget(QtWidgets.QWidget):
     def load_url(self) -> None:
         assert isinstance(self.cache_folder, pathlib.Path)
         self.load_default()
-        self.cover_fetcher = ImageFetcher(self.cache_folder)
-        ImageFetcher.image_fetch_complete = self.image_fetch_complete.emit
+        if not self.cover_fetcher:
+            self.cover_fetcher = ImageFetcher(self.cache_folder)
+            self.cover_fetcher.image_fetch_complete = self.image_fetch_complete.emit
         data = self.cover_fetcher.fetch(self.url_list[self.imageIndex])
         if data:
             self.cover_remote_fetch_complete(self.url_list[self.imageIndex], data)
 
     # called when the image is done loading from internet
     def cover_remote_fetch_complete(self, url: str, image_data: bytes) -> None:
-        if url and url not in self.url_list:
+        if not url or url not in self.url_list:
             return
         img = get_qimage_from_data(image_data)
         self.current_pixmap = QtGui.QPixmap.fromImage(img)

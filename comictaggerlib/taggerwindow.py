@@ -76,22 +76,21 @@ def execute(f: Callable[[], Any]) -> None:
 
 
 class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifically with signals
+    finish = QtCore.pyqtSignal(GenericMetadata)
+    ratelimit = QtCore.pyqtSignal(float, float)
+
     def __init__(
         self,
         talker: ComicTalker,
         issue_id: str,
         series_id: str,
         issue_number: str,
-        finish: QtCore.pyqtSignal,
-        on_rate_limit: QtCore.pyqtSignal,
     ) -> None:
         super().__init__()
         self.issue_id = issue_id
         self.series_id = series_id
         self.issue_number = issue_number
         self.talker = talker
-        self.finish = finish
-        self.on_rate_limit = on_rate_limit
 
     def run(self) -> None:
         try:
@@ -99,18 +98,18 @@ class QueryThread(QtCore.QThread):  # TODO: Evaluate thread semantics. Specifica
                 issue_id=self.issue_id,
                 series_id=self.series_id,
                 issue_number=self.issue_number,
-                on_rate_limit=RLCallBack(lambda x, y: self.on_rate_limit.emit(x, y), 60),
+                on_rate_limit=RLCallBack(lambda x, y: self.ratelimit.emit(x, y), 60),
             )
         except TalkerError as e:
             return qtutils.critical(None, f"{e.source} {e.code_name} Error", f"{e}")
-        self.finish.emit(new_metadata, self.issue_number)
+        self.finish.emit(new_metadata)
 
 
 class TaggerWindow(QtWidgets.QMainWindow):
     appName = "ComicTagger"
     version = ctversion.version
     ratelimit = QtCore.pyqtSignal(float, float)
-    query_finished = QtCore.pyqtSignal(GenericMetadata, str)
+    query_finished = QtCore.pyqtSignal(GenericMetadata)
 
     def __init__(
         self,
@@ -430,7 +429,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             remove_raw_tags[tag.id] = self.menuRemove.addAction(f"Remove Raw {tag.name()} Tags")
             remove_raw_tags[tag.id].setEnabled(tag.enabled)
             remove_raw_tags[tag.id].setStatusTip(f"Remove {tag.name()} tags from comic archive")
-            remove_raw_tags[tag.id].triggered.connect(functools.partial(self.remove_tags, [tag.id]))
+            remove_raw_tags[tag.id].triggered.connect(functools.partial(self.prompt_remove_tags, [tag.id]))
 
         return view_raw_tags, remove_raw_tags
 
@@ -516,7 +515,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def config_menus(self) -> None:
         # File Menu
         self.actionAutoTag.triggered.connect(self.auto_tag)
-        self.actionCopyTags.triggered.connect(self.copy_tags)
+        self.actionCopyTags.triggered.connect(self.prompt_copy_tags)
         self.actionExit.triggered.connect(self.close)
         self.actionLoad.triggered.connect(self.select_file)
         self.actionLoadFolder.triggered.connect(self.select_folder)
@@ -525,7 +524,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.actionRename.triggered.connect(self.rename_archive)
         self.actionRepackage.triggered.connect(self.repackage_archive)
         self.actionSettings.triggered.connect(self.show_settings)
-        self.actionWrite_Tags.triggered.connect(self.write_tags)
+        self.actionWrite_Tags.triggered.connect(self.prompt_write_tags)
         # Tag Menu
         self.actionApplyCBLTransform.triggered.connect(self.apply_cbl_transform)
         self.actionAutoIdentify.triggered.connect(self.auto_identify_search)
@@ -1189,14 +1188,12 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.selector.issue_id,
             self.selector.series_id,
             self.selector.issue_number,
-            self.query_finished,
-            self.ratelimit,
         )
+        self.querythread.finish.connect(self.query_finished)
+        self.querythread.ratelimit.connect(self.ratelimit)
         self.querythread.start()
 
-    def apply_query_metadata(self, new_metadata: GenericMetadata, issue_number: str) -> None:
-        # we should now have a series ID
-        # QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+    def apply_query_metadata(self, new_metadata: GenericMetadata) -> None:
         QtWidgets.QApplication.restoreOverrideCursor()
 
         # copy the form onto metadata object
@@ -1238,26 +1235,27 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.toast.setAlwaysOnMainScreen(True)
         self.toast.show()
 
-    def write_tags(self) -> None:
+    def prompt_write_tags(self) -> None:
         if self.metadata is None or self.comic_archive is None:
             return qtutils.information(self, "Whoops!", "No data to write!")
 
-        if self.config[0].General__prompt_on_save:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Save Tags",
-                f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.selected_write_tags])} tags to this archive?",
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-        else:
-            reply = QtWidgets.QMessageBox.StandardButton.Yes
+        if not self.config[0].General__prompt_on_save:
+            return self.write_tags()
 
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-            return
+        qmsg = QtWidgets.QMessageBox(self)
+        qmsg.setText("Save Tags")
+        qmsg.setInformativeText(
+            f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.selected_write_tags])} tags to this archive?"
+        )
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setDefaultButton(qmsg.StandardButton.No)
+        qmsg.accepted.connect(self.write_tags)
+        qmsg.show()
+
+    def write_tags(self) -> None:
         QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
         self.form_to_metadata()
-
+        assert self.comic_archive
         failed_tag: str = ""
         # Save each tag
         for tag_id in self.selected_write_tags:
@@ -1283,7 +1281,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             # Only try to read if write was successful
             self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
             if error is not None:
-                logger.error("Failed to load metadata for %s: %s", self.ca.path, error)
+                logger.error("Failed to load metadata for %s: %s", self.comic_archive.path, error)
                 qtutils.warning(
                     self,
                     "Read Failed!",
@@ -1635,90 +1633,93 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.cbFormat.addItem("Year One")
 
     def remove_auto(self) -> None:
-        self.remove_tags(self.selected_write_tags)
+        self.prompt_remove_tags(self.selected_write_tags)
 
-    def remove_tags(self, tag_ids: list[str]) -> None:
+    def prompt_remove_tags(self, tag_ids: list[str]) -> None:
         # remove the indicated tag_ids from the archive
         ca_list = self.fileSelectionList.get_selected_archive_list()
-        has_md_count = 0
+        md_count = 0
         file_md_count = {}
         for tag_id in tag_ids:
             file_md_count[tag_id] = 0
         for ca in ca_list:
             for tag_id in tag_ids:
                 if ca.has_tags(tag_id):
-                    has_md_count += 1
+                    md_count += 1
                     file_md_count[tag_id] += 1
 
-        if has_md_count == 0:
-            qtutils.information(
+        if md_count == 0:
+            return qtutils.information(
                 self,
                 "Remove Tags",
                 f"No archives with {', '.join([tags[tag_id].name() for tag_id in tag_ids])} tags selected!",
             )
 
-        if has_md_count != 0 and not self.dirty_flag_verification(
+        if md_count != 0 and not self.dirty_flag_verification(
             "Remove Tags", "If you remove tags now, unsaved data in the form will be lost.  Are you sure?"
         ):
             return
 
-        if has_md_count != 0:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Remove Tags",
-                f"Are you sure you wish to remove {', '.join([f'{tags[tag_id].name()} tags from {count} files' for tag_id, count in file_md_count.items()])} removing a total of {has_md_count} tag(s)?",
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
+        qmsg = QtWidgets.QMessageBox(self)
+        qmsg.setText("Remove Tags")
+        qmsg.setInformativeText(
+            f"Are you sure you wish to remove {', '.join([f'{tags[tag_id].name()} tags from {count} files' for tag_id, count in file_md_count.items()])} removing a total of {md_count} tag(s)?"
+        )
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setDefaultButton(qmsg.StandardButton.No)
+        qmsg.accepted.connect(functools.partial(self.remove_tags, tag_ids, md_count))
+        qmsg.show()
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                progdialog = QtWidgets.QProgressDialog("", "Cancel", 0, has_md_count, self)
-                progdialog.setWindowTitle("Removing Tags")
-                progdialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
-                progdialog.setMinimumDuration(300)
-                center_window_on_parent(progdialog)
+    def remove_tags(self, tag_ids: list[str], md_count: int) -> None:
+        progdialog = QtWidgets.QProgressDialog("", "Cancel", 0, md_count, self)
+        progdialog.setWindowTitle("Removing Tags")
+        progdialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        progdialog.setMinimumDuration(300)
+        center_window_on_parent(progdialog)
 
-                failed_list = []
-                success_count = 0
-                for prog_idx, ca in enumerate(ca_list, 1):
-                    if prog_idx % 10 == 0:
-                        QtCore.QCoreApplication.processEvents()
-                    if progdialog.wasCanceled():
-                        break
-                    progdialog.setValue(prog_idx)
-                    progdialog.setLabelText(str(ca.path))
-                    for tag_id in tag_ids:
-                        if ca.has_tags(tag_id) and ca.is_writable():
-                            if ca.remove_tags(tag_id):
-                                success_count += 1
-                            else:
-                                failed_list.append(ca.path)
-                                # Abandon any further tag removals to prevent any greater damage to archive
-                                break
-                    ca.reset_cache()
-                    ca.load_cache(self.enabled_tags())
+        ca_list = self.fileSelectionList.get_selected_archive_list()
 
-                progdialog.hide()
+        failed_list = []
+        success_count = 0
+        for prog_idx, ca in enumerate(ca_list, 1):
+            if prog_idx % 10 == 0:
                 QtCore.QCoreApplication.processEvents()
-                self._reload_page()
-                self.update_info_box()
-                self.update_menus()
+            if progdialog.wasCanceled():
+                break
+            progdialog.setValue(prog_idx)
+            progdialog.setLabelText(str(ca.path))
+            for tag_id in tag_ids:
+                if ca.has_tags(tag_id) and ca.is_writable():
+                    if ca.remove_tags(tag_id):
+                        success_count += 1
+                    else:
+                        failed_list.append(ca.path)
+                        # Abandon any further tag removals to prevent any greater damage to archive
+                        break
+            ca.reset_cache()
+            ca.load_cache(self.enabled_tags())
 
-                summary = f"Successfully removed {success_count} tags in archive(s)."
-                if failed_list:
-                    summary += f"\n\nThe remove operation failed in the following {len(failed_list)} archive(s):\n"
-                    for f in failed_list:
-                        summary += f"\t{f}\n"
+        progdialog.hide()
+        QtCore.QCoreApplication.processEvents()
+        self._reload_page()
+        self.update_info_box()
+        self.update_menus()
 
-                dlg = LogWindow(self)
-                dlg.set_text(summary)
-                dlg.setWindowTitle("Tag Remove Summary")
-                dlg.show()
+        summary = f"Successfully removed {success_count} tags in archive(s)."
+        if failed_list:
+            summary += f"\n\nThe remove operation failed in the following {len(failed_list)} archive(s):\n"
+            for f in failed_list:
+                summary += f"\t{f}\n"
 
-    def copy_tags(self) -> None:
+        dlg = LogWindow(self)
+        dlg.set_text(summary)
+        dlg.setWindowTitle("Tag Remove Summary")
+        dlg.show()
+
+    def prompt_copy_tags(self) -> None:
         # copy the indicated tags in the archive
         ca_list = self.fileSelectionList.get_selected_archive_list()
-        has_src_count = 0
+        src_count = 0
 
         src_tag_ids: list[str] = self.selected_read_tags
         dest_tag_ids: list[str] = self.selected_write_tags
@@ -1735,92 +1736,96 @@ class TaggerWindow(QtWidgets.QMainWindow):
         for ca in ca_list:
             for tag_id in src_tag_ids:
                 if ca.has_tags(tag_id):
-                    has_src_count += 1
+                    src_count += 1
                     continue
 
-        if has_src_count == 0:
+        if src_count == 0:
             return qtutils.information(
                 self,
                 "Copy Tags",
                 f"No archives with {', '.join([tags[tag_id].name() for tag_id in src_tag_ids])} tags selected!",
             )
 
-        if has_src_count != 0 and not self.dirty_flag_verification(
+        if src_count != 0 and not self.dirty_flag_verification(
             "Copy Tags", "If you copy tags now, unsaved data in the form may be lost.  Are you sure?"
         ):
             return
 
-        if has_src_count != 0:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Copy Tags",
-                f"Are you sure you wish to copy the combined (with overlay order) tags of "
-                f"{', '.join([tags[tag_id].name() for tag_id in src_tag_ids])} "
-                f"to {', '.join([tags[tag_id].name() for tag_id in dest_tag_ids])} tags in "
-                f"{has_src_count} archive(s)?",
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
+        details = (
+            f"Are you sure you wish to copy the combined (with overlay order) tags of "
+            f"{', '.join([tags[tag_id].name() for tag_id in src_tag_ids])} "
+            f"to {', '.join([tags[tag_id].name() for tag_id in dest_tag_ids])} tags in "
+            f"{src_count} archive(s)?"
+        )
 
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                prog_dialog = QtWidgets.QProgressDialog("", "Cancel", 0, has_src_count, self)
-                prog_dialog.setWindowTitle("Copying Tags")
-                prog_dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
-                prog_dialog.setMinimumDuration(300)
-                center_window_on_parent(prog_dialog)
+        qmsg = QtWidgets.QMessageBox(self)
+        qmsg.setText("Copy Tags")
+        qmsg.setInformativeText(details)
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setDefaultButton(qmsg.StandardButton.No)
+        qmsg.accepted.connect(functools.partial(self.copy_tags, src_tag_ids, dest_tag_ids, src_count))
+        qmsg.show()
+
+    def copy_tags(self, src_tag_ids: list[str], dest_tag_ids: list[str], src_count: int) -> None:
+        ca_list = self.fileSelectionList.get_selected_archive_list()
+        prog_dialog = QtWidgets.QProgressDialog("", "Cancel", 0, src_count, self)
+        prog_dialog.setWindowTitle("Copying Tags")
+        prog_dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        prog_dialog.setMinimumDuration(1000)
+        center_window_on_parent(prog_dialog)
+        QtCore.QCoreApplication.processEvents()
+
+        failed_list = []
+        success_count = 0
+        for prog_idx, ca in enumerate(ca_list, 1):
+            if prog_idx % 10 == 0:
                 QtCore.QCoreApplication.processEvents()
+            ca_saved = False
+            md, _, error = self.read_selected_tags(src_tag_ids, ca)
+            if error is not None:
+                failed_list.append(ca.path)
+                continue
+            if md.is_empty:
+                continue
 
-                failed_list = []
-                success_count = 0
-                for prog_idx, ca in enumerate(ca_list, 1):
-                    if prog_idx % 10 == 0:
-                        QtCore.QCoreApplication.processEvents()
-                    ca_saved = False
-                    md, _, error = self.read_selected_tags(src_tag_ids, ca)
-                    if error is not None:
-                        failed_list.append(ca.path)
-                        continue
-                    if md.is_empty:
-                        continue
+            for tag_id in dest_tag_ids:
+                if ca.has_tags(tag_id):
+                    if prog_dialog.wasCanceled():
+                        break
 
-                    for tag_id in dest_tag_ids:
-                        if ca.has_tags(tag_id):
-                            if prog_dialog.wasCanceled():
-                                break
+                    prog_dialog.setValue(prog_idx)
+                    prog_dialog.setLabelText(str(ca.path))
+                    center_window_on_parent(prog_dialog)
 
-                            prog_dialog.setValue(prog_idx)
-                            prog_dialog.setLabelText(str(ca.path))
-                            center_window_on_parent(prog_dialog)
+                if tag_id == "cbi" and self.config[0].Metadata_Options__apply_transform_on_bulk_operation:
+                    md = CBLTransformer(md, self.config[0]).apply()
 
-                        if tag_id == "cbi" and self.config[0].Metadata_Options__apply_transform_on_bulk_operation:
-                            md = CBLTransformer(md, self.config[0]).apply()
+                if ca.write_tags(md, tag_id):
+                    if not ca_saved:
+                        success_count += 1
+                        ca_saved = True
+                else:
+                    failed_list.append(ca.path)
 
-                        if ca.write_tags(md, tag_id):
-                            if not ca_saved:
-                                success_count += 1
-                                ca_saved = True
-                        else:
-                            failed_list.append(ca.path)
+            ca.reset_cache()
+            ca.load_cache({*self.selected_read_tags, *self.selected_write_tags})
 
-                    ca.reset_cache()
-                    ca.load_cache({*self.selected_read_tags, *self.selected_write_tags})
+        prog_dialog.hide()
+        QtCore.QCoreApplication.processEvents()
+        self._reload_page()
+        self.update_info_box()
+        self.update_menus()
 
-                prog_dialog.hide()
-                QtCore.QCoreApplication.processEvents()
-                self._reload_page()
-                self.update_info_box()
-                self.update_menus()
+        summary = f"Successfully copied tags in {success_count} archive(s)."
+        if failed_list:
+            summary += f"\n\nThe copy operation failed in the following {len(failed_list)} archive(s):\n"
+            for f in failed_list:
+                summary += f"\t{f}\n"
 
-                summary = f"Successfully copied tags in {success_count} archive(s)."
-                if failed_list:
-                    summary += f"\n\nThe copy operation failed in the following {len(failed_list)} archive(s):\n"
-                    for f in failed_list:
-                        summary += f"\t{f}\n"
-
-                dlg = LogWindow(self)
-                dlg.set_text(summary)
-                dlg.setWindowTitle("Tag Copy Summary")
-                dlg.show()
+        dlg = LogWindow(self)
+        dlg.set_text(summary)
+        dlg.setWindowTitle("Tag Copy Summary")
+        dlg.show()
 
     def auto_tag_log(self, text: str) -> None:
         if self.atprogdialog is not None:
@@ -1922,7 +1927,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if not selectable:
             dlg = LogWindow(self)
             dlg.set_text(summary)
-            dlg.setWindowTitle("Tag Remove Summary")
+            dlg.setWindowTitle("Auto-Tag Summary")
             dlg.show()
             logger.info(summary)
             return
@@ -1932,28 +1937,29 @@ class TaggerWindow(QtWidgets.QMainWindow):
         )
         logger.info(summary)
 
-        reply = QtWidgets.QMessageBox.question(
-            self,
-            "Auto-Tag Summary",
-            summary,
-            QtWidgets.QMessageBox.StandardButton.Yes,
-            QtWidgets.QMessageBox.StandardButton.No,
-        )
+        qmsg = QtWidgets.QMessageBox(self)
+        qmsg.setText("Copy Tags")
+        qmsg.setInformativeText(summary)
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setDefaultButton(qmsg.StandardButton.No)
+        qmsg.accepted.connect(functools.partial(self.open_auto_tag_match_window, match_results, archives_to_remove))
+        qmsg.show()
 
+    def open_auto_tag_match_window(
+        self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive]
+    ) -> None:
         match_results.multiple_matches.extend(match_results.low_confidence_matches)
         auto_tagged_archives = {a.path: a for a in self.fileSelectionList.get_selected_archive_list()}
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            matchdlg = AutoTagMatchWindow(
-                self,
-                [(m, auto_tagged_archives[m.original_path]) for m in match_results.multiple_matches],
-                self.selected_write_tags,
-                self.config[0],
-                self.current_talker(),
-            )
+        matchdlg = AutoTagMatchWindow(
+            self,
+            [(m, auto_tagged_archives[m.original_path]) for m in match_results.multiple_matches],
+            self.selected_write_tags,
+            self.config[0],
+            self.current_talker(),
+        )
 
-            matchdlg.open()
-            matchdlg.finished.connect(self._reload_page)
-        return
+        matchdlg.open()
+        matchdlg.finished.connect(self._reload_page)
 
     def _reload_page(self) -> None:
         self.fileSelectionList.update_selected_rows()
@@ -1984,7 +1990,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if reply == QtWidgets.QMessageBox.StandardButton.Discard:
             return True
         if reply == QtWidgets.QMessageBox.StandardButton.Save:
-            self.write_tags()
+            self.prompt_write_tags()
             return True
         return False
 
