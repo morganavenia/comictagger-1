@@ -56,7 +56,7 @@ def clickable(widget: QtWidgets.QWidget) -> QtCore.pyqtBoundSignal:
 class CoverImageWidget(QtWidgets.QWidget):
     ArchiveMode = 0
     AltCoverMode = 1
-    URLMode = 1
+    URLMode = 2
     DataMode = 3
 
     image_fetch_complete = QtCore.pyqtSignal(str, QtCore.QByteArray)
@@ -244,7 +244,7 @@ class CoverImageWidget(QtWidgets.QWidget):
 
     # called when the image is done loading from internet
     def cover_remote_fetch_complete(self, url: str, image_data: bytes) -> None:
-        if not url or url not in self.url_list:
+        if url and url not in self.url_list:
             return
         img = get_qimage_from_data(image_data)
         self.current_pixmap = QtGui.QPixmap.fromImage(img)

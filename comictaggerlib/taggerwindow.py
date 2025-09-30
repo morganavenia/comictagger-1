@@ -1247,7 +1247,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         qmsg.setInformativeText(
             f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.selected_write_tags])} tags to this archive?"
         )
-        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes | qmsg.StandardButton.No)
         qmsg.setDefaultButton(qmsg.StandardButton.No)
         qmsg.accepted.connect(self.write_tags)
         qmsg.show()
@@ -1665,7 +1665,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         qmsg.setInformativeText(
             f"Are you sure you wish to remove {', '.join([f'{tags[tag_id].name()} tags from {count} files' for tag_id, count in file_md_count.items()])} removing a total of {md_count} tag(s)?"
         )
-        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes | qmsg.StandardButton.No)
         qmsg.setDefaultButton(qmsg.StandardButton.No)
         qmsg.accepted.connect(functools.partial(self.remove_tags, tag_ids, md_count))
         qmsg.show()
@@ -1761,7 +1761,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         qmsg = QtWidgets.QMessageBox(self)
         qmsg.setText("Copy Tags")
         qmsg.setInformativeText(details)
-        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes | qmsg.StandardButton.No)
         qmsg.setDefaultButton(qmsg.StandardButton.No)
         qmsg.accepted.connect(functools.partial(self.copy_tags, src_tag_ids, dest_tag_ids, src_count))
         qmsg.show()
@@ -1889,7 +1889,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.autotagthread.autoTagProgress.connect(self.atprogdialog.on_progress)
         self.autotagthread.ratelimit.connect(self.ratelimit)
 
-        self.atprogdialog.rejected.connect(self.autotagthread.cancel)
+        # We don't use rejected as that closes the dialog
+        self.atprogdialog.cancel.connect(self.autotagthread.cancel)
 
         self.auto_tag_log("==========================================================================\n")
         self.auto_tag_log(f"Auto-Tagging Started for {len(ca_list)} items\n")
@@ -1899,49 +1900,50 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def auto_tag_finished(self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive]) -> None:
         tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
         if self.atprogdialog:
-            self.atprogdialog.close()
+            self.atprogdialog.accept()
 
         self.fileSelectionList.remove_archive_list(archives_to_remove)
         self._reload_page()
         self.atprogdialog = None
 
         summary = f"<p>{self.current_talker().attribution}</p>"
-        summary += f"Successfully added {tag_names} tags to {len(match_results.good_matches)} archive(s)\n"
+        summary += f"Successfully added {tag_names} tags to {len(match_results.good_matches)} archive(s)<br/>"
 
         if match_results.multiple_matches:
-            summary += f"Archives with multiple matches: {len(match_results.multiple_matches)}\n"
+            summary += f"Archives with multiple matches: {len(match_results.multiple_matches)}<br/>"
         if match_results.low_confidence_matches:
             summary += (
-                f"Archives with one or more low-confidence matches: {len(match_results.low_confidence_matches)}\n"
+                f"Archives with one or more low-confidence matches: {len(match_results.low_confidence_matches)}<br/>"
             )
         if match_results.no_matches:
-            summary += f"Archives with no matches: {len(match_results.no_matches)}\n"
+            summary += f"Archives with no matches: {len(match_results.no_matches)}<br/>"
         if match_results.fetch_data_failures:
-            summary += f"Archives that failed due to data fetch errors: {len(match_results.fetch_data_failures)}\n"
+            summary += f"Archives that failed due to data fetch errors: {len(match_results.fetch_data_failures)}<br/>"
         if match_results.write_failures:
-            summary += f"Archives that failed due to file writing errors: {len(match_results.write_failures)}\n"
+            summary += f"Archives that failed due to file writing errors: {len(match_results.write_failures)}<br/>"
 
         self.auto_tag_log(summary)
 
         selectable = match_results.multiple_matches or match_results.low_confidence_matches
+
+        qmsg = QtWidgets.QMessageBox(self)
+        qmsg.setText("Auto-Tag Summary")
+        qmsg.setStandardButtons(qmsg.StandardButton.Ok)
+        qmsg.setDefaultButton(qmsg.StandardButton.Ok)
         if not selectable:
-            dlg = LogWindow(self)
-            dlg.set_text(summary)
-            dlg.setWindowTitle("Auto-Tag Summary")
-            dlg.show()
             logger.info(summary)
+            qmsg.setInformativeText(summary)
+            qmsg.show()
             return
 
         summary += (
             "\n\nDo you want to manually select the ones with multiple matches and/or low-confidence matches now?"
         )
+        qmsg.setStandardButtons(qmsg.StandardButton.Yes | qmsg.StandardButton.No)
+        qmsg.setDefaultButton(qmsg.StandardButton.No)
         logger.info(summary)
 
-        qmsg = QtWidgets.QMessageBox(self)
-        qmsg.setText("Copy Tags")
         qmsg.setInformativeText(summary)
-        qmsg.setStandardButtons(qmsg.StandardButton.Yes)
-        qmsg.setDefaultButton(qmsg.StandardButton.No)
         qmsg.accepted.connect(functools.partial(self.open_auto_tag_match_window, match_results, archives_to_remove))
         qmsg.show()
 

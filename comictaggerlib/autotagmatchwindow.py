@@ -90,7 +90,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.current_match_set = self.match_set_list[self.current_match_set_idx]
 
         if self.current_match_set_idx + 1 == len(self.match_set_list):
-            self.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Cancel).setDisabled(True)
             self.skipButton.setText("Skip")
 
         self.set_cover_image()
@@ -211,7 +210,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         qmsg.setText("Cancel Matching")
         qmsg.setInformativeText("Are you sure you wish to cancel the matching process?")
         qmsg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
-        qmsg.rejected.connect(self._cancel)
+        qmsg.accepted.connect(self._cancel)
         qmsg.show()
 
     def _cancel(self) -> None:

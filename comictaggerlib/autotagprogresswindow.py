@@ -54,6 +54,8 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
         self.canceled = False
 
     def log_output(self, text: str) -> None:
+        if self.canceled:
+            raise IssueIdentifierCancelled
         self.autoTagLogMsg.emit(str(text))
 
     def progress_callback(
@@ -64,30 +66,32 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
     def run(self) -> None:
         match_results = OnlineMatchResults()
         archives_to_remove = []
-        for prog_idx, ca in enumerate(self.ca_list):
-            if self.canceled:
-                return
-            self.log_output("==========================================================================\n")
-            self.log_output(f"Auto-Tagging {prog_idx} of {len(self.ca_list)}\n")
-            self.log_output(f"{ca.path}\n")
-            try:
-                cover_idx = ca.read_tags(self.config.internal__read_tags[0]).get_cover_page_index_list()[0]
-            except Exception as e:
-                cover_idx = 0
-                logger.error("Failed to load metadata for %s: %s", ca.path, e)
-            image_data = ca.get_page(cover_idx)
-            self.progress_callback(prog_idx, len(self.ca_list), ca.path, image_data, b"")
-            if self.canceled:
-                return
-
-            if ca.is_writable():
-                success, match_results = self.identify_and_tag_single_archive(ca, match_results)
+        try:
+            for prog_idx, ca in enumerate(self.ca_list):
+                if self.canceled:
+                    return
+                self.log_output("==========================================================================\n")
+                self.log_output(f"Auto-Tagging {prog_idx} of {len(self.ca_list)}\n")
+                self.log_output(f"{ca.path}\n")
+                try:
+                    cover_idx = ca.read_tags(self.config.internal__read_tags[0]).get_cover_page_index_list()[0]
+                except Exception as e:
+                    cover_idx = 0
+                    logger.error("Failed to load metadata for %s: %s", ca.path, e)
+                image_data = ca.get_page(cover_idx)
+                self.progress_callback(prog_idx, len(self.ca_list), ca.path, image_data, b"")
                 if self.canceled:
                     return
 
-                if success and self.config.internal__remove_archive_after_successful_match:
-                    archives_to_remove.append(ca)
-        self.autoTagComplete.emit(match_results, archives_to_remove)
+                if ca.is_writable():
+                    success, match_results = self.identify_and_tag_single_archive(ca, match_results)
+                    if self.canceled:
+                        return
+
+                    if success and self.config.internal__remove_archive_after_successful_match:
+                        archives_to_remove.append(ca)
+        finally:
+            self.autoTagComplete.emit(match_results, archives_to_remove)
 
     def on_rate_limit(self, full_time: float, sleep_time: float) -> None:
         if self.canceled:
@@ -193,7 +197,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
             assert res.md
 
             def write_Tags(ca: ComicArchive, md: GenericMetadata) -> bool:
-                for tag_id in self.config.Runtime_Options__tags_write:
+                for tag_id in self.config.internal__write_tags:
                     # write out the new data
                     if not ca.write_tags(md, tag_id):
                         self.log_output(f"{tags[tag_id].name()} save failed! Aborting any additional tag saves.\n")
@@ -203,14 +207,13 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
             # Save tags
             if write_Tags(ca, res.md):
                 match_results.good_matches.append(res)
-                res.tags_written = self.config.Runtime_Options__tags_write
+                res.tags_written = self.config.internal__write_tags
                 self.log_output("Save complete!\n")
             else:
                 res.status = Status.write_failure
                 match_results.write_failures.append(res)
 
             ca.reset_cache()
-            ca.load_cache({*self.config.Runtime_Options__tags_read})
 
         return res, match_results
 
@@ -219,6 +222,8 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
 
 
 class AutoTagProgressWindow(QtWidgets.QDialog):
+    cancel = QtCore.pyqtSignal()
+
     def __init__(self, parent: QtWidgets.QWidget, talker: ComicTalker) -> None:
         super().__init__(parent)
 
@@ -271,4 +276,4 @@ class AutoTagProgressWindow(QtWidgets.QDialog):
             self.set_test_image(remote_image)
 
     def reject(self) -> None:
-        QtWidgets.QDialog.reject(self)
+        self.cancel.emit()

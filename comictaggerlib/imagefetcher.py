@@ -25,8 +25,6 @@ import sqlite3 as lite
 import tempfile
 from typing import TYPE_CHECKING, Callable
 
-from PyQt6.QtCore import QByteArray
-
 try:
     import niquests as requests
 except ImportError:
@@ -47,7 +45,7 @@ def fetch_complete(url: str, image_data: bytes | QtCore.QByteArray) -> None: ...
 
 
 class ImageFetcher:
-    image_fetch_complete: Callable[[str, bytes | QByteArray], None] = fetch_complete
+    image_fetch_complete: Callable[[str, bytes | QtCore.QByteArray], None] = fetch_complete
     qt_available = True
 
     def __init__(self, cache_folder: pathlib.Path) -> None:
@@ -118,6 +116,8 @@ class ImageFetcher:
         return b""
 
     def finish_request(self, reply: QtNetwork.QNetworkReply) -> None:
+        from PyQt6 import QtNetwork
+
         # read in the image data
         url = reply.request().url().toString()
         length = reply.header(QtNetwork.QNetworkRequest.KnownHeaders.ContentLengthHeader)
