@@ -939,10 +939,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.twCredits.setSortingEnabled(False)
 
             for row, credit in enumerate(md.credits):
-                # if the role-person pair already exists, just skip adding it to the list
-                if self.get_dupe_credit(None, credit.role.title(), credit.person):
-                    continue
-
+                # Always add to the list. We don't want to accidentally remove credits a user may want
                 self.add_new_credit_entry(row, credit)
         if self.comic_archive:
             self.page_list_editor.set_data(self.comic_archive, self.metadata.pages)
