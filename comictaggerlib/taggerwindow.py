@@ -1093,7 +1093,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.select_file(folder_mode=True)
 
     def select_folder_archive(self) -> None:
-        self.select_file(folder_mode=True, recursive=True)
+        self.select_file(folder_mode=True, recursive=False)
 
     def select_file(self, folder_mode: bool = False, recursive: bool = True) -> None:
         dialog = self.file_dialog(folder_mode=folder_mode)
