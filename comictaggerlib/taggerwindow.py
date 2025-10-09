@@ -707,7 +707,13 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 event.accept()
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        self.fileSelectionList.add_path_list(self.droppedFiles)
+        control_pressed = event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+
+        if control_pressed:
+            for folder_archive in self.droppedFiles:
+                self.fileSelectionList.twList.selectRow(self.fileSelectionList.add_path_item(folder_archive)[0])
+        else:
+            self.fileSelectionList.add_path_list(self.droppedFiles)
         event.accept()
 
     def update_ui_for_archive(self, parse_filename: bool = True) -> None:
