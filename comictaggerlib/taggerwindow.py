@@ -25,8 +25,8 @@ import pickle
 import platform
 import sys
 import webbrowser
-from collections.abc import Sequence
-from typing import Any, Callable, cast
+from collections.abc import Callable, Sequence
+from typing import Any, cast
 
 import natsort
 import settngs

@@ -3,13 +3,8 @@ from __future__ import annotations
 import itertools
 import logging
 import pathlib
-import sys
 from collections.abc import Sequence
-
-if sys.version_info < (3, 10):
-    from importlib_metadata import entry_points
-else:
-    from importlib.metadata import entry_points
+from importlib.metadata import entry_points
 
 from comictalker.comictalker import ComicTalker, TalkerError
 

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from PyQt6 import QtCore, QtWidgets
 

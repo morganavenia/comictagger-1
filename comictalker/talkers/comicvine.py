@@ -22,8 +22,9 @@ import json
 import logging
 import pathlib
 import time
+from collections.abc import Callable
 from functools import cache
-from typing import Any, Callable, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 from urllib.parse import parse_qsl, urlencode, urljoin
 
 import settngs

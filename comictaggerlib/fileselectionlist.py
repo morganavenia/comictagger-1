@@ -20,7 +20,8 @@ import logging
 import os
 import pathlib
 import platform
-from typing import Callable, cast
+from collections.abc import Callable
+from typing import cast
 
 from PyQt6 import QtCore, QtGui, QtWidgets, uic
 

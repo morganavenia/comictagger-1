@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata as importlib_metadata
 import importlib.util
 import logging
 import pathlib
@@ -12,11 +13,6 @@ import re
 import sys
 from collections.abc import Generator, Iterable, Sequence
 from typing import Any, NamedTuple, TypeVar
-
-if sys.version_info < (3, 10):
-    import importlib_metadata
-else:
-    import importlib.metadata as importlib_metadata
 
 logger = logging.getLogger(__name__)
 

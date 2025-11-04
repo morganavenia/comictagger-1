@@ -5,9 +5,10 @@ from __future__ import annotations
 import calendar
 import os
 import unicodedata
+from collections.abc import Callable
 from enum import Enum, auto
 from itertools import chain
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 
 class ItemType(Enum):

@@ -8,11 +8,11 @@ import pathlib
 import sqlite3
 import statistics
 import threading
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from enum import auto
 from functools import cached_property
 from io import BytesIO
-from typing import TYPE_CHECKING, Callable, NamedTuple, TypedDict, overload
+from typing import TYPE_CHECKING, NamedTuple, TypedDict, overload
 from urllib.parse import urljoin
 
 import requests

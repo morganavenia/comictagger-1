@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from enum import auto
-from typing import Any, Callable
+from typing import Any
 
 from comicapi.utils import DefaultDict, StrEnum, norm_fold
 

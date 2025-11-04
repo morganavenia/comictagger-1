@@ -189,5 +189,4 @@ class ImageHasher:
 
         # xor the two numbers
         n = n1 ^ n2
-
-        return bin(n).count("1")
+        return n.bit_count()

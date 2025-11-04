@@ -24,10 +24,10 @@ import pathlib
 import platform
 import sys
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from enum import Enum, auto
 from shutil import which  # noqa: F401
-from typing import Any, Callable, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 from comicfn2dict import comicfn2dict
 

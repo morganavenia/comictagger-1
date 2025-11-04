@@ -24,7 +24,6 @@ import logging
 import os
 import pathlib
 import shutil
-import sys
 from collections.abc import Iterable
 
 from comicapi import utils
@@ -42,10 +41,8 @@ tags: dict[str, Tag] = {}
 def load_archive_plugins(local_plugins: Iterable[type[Archiver]] = tuple()) -> None:
     if archivers:
         return
-    if sys.version_info < (3, 10):
-        from importlib_metadata import entry_points
-    else:
-        from importlib.metadata import entry_points
+    from importlib.metadata import entry_points
+
     builtin: list[type[Archiver]] = []
     archive_plugins: list[type[Archiver]] = []
     # A list is used first matching plugin wins
@@ -76,10 +73,8 @@ def load_archive_plugins(local_plugins: Iterable[type[Archiver]] = tuple()) -> N
 def load_tag_plugins(version: str = f"ComicAPI/{version}", local_plugins: Iterable[type[Tag]] = tuple()) -> None:
     if tags:
         return
-    if sys.version_info < (3, 10):
-        from importlib_metadata import entry_points
-    else:
-        from importlib.metadata import entry_points
+    from importlib.metadata import entry_points
+
     builtin: dict[str, Tag] = {}
     tag_plugins: dict[str, tuple[Tag, str]] = {}
     # A dict is used, last plugin wins

@@ -23,7 +23,8 @@ import pathlib
 import shutil
 import sqlite3 as lite
 import tempfile
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 try:
     import niquests as requests

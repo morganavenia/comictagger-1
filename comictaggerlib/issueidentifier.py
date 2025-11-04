@@ -22,9 +22,10 @@ import functools
 import io
 import logging
 import pathlib
+from collections.abc import Callable
 from enum import Enum, auto
 from operator import attrgetter
-from typing import Any, Callable
+from typing import Any
 
 from typing_extensions import NotRequired, TypedDict
 

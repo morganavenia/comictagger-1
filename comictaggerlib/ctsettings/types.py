@@ -3,11 +3,10 @@ from __future__ import annotations
 import argparse
 import logging
 import pathlib
-import sys
 import types
 import typing
 from collections.abc import Collection, Mapping
-from typing import Any
+from typing import Any, get_type_hints
 
 import yaml
 from appdirs import AppDirs
@@ -17,83 +16,6 @@ from comicapi.comicarchive import tags
 from comicapi.genericmetadata import REMOVE, GenericMetadata
 
 logger = logging.getLogger(__name__)
-
-if sys.version_info < (3, 10):
-
-    @typing.no_type_check
-    def get_type_hints(obj, globalns=None, localns=None, include_extras=False):
-        if getattr(obj, "__no_type_check__", None):
-            return {}
-        # Classes require a special treatment.
-        if isinstance(obj, type):
-            hints = {}
-            for base in reversed(obj.__mro__):
-                if globalns is None:
-                    base_globals = getattr(sys.modules.get(base.__module__, None), "__dict__", {})
-                else:
-                    base_globals = globalns
-                ann = base.__dict__.get("__annotations__", {})
-                if isinstance(ann, types.GetSetDescriptorType):
-                    ann = {}
-                base_locals = dict(vars(base)) if localns is None else localns
-                if localns is None and globalns is None:
-                    # This is surprising, but required.  Before Python 3.10,
-                    # get_type_hints only evaluated the globalns of
-                    # a class.  To maintain backwards compatibility, we reverse
-                    # the globalns and localns order so that eval() looks into
-                    # *base_globals* first rather than *base_locals*.
-                    # This only affects ForwardRefs.
-                    base_globals, base_locals = base_locals, base_globals
-                for name, value in ann.items():
-                    if value is None:
-                        value = type(None)
-                    if isinstance(value, str):
-                        if "|" in value:
-                            value = "Union[" + value.replace(" |", ",") + "]"
-                        value = typing.ForwardRef(value, is_argument=False, is_class=True)
-                    value = typing._eval_type(value, base_globals, base_locals)
-                    hints[name] = value
-            return hints if include_extras else {k: typing._strip_annotations(t) for k, t in hints.items()}
-
-        if globalns is None:
-            if isinstance(obj, types.ModuleType):
-                globalns = obj.__dict__
-            else:
-                nsobj = obj
-                # Find globalns for the unwrapped object.
-                while hasattr(nsobj, "__wrapped__"):
-                    nsobj = nsobj.__wrapped__
-                globalns = getattr(nsobj, "__globals__", {})
-            if localns is None:
-                localns = globalns
-        elif localns is None:
-            localns = globalns
-        hints = getattr(obj, "__annotations__", None)
-        if hints is None:
-            # Return empty annotations for something that _could_ have them.
-            if isinstance(obj, typing._allowed_types):
-                return {}
-            else:
-                raise TypeError("{!r} is not a module, class, method, " "or function.".format(obj))
-        hints = dict(hints)
-        for name, value in hints.items():
-            if value is None:
-                value = type(None)
-            if isinstance(value, str):
-                if "|" in value:
-                    value = "Union[" + value.replace(" |", ",") + "]"
-                # class-level forward refs were handled above, this must be either
-                # a module-level annotation or a function argument annotation
-                value = typing.ForwardRef(
-                    value,
-                    is_argument=not isinstance(obj, types.ModuleType),
-                    is_class=False,
-                )
-            hints[name] = typing._eval_type(value, globalns, localns)
-        return hints if include_extras else {k: typing._strip_annotations(t) for k, t in hints.items()}
-
-else:
-    from typing import get_type_hints
 
 
 class ComicTaggerPaths(AppDirs):
