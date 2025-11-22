@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import logging.handlers
 import os
 import platform
@@ -8,6 +9,7 @@ import traceback
 import types
 
 import settngs
+from PyQt6.QtCore import QUrl
 
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.ctversion import version
@@ -33,12 +35,12 @@ try:
             errorbox.setDetailedText(details + " ")  # Forces text formatting on macOS
             errorbox.rejected.connect(lambda: QtWidgets.QApplication.exit(1))
             errorbox.accepted.connect(lambda: logger.warning("Exception ignored"))
-            errorbox.show()
+            errorbox.exec()  # Must stay exec so that this still works if it fails to load the main window
         else:
             logger.debug("No QApplication instance available.")
 
     class UncaughtHook(QtCore.QObject):
-        _exception_caught = QtCore.pyqtSignal(object)
+        _exception_caught = QtCore.pyqtSignal(object, object)
 
         def __init__(self) -> None:
             super().__init__()
@@ -68,7 +70,6 @@ try:
                 self._exception_caught.emit(f"Oops. An unexpected error occurred:\n{log_msg}", trace_back)
 
     qt_exception_hook = UncaughtHook()
-    from comictaggerlib.taggerwindow import TaggerWindow
 
     try:
         # needed here to initialize QWebEngine
@@ -84,7 +85,7 @@ try:
         # Handles "Open With" from Finder on macOS
         def event(self, event: QtCore.QEvent) -> bool:
             if event.type() == QtCore.QEvent.Type.FileOpen:
-                logger.info("file open recieved: %s", event.url().toLocalFile())
+                logger.debug("file open recieved: %s", event.url().toLocalFile())
                 self.openFileRequest.emit(event.url())
                 return True
             return super().event(event)
@@ -98,12 +99,19 @@ except ImportError as e:
     import_error = e
 
 
+def pre_gui_file_request(config: ct_ns, url: QUrl) -> None:
+    if url.toLocalFile() not in sys.argv:
+        config.Runtime_Options__files.append(pathlib.Path(url.toLocalFile()))
+
+
 def open_tagger_window(
     talkers: dict[str, ComicTalker], config: settngs.Config[ct_ns], error: tuple[str, bool] | None
 ) -> None:
+    # Critical execeptions don't need to be caught UncaughtHook will display them to the user
     os.environ["QtWidgets.QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
     args = [sys.argv[0]]
     app = Application(args)
+
     if error is not None:
         show_exception_box(error[0], " ")
         if error[1]:
@@ -115,7 +123,8 @@ def open_tagger_window(
         sh.setColorScheme(QtCore.Qt.ColorScheme.Dark if darkmode else QtCore.Qt.ColorScheme.Light)
 
     # needed to catch initial open file events (macOS)
-    app.openFileRequest.connect(lambda x: config[0].Runtime_Options__files.append(x.toLocalFile()))
+    app.openFileRequest.connect(functools.partial(pre_gui_file_request, config[0]))
+
     # The window Icon needs to be set here. It's also set in taggerwindow.ui but it doesn't seem to matter
     app.setWindowIcon(QtGui.QIcon(":/graphics/app.png"))
     app.setApplicationName("ComicTagger")
@@ -145,6 +154,8 @@ def open_tagger_window(
         QtWidgets.QApplication.processEvents()
 
     try:
+        from comictaggerlib.taggerwindow import TaggerWindow
+
         tagger_window = TaggerWindow(config[0].Runtime_Options__files, config, talkers)
         tagger_window.show()
 
