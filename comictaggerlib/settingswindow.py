@@ -31,7 +31,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets, uic
 import comictaggerlib.ui.talkeruigenerator
 from comicapi import merge, utils
 from comicapi.archivers.archiver import Archiver
-from comicapi.genericmetadata import md_test
+from comicapi.genericmetadata import GenericMetadata, md_test
 from comictaggerlib import ctsettings
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.ctsettings.plugin import group_for_plugin
@@ -390,7 +390,19 @@ class SettingsWindow(QtWidgets.QDialog):
             platform="universal" if self.cbxRenameStrict.isChecked() else "auto",
             replacements=self.get_replacements(),
         )
-        fr.set_metadata(md_test, "cory doctorow #1.cbz")
+        self.parent().form_to_metadata()
+        metadata = md_test
+        name = "cory doctorow #1.cbz"
+
+        md: GenericMetadata = self.parent().metadata.copy()
+        md.series = None
+        md.pages = []
+
+        if self.parent().comic_archive and not md.is_empty:
+            metadata = self.parent().metadata
+            name = self.parent().comic_archive.path.name
+
+        fr.set_metadata(metadata, name)
         fr.move_only = self.cbxMoveOnly.isChecked()
         fr.move = self.cbxMoveFiles.isChecked()
         fr.set_template(template)

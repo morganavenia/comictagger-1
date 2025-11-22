@@ -255,11 +255,15 @@ class GenericMetadata:
     _cover_image: ImageHash | None = None
     _alternate_images: list[ImageHash] = dataclasses.field(default_factory=list)
 
-    def __post_init__(self) -> None:
+    @property  # type: ignore[no-redef]
+    def is_empty(self) -> bool:  # noqa: F811
         for key, value in self.__dict__.items():
             if value and key != "is_empty":
-                self.is_empty = False
-                break
+                return False
+        return True
+
+    @is_empty.setter
+    def is_empty(self, value: bool) -> None: ...
 
     def copy(self) -> GenericMetadata:
         return copy.deepcopy(self)
@@ -301,8 +305,6 @@ class GenericMetadata:
                 if isinstance(old_value, list):
                     continue
                 setattr(new_md, attr, old_value)
-
-        new_md.__post_init__()
         return new_md
 
     def overlay(
