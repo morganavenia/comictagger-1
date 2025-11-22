@@ -71,6 +71,12 @@ class ComicCacher:
 
         self.create_cache_db()
 
+    def a_week(self) -> datetime.datetime:
+        return datetime.datetime.today() - datetime.timedelta(days=7)
+
+    def a_year(self) -> datetime.datetime:
+        return datetime.datetime.today() - datetime.timedelta(days=365)
+
     def clear_cache(self) -> None:
         try:
             self.close()
@@ -139,10 +145,10 @@ class ComicCacher:
                 PRIMARY KEY (id, source))"""
             )
 
-    def expire_stale_records(self, cur: sqlite3.Cursor, table: str) -> None:
-        # purge stale series info
-        a_week_ago = datetime.datetime.today() - datetime.timedelta(days=7)
-        cur.execute("DELETE FROM Series WHERE timestamp  < ?", [str(a_week_ago)])
+    def expire_stale_records(self, cur: sqlite3.Cursor, table: str, expiration: datetime.datetime) -> None:
+        if "'" in table:
+            raise ValueError("Single quotes not allowed in table names")
+        cur.execute(f"DELETE FROM '{table}' WHERE timestamp  < ?", [str(expiration)])
 
     def add_search_results(self, source: str, search_term: str, series_list: list[Series], complete: bool) -> None:
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
@@ -196,8 +202,8 @@ class ComicCacher:
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
-                self.expire_stale_records(cur, "SeriesSearchCache")
-                self.expire_stale_records(cur, "Series")
+                self.expire_stale_records(cur, "SeriesSearchCache", self.a_week())
+                self.expire_stale_records(cur, "Series", self.a_year())
 
             cur.execute(
                 """SELECT * FROM SeriesSearchCache INNER JOIN Series on
@@ -219,7 +225,7 @@ class ComicCacher:
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
-                self.expire_stale_records(cur, "Series")
+                self.expire_stale_records(cur, "Series", self.a_year())
 
             # fetch
             cur.execute("SELECT * FROM Series WHERE id=? AND source=?", [series_id, source])
@@ -239,7 +245,7 @@ class ComicCacher:
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
-                self.expire_stale_records(cur, "Issues")
+                self.expire_stale_records(cur, "Issues", self.a_year())
 
             # fetch
             results: list[CacheResult[Issue]] = []
@@ -259,7 +265,7 @@ class ComicCacher:
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
 
             if expire_stale:
-                self.expire_stale_records(cur, "Issues")
+                self.expire_stale_records(cur, "Issues", self.a_year())
 
             cur.execute("SELECT * FROM Issues WHERE id=? AND source=?", [issue_id, source])
             row = cur.fetchone()
@@ -274,8 +280,6 @@ class ComicCacher:
     def upsert(self, cur: sqlite3.Cursor, tablename: str, data: dict[str, Any]) -> None:
         """This does an insert if the given PK doesn't exist, and an
         update it if does
-
-        TODO: should the cursor be created here, and not up the stack?
         """
 
         keys = ""
@@ -287,11 +291,11 @@ class ComicCacher:
             if data[key] is None:
                 continue
 
-            if keys != "":
+            if keys:
                 keys += ", "
-            if ins_slots != "":
+            if ins_slots:
                 ins_slots += ", "
-            if set_slots != "":
+            if set_slots:
                 set_slots += ", "
 
             keys += key
