@@ -146,6 +146,7 @@ class SettingsWindow(QtWidgets.QDialog):
         with (ui_path / "settingswindow.ui").open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
 
+        self.lblRenameTest: QtWidgets.QLabel
         self.leRarExePath: QtWidgets.QLineEdit
 
         self.setWindowFlags(
@@ -155,6 +156,7 @@ class SettingsWindow(QtWidgets.QDialog):
         self.config = config
         self.talkers = talkers
         self.name = "Settings"
+        self.rename_test_name = ""
 
         self.setModal(True)
 
@@ -209,7 +211,7 @@ class SettingsWindow(QtWidgets.QDialog):
         self.settings_to_form()
         self.rename_test()
         self.dir_test()
-        self.leFilenameParserTest.setText(self.lblRenameTest.text())
+        self.leFilenameParserTest.setText(self.rename_test_name)
         self.filename_parser_test()
         self.update_rar_path()
 
@@ -409,12 +411,14 @@ class SettingsWindow(QtWidgets.QDialog):
         fr.set_issue_zero_padding(int(self.leIssueNumPadding.text()))
         fr.set_smart_cleanup(self.cbxSmartCleanup.isChecked())
         try:
-            new_name = "<pre>"
-            new_name += fr.determine_name(".cbz")
-            new_name += "</pre>"
+            new_filename = fr.determine_name(".cbz")
+            new_text = "<pre>"
+            new_text += new_filename
+            new_text += "</pre>"
             if fr.warnings:
-                new_name += '<span style="color: red"> Warnings:</span><br/>' + "<br/>".join(fr.warnings)
-            self.lblRenameTest.setText(new_name)
+                new_text += '<span style="color: red"> Warnings:</span><br/>' + "<br/>".join(fr.warnings)
+            self.lblRenameTest.setText(new_text)
+            self.rename_test_name = new_filename
             self.rename_error = None
         except Exception as e:
             self.rename_error = e
