@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import io
 import logging
 import os
 import pathlib
@@ -25,6 +26,9 @@ import sqlite3 as lite
 import tempfile
 from collections.abc import Callable
 from typing import TYPE_CHECKING
+
+import PIL
+from PIL import Image
 
 try:
     import niquests as requests
@@ -88,6 +92,16 @@ class ImageFetcher:
 
         # first look in the DB
         image_data = self.get_image_from_cache(url)
+        try:
+            i = Image.open(io.BytesIO(image_data))
+            i.verify()
+        except PIL.UnidentifiedImageError:
+            logger.error("Unable to identify cached image from %s", url)
+            image_data = b""
+        except Exception:
+            logger.exception("Unknown exception validating cached image from: %s", url)
+            image_data = b""
+
         # Async for retrieving covers seems to work well
         if blocking or not self.qt_available:
             if not image_data:
@@ -95,11 +109,20 @@ class ImageFetcher:
                     image_data = requests.get(
                         url, headers={"user-agent": "comictagger image fetcher/" + ctversion.version}
                     ).content
+
+                    i = Image.open(io.BytesIO(image_data))
+                    i.verify()
                     # save the image to the cache
                     self.add_image_to_cache(self.fetched_url, image_data)
-                except Exception as e:
+                except PIL.UnidentifiedImageError:
+                    logger.error("Unable to identify image from %s", url)
+                    image_data = b""
+                except requests.RequestException as e:
                     logger.exception("Fetching url failed: %s", e)
                     raise ImageFetcherException("Network Error!") from e
+                except Exception:
+                    logger.exception("Unknown exception validating image from: %s", url)
+                    image_data = b""
             return image_data
 
         if self.qt_available:
@@ -111,7 +134,9 @@ class ImageFetcher:
                 return b""
 
             # didn't find it.  look online
-            self.nam.get(QtNetwork.QNetworkRequest(QtCore.QUrl(url)))
+            qnet = QtNetwork.QNetworkRequest(QtCore.QUrl(url))
+            qnet.setHeader(qnet.KnownHeaders.UserAgentHeader, "comictagger image fetcher/" + ctversion.version)
+            self.nam.get(qnet)
 
             # we'll get called back when done...
         return b""
@@ -123,12 +148,19 @@ class ImageFetcher:
         url = reply.request().url().toString()
         length = reply.header(QtNetwork.QNetworkRequest.KnownHeaders.ContentLengthHeader)
         logger.debug("request finished: %s: %s", url, length or "")
-        image_data = reply.readAll()
+        image_data = reply.readAll().data()
 
         # save the image to the cache
-        self.add_image_to_cache(url, image_data)
+        try:
+            i = Image.open(io.BytesIO(image_data))
+            i.verify()
+            self.add_image_to_cache(url, image_data)
 
-        self.image_fetch_complete(url, image_data)
+            self.image_fetch_complete(url, image_data)
+        except PIL.UnidentifiedImageError:
+            logger.error("Unable to identify image from %s", url)
+        except Exception:
+            logger.exception("Unknown exception validating image from: %s", url)
 
     def create_image_db(self) -> None:
         # this will wipe out any existing version
@@ -145,7 +177,7 @@ class ImageFetcher:
 
             cur.execute("CREATE TABLE Images(url TEXT,filename TEXT,timestamp TEXT,PRIMARY KEY (url))")
 
-    def add_image_to_cache(self, url: str, image_data: bytes | QtCore.QByteArray) -> None:
+    def add_image_to_cache(self, url: str, image_data: bytes) -> None:
         with lite.connect(self.db_file) as con:
             cur = con.cursor()
 
@@ -153,7 +185,7 @@ class ImageFetcher:
 
             tmp_fd, filename = tempfile.mkstemp(dir=self.cache_folder, prefix="img")
             with os.fdopen(tmp_fd, "w+b") as f:
-                f.write(bytes(image_data))
+                f.write(image_data)
 
             cur.execute("INSERT or REPLACE INTO Images VALUES(?, ?, ?)", (url, filename, timestamp))
 

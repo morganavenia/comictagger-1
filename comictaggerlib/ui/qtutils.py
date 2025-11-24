@@ -138,7 +138,8 @@ try:
                 if pil_available:
                     # Qt doesn't understand the format, but maybe PIL does
                     buffer = io.BytesIO()
-                    Image.open(io.BytesIO(image_data)).save(buffer, format="ppm")
+                    # Use PNG because it supports transparency. PPM is faster but has limits
+                    Image.open(io.BytesIO(image_data)).save(buffer, format="png")
                     success = img.loadFromData(buffer.getvalue())
             except Exception:
                 logger.exception("Failed to load the image.")
