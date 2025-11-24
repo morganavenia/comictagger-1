@@ -218,8 +218,9 @@ class FileSelectionList(QtWidgets.QWidget):
                 progdialog.setLabelText(f)
 
             row, ca = self.add_path_item(f)
-            if row is not None:
-                rar_added_ro = bool(ca and ca.archiver.name() == "RAR" and not ca.archiver.is_writable())
+            if row is not None and ca:
+                if ca.archiver.name() == "RAR" and not ca.archiver.is_writable():
+                    rar_added_ro = True
                 if first_added is None and row != -1:
                     first_added = row
 
@@ -250,24 +251,25 @@ class FileSelectionList(QtWidgets.QWidget):
             self.twList.setColumnWidth(FileSelectionList.folderColNum, 200)
 
     def rar_ro_message(self) -> None:
-        if not self.rar_ro_shown:
-            if platform.system() == "Windows":
-                rar_help = windowsRarHelp
+        if self.rar_ro_shown:
+            return
+        if platform.system() == "Windows":
+            rar_help = windowsRarHelp
 
-            elif platform.system() == "Darwin":
-                rar_help = macRarHelp
+        elif platform.system() == "Darwin":
+            rar_help = macRarHelp
 
-            else:
-                rar_help = linuxRarHelp
+        else:
+            rar_help = linuxRarHelp
 
-            OptionalMessageDialog.msg_no_checkbox(
-                self,
-                "RAR Files are Read-Only",
-                "It looks like you have opened a RAR/CBR archive,\n"
-                "however ComicTagger cannot write to them without the rar program and are marked read only!\n\n"
-                f"{rar_help}",
-            )
-            self.rar_ro_shown = True
+        OptionalMessageDialog.msg_no_checkbox(
+            self,
+            "RAR Files are Read-Only",
+            "It looks like you have opened a RAR/CBR archive,\n"
+            "however ComicTagger cannot write to them without the rar program and are marked read only!\n\n"
+            f"{rar_help}",
+        )
+        self.rar_ro_shown = True
 
     def get_current_list_row(self, path: str) -> tuple[int, ComicArchive]:
         pl = pathlib.Path(path)

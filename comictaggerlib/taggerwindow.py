@@ -478,21 +478,20 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.page_loader = None
 
     def update_app_title(self) -> None:
-        self.setWindowIcon(QtGui.QIcon(str(graphics_path / "app.png")))
-
         if self.comic_archive is None:
             self.setWindowTitle(self.appName)
-        else:
-            mod_str = ""
-            ro_str = ""
+            return
 
-            if self.dirty_flag:
-                mod_str = " [modified]"
+        mod_str = ""
+        ro_str = ""
 
-            if not self.comic_archive.is_writable():
-                ro_str = " [read only]"
+        if self.dirty_flag:
+            mod_str = " [modified]"
 
-            self.setWindowTitle(f"{self.appName} - {self.comic_archive.path}{mod_str}{ro_str}")
+        if not self.comic_archive.is_writable():
+            ro_str = " [read only]"
+
+        self.setWindowTitle(f"{self.appName} - {self.comic_archive.path}{mod_str}{ro_str}")
 
     def toggle_enable_embedding_hashes(self) -> None:
         self.config[0].Runtime_Options__enable_embedding_hashes = self.actionEnableEmbeddingHashes.isChecked()
@@ -761,7 +760,24 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.view_tag_actions[tag_id].setEnabled(tags[tag_id].enabled and self.comic_archive.has_tags(tag_id))
                 self.remove_tag_actions[tag_id].setEnabled(tags[tag_id].enabled and self.comic_archive.has_tags(tag_id))
 
-        self.actionWrite_Tags.setEnabled(writeable)
+            if writeable:
+                self.actionWrite_Tags
+                self.actionWrite_Tags.triggered.disconnect()
+                self.actionWrite_Tags.triggered.connect(self.prompt_write_tags)
+                self.actionWrite_Tags.setToolTip("")
+                self.actionWrite_Tags.setStatusTip("")
+            else:
+                self.actionWrite_Tags.triggered.disconnect()
+                self.actionWrite_Tags.triggered.connect(
+                    functools.partial(
+                        self._toast,
+                        "Unable to write Tags",
+                        f"Archive is not writeable\n{self.comic_archive.path}",
+                        5000,
+                    )
+                )
+                self.actionWrite_Tags.setToolTip("Archive is not writeable")
+                self.actionWrite_Tags.setStatusTip("Archive is not writeable")
 
     def update_info_box(self) -> None:
         ca = self.comic_archive
@@ -1210,13 +1226,20 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.metadata_to_form()
 
     def on_ratelimit(self, full_time: float, sleep_time: float) -> None:
+        self._toast(
+            "Rate Limit Hit!",
+            f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit",
+            abs(int(sleep_time * 1000) + 200),
+        )
+
+    def _toast(self, title: str, text: str, duration: int) -> None:
         if QtWidgets.QSystemTrayIcon.supportsMessages():
             self.tray.show()
             self.tray.showMessage(
-                "Rate Limit Hit!",
-                f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit",
-                self.qicon,
-                abs(int(sleep_time * 1000) + 200),
+                title,
+                text,
+                self.windowIcon(),
+                abs(duration),
             )
             self.tray.hide()
             return
@@ -1228,13 +1251,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.toast.applyPreset(ToastPreset.WARNING)
 
         # Convert to milliseconds, add 200ms because python is slow
-        self.toast.setDuration(abs(int(sleep_time * 1000) + 200))
+        self.toast.setDuration(abs(duration))
         self.toast.setResetDurationOnHover(False)
         self.toast.setFadeOutDuration(50)
-        self.toast.setTitle("Rate Limit Hit!")
-        self.toast.setText(
-            f"Rate limit reached: {full_time:.0f}s until next request. Waiting {sleep_time:.0f}s for ratelimit"
-        )
+        self.toast.setTitle(title)
+        self.toast.setText(text)
         self.toast.setAlwaysOnMainScreen(True)
         self.toast.show()
 
