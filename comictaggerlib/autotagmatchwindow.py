@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 
 class AutoTagMatchWindow(QtWidgets.QDialog):
+    matched_files = QtCore.pyqtSignal(list)
+
     def __init__(
         self,
         parent: QtWidgets.QWidget,
@@ -47,6 +49,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             uic.loadUi(uifile, self)
 
         self.config = config
+        self.matched_comics: list[ComicArchive] = []
 
         self.current_match_set: tuple[Result, ComicArchive] = match_set_list[0]
 
@@ -85,6 +88,11 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.skipButton.clicked.connect(self.skip_to_next)
 
         self.update_data()
+        self.finished.connect(self.comic_list_emit)
+
+    def comic_list_emit(self) -> None:
+        self.matched_files.emit(self.matched_comics.copy())
+        self.matched_comics = []
 
     def update_data(self) -> None:
         self.current_match_set = self.match_set_list[self.current_match_set_idx]
@@ -262,5 +270,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
                     f"Saving {tags[tag_id].name()} the tags to the archive seemed to fail!",
                 )
                 break
+        self.matched_comics.append(ca)
 
         ca.reset_cache()

@@ -1947,12 +1947,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
         logger.info(summary)
 
         qmsg.setInformativeText(summary)
-        qmsg.accepted.connect(functools.partial(self.open_auto_tag_match_window, match_results, archives_to_remove))
+        qmsg.accepted.connect(functools.partial(self.open_auto_tag_match_window, match_results))
         qmsg.show()
 
-    def open_auto_tag_match_window(
-        self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive]
-    ) -> None:
+    def open_auto_tag_match_window(self, match_results: OnlineMatchResults) -> None:
         match_results.multiple_matches.extend(match_results.low_confidence_matches)
         auto_tagged_archives = {a.path: a for a in self.fileSelectionList.get_selected_archive_list()}
         matchdlg = AutoTagMatchWindow(
@@ -1965,6 +1963,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         matchdlg.open()
         matchdlg.finished.connect(self._reload_page)
+        matchdlg.matched_files.connect(self.fileSelectionList.remove_archive_list)
 
     def _reload_page(self) -> None:
         self.fileSelectionList.update_selected_rows()
