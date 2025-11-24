@@ -17,10 +17,12 @@
 from __future__ import annotations
 
 import logging
+import traceback
 
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
+from comictaggerlib.ui import ui_path
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,16 @@ class LogWindow(QtWidgets.QDialog):
                 | QtCore.Qt.WindowType.WindowMaximizeButtonHint
             )
         )
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def set_text(self, text: str | bytes | None) -> None:
         try:
@@ -50,4 +62,5 @@ class LogWindow(QtWidgets.QDialog):
             pass
         except Exception as e:
             logger.exception("Displaying raw tags failed")
-            qtutils.qt_error("Displaying raw tags failed:", e)
+            trace = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
+            OptionalMessageDialog.critical(parent=self, title="Displaying raw tags failed", text=str(e), details=trace)

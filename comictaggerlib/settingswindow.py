@@ -22,6 +22,7 @@ import os
 import pathlib
 import platform
 import shutil
+import textwrap
 import urllib.parse
 from typing import Any, cast
 
@@ -37,37 +38,44 @@ from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.ctsettings.plugin import group_for_plugin
 from comictaggerlib.filerenamer import FileRenamer, Replacement, Replacements
 from comictaggerlib.imagefetcher import ImageFetcher
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
+from comictaggerlib.ui import ui_path
 from comictalker.comiccacher import ComicCacher
 from comictalker.comictalker import ComicTalker
 
 logger = logging.getLogger(__name__)
 
-windowsRarHelp = """
-                <html><head/><body><p>To write to CBR/RAR archives,
+windowsRarHelp = textwrap.dedent("""
+                To write to CBR/RAR archives,
                 you will need to have the tools from
-                <span style=" text-decoration: underline; color:#0000ff;">
-                <a href="http://www.win-rar.com/download.html">WINRar</a></span>
-                installed. (ComicTagger only uses the command-line rar tool.)<br/>A restart is needed for a new path to take effect.
-                </p></body></html>
-                """
+                [WINRar](http://www.win-rar.com/download.html)
+                installed. (ComicTagger only uses the command-line rar tool.)
 
-linuxRarHelp = """
-                <html><head/><body><p>To write to CBR/RAR archives,
+                A restart is needed for a new path to take effect.
+                """)
+
+linuxRarHelp = textwrap.dedent("""
+                To write to CBR/RAR archives,
                 you will need to have the shareware rar tool from RARLab installed.
                 Your package manager should have rar (e.g. "apt-get install rar"). If not, download it
-                <span style=" text-decoration: underline; color:#0000ff;">
-                <a href="https://www.rarlab.com/download.htm">here</a></span>,
-                and install in your path.<br/>A restart is needed for a new path to take effect.</p></body></html>
-                """
+                from [RARLab](https://www.rarlab.com/download.htm),
+                and install in your path.
 
-macRarHelp = """
-                <html><head/><body><p>To write to CBR/RAR archives,
+                A restart is needed for a new path to take effect.
+                """)
+
+macRarHelp = textwrap.dedent("""
+                To write to CBR/RAR archives,
                 you will need the rar tool.  The easiest way to get this is
-                to install <span style=" text-decoration: underline; color:#0000ff;">
-                <a href="https://brew.sh/">homebrew</a></span>.
-                </p>Once homebrew is installed, run: <b>brew install rar</b><br/>A restart is needed for a new path to take effect.</body></html>
-                """
+                to install [homebrew](https://brew.sh/).
+
+                Once homebrew is installed, run:
+                ```bash
+                brew install rar
+                ```
+
+                A restart is needed for a new path to take effect.
+                """)
 
 
 template_tooltip = """
@@ -232,6 +240,17 @@ class SettingsWindow(QtWidgets.QDialog):
         # Set General as start tab
         self.tabWidget.setCurrentIndex(0)
 
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
+
     def connect_signals(self) -> None:
         self.btnBrowseRar.clicked.connect(self.select_rar)
         self.btnClearCache.clicked.connect(self.clear_cache)
@@ -392,17 +411,21 @@ class SettingsWindow(QtWidgets.QDialog):
             platform="universal" if self.cbxRenameStrict.isChecked() else "auto",
             replacements=self.get_replacements(),
         )
+        from . import gui
+
+        if not gui.tagger_window:
+            return
+        gui.tagger_window.form_to_metadata()
         metadata = md_test
         name = "cory doctorow #1.cbz"
-        if hasattr(self.parent(), "form_to_metadata") and hasattr(self.parent(), "metadata"):
-            self.parent().form_to_metadata()
-            md: GenericMetadata = self.parent().metadata.copy()
-            md.series = None
-            md.pages = []
 
-            if self.parent().comic_archive and not md.is_empty:
-                metadata = self.parent().metadata
-                name = self.parent().comic_archive.path.name
+        md: GenericMetadata = gui.tagger_window.metadata.copy()
+        md.series = None
+        md.pages = []
+
+        if gui.tagger_window.comic_archive and not md.is_empty:
+            metadata = gui.tagger_window.metadata
+            name = gui.tagger_window.comic_archive.path.name
 
         fr.set_metadata(metadata, name)
         fr.move_only = self.cbxMoveOnly.isChecked()
@@ -551,7 +574,7 @@ class SettingsWindow(QtWidgets.QDialog):
                 logger.error(
                     "Invalid format string: %s", self.config[0].File_Rename__template, exc_info=self.rename_error
                 )
-                return qtutils.critical(
+                OptionalMessageDialog.critical(
                     self,
                     "Invalid format string!",
                     "Your rename template is invalid!"
@@ -561,13 +584,14 @@ class SettingsWindow(QtWidgets.QDialog):
                     + "<a href='https://docs.python.org/3/library/string.html#format-string-syntax'>"
                     + "https://docs.python.org/3/library/string.html#format-string-syntax</a>",
                 )
+                return
             logger.error(
                 "Formatter failure: %s metadata: %s",
                 self.config[0].File_Rename__template,
                 self.renamer.metadata,
                 exc_info=self.rename_error,
             )
-            return qtutils.critical(
+            OptionalMessageDialog.critical(
                 self,
                 "The formatter had an issue!",
                 "The formatter has experienced an unexpected error!"
@@ -576,6 +600,7 @@ class SettingsWindow(QtWidgets.QDialog):
                 + "<a href='https://github.com/comictagger/comictagger'>"
                 + "https://github.com/comictagger/comictagger</a>",
             )
+            return
 
         # Copy values from form to settings and save
         archive_group = group_for_plugin(Archiver)
@@ -629,13 +654,15 @@ class SettingsWindow(QtWidgets.QDialog):
         self.config[0].Metadata_Options__metadata_merge_lists = self.cbxMergeListsMetadata.isChecked()
         self.config[0].Metadata_Options__cr = self.cbxEnableCR.isChecked()
 
+        from . import gui
+
+        if not gui.tagger_window:
+            return
         # Update tag names if required
         if self.config[0].Metadata_Options__use_short_tag_names != self.cbxShortTagNames.isChecked():
             self.config[0].Metadata_Options__use_short_tag_names = self.cbxShortTagNames.isChecked()
-            if hasattr(self.parent(), "populate_tag_names"):
-                self.parent().populate_tag_names()
-            if hasattr(self.parent(), "adjust_tags_combo"):
-                self.parent().adjust_tags_combo()
+            gui.tagger_window.populate_tag_names()
+            gui.tagger_window.adjust_tags_combo()
 
         self.config[0].File_Rename__template = str(self.leRenameTemplate.text())
         self.config[0].File_Rename__issue_number_padding = int(self.leIssueNumPadding.text())
@@ -670,12 +697,12 @@ class SettingsWindow(QtWidgets.QDialog):
         cache_folder.mkdir(parents=True, exist_ok=True)
         ComicCacher(cache_folder, "0")
         ImageFetcher(cache_folder)
-        qtutils.information(self, self.name, "Cache has been cleared.")
+        OptionalMessageDialog.information(self, self.name, "Cache has been cleared.")
 
     def reset_settings(self) -> None:
         self.config = cast(settngs.Config[ct_ns], settngs.get_namespace(settngs.defaults(self.config[1])))
         self.settings_to_form()
-        qtutils.information(self, self.name, self.name + " have been returned to default values.")
+        OptionalMessageDialog.information(self, self.name, self.name + " have been returned to default values.")
 
     def select_file(self, control: QtWidgets.QLineEdit, name: str) -> None:
         dialog = QtWidgets.QFileDialog(self)

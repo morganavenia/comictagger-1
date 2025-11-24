@@ -49,6 +49,16 @@ class ApplicationLogWindow(QtWidgets.QDialog):
         # Connect signal to slot
         self._button.clicked.connect(self.test)
         self.textEdit.setTabStopDistance(self.textEdit.tabStopDistance() * 2)
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def test(self) -> None:
         logger.debug("damn, a bug")

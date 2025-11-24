@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comictaggerlib.ui import ui_path
 
@@ -39,3 +39,13 @@ class IDProgressWindow(QtWidgets.QDialog):
                 | QtCore.Qt.WindowType.WindowMaximizeButtonHint
             )
         )
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)

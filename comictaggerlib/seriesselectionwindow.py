@@ -19,6 +19,7 @@ from __future__ import annotations
 import difflib
 import itertools
 import logging
+import traceback
 from abc import ABCMeta, abstractmethod
 
 import natsort
@@ -34,6 +35,7 @@ from comictaggerlib.ctsettings.settngs_namespace import SettngsNS
 from comictaggerlib.issueidentifier import IssueIdentifier, IssueIdentifierOptions
 from comictaggerlib.issueidentifier import Result as IIResult
 from comictaggerlib.matchselectionwindow import MatchSelectionWindow
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
 from comictaggerlib.progresswindow import IDProgressWindow
 from comictaggerlib.resulttypes import IssueResult
 from comictaggerlib.ui import qtutils, ui_path
@@ -206,6 +208,16 @@ class SelectionWindow(QtWidgets.QDialog):
         self.twList.cellDoubleClicked.connect(self.cell_double_clicked)
         self.leFilter.textChanged.connect(self.filter)
         self.twList.selectRow(0)
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     @abstractmethod
     def perform_query(self, refresh: bool = False) -> None: ...
@@ -441,11 +453,11 @@ class SeriesSelectionWindow(SelectionWindow):
 
     def auto_select(self) -> None:
         if self.comic_archive is None:
-            qtutils.information(self, "Auto-Select", "You need to load a comic first!")
+            OptionalMessageDialog.information(self, "Auto-Select", "You need to load a comic first!")
             return
 
         if self.issue_number is None or self.issue_number == "":
-            qtutils.information(self, "Auto-Select", "Can't auto-select without an issue number (yet!)")
+            OptionalMessageDialog.information(self, "Auto-Select", "Can't auto-select without an issue number (yet!)")
             return
         self.iddialog = IDProgressWindow(self)
 
@@ -486,32 +498,29 @@ class SeriesSelectionWindow(SelectionWindow):
         if result == IIResult.single_good_match:
             return self.update_match(issues[0])
 
-        qmsg = QtWidgets.QMessageBox(parent=self.iddialog)
-        qmsg.setModal(False)
-        qmsg.setIcon(qmsg.Icon.Information)
-        qmsg.setText("Auto-Select Result")
-        qmsg.setInformativeText(" Manual interaction needed :-(")
-        qmsg.finished.connect(self.iddialog.close)
+        info_text = " Manual interaction needed :-("
 
         if result == IIResult.no_matches:
-            qmsg.setInformativeText(" No matches found :-(")
-            return qmsg.show()
+            info_text = " No matches found :-("
+            OptionalMessageDialog.information(parent=self.iddialog, title="Auto-Select Result", text=info_text)
+            return
 
         if result == IIResult.single_bad_cover_score:
-            qmsg.setInformativeText(" Found a match, but cover doesn't seem the same. Verify before committing!")
+            info_text = " Found a match, but cover doesn't seem the same. Verify before committing!"
+            qmsg = OptionalMessageDialog.information(parent=self.iddialog, title="Auto-Select Result", text=info_text)
             qmsg.finished.connect(lambda: self.update_match(issues[0]))
-            return qmsg.show()
+            return
 
         selector = MatchSelectionWindow(self, issues, self.comic_archive, talker=self.talker, config=self.config)
         selector.match_selected.connect(self.update_match)
-        qmsg.finished.connect(selector.open)
 
         if result == IIResult.multiple_bad_cover_scores:
-            qmsg.setInformativeText(" Found some possibilities, but no confidence. Proceed manually.")
+            info_text = " Found some possibilities, but no confidence. Proceed manually."
         elif result == IIResult.multiple_good_matches:
-            qmsg.setInformativeText(" Found multiple likely matches. Please select.")
+            info_text = " Found multiple likely matches. Please select."
+        qmsg = OptionalMessageDialog.information(parent=self.iddialog, title="Auto-Select Result", text=info_text)
 
-        qmsg.show()
+        qmsg.finished.connect(selector.open)
 
     def update_match(self, match: IssueResult) -> None:
         if self.iddialog is not None:
@@ -583,11 +592,14 @@ class SeriesSelectionWindow(SelectionWindow):
             parent = self.parent()
             if not isinstance(parent, QtWidgets.QWidget):
                 parent = None
-            return qtutils.critical(
+            e = self.search_thread.error_e
+            OptionalMessageDialog.critical(
                 parent,
-                f"{self.search_thread.error_e.source} {self.search_thread.error_e.code_name} Error",
-                f"{self.search_thread.error_e}",
+                f"{e.source} {e.code_name} Error",
+                f"{e}",
+                details="\n".join(traceback.format_exception(type(e), e, e.__traceback__)),
             )
+            return
 
         tmp_list = self.search_thread.ct_search_results if self.search_thread is not None else []
         self.series_list = {x.id: x for x in tmp_list}
@@ -688,7 +700,8 @@ class SeriesSelectionWindow(SelectionWindow):
         self.twList.resizeRowsToContents()
 
         if not self.series_list:
-            return qtutils.information(self, "Search Result", "No matches found!\nSeriesSelectionWindow")
+            OptionalMessageDialog.information(self, "Search Result", "No matches found!\nSeriesSelectionWindow")
+            return
 
         elif self.immediate_autoselect:
             # defer the immediate autoselect so this dialog has time to pop up

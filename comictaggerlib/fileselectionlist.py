@@ -31,7 +31,7 @@ from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.graphics import graphics_path
 from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
 from comictaggerlib.settingswindow import linuxRarHelp, macRarHelp, windowsRarHelp
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.ui import ui_path
 from comictaggerlib.ui.qtutils import center_window_on_parent
 
 logger = logging.getLogger(__name__)
@@ -232,8 +232,12 @@ class FileSelectionList(QtWidgets.QWidget):
             self.twList.selectRow(first_added)
         else:
             if len(pathlist) == 1 and os.path.isfile(pathlist[0]):
-                return qtutils.information(self, "File Open", "Selected file doesn't seem to be a comic archive.")
-            return qtutils.information(self, "File/Folder Open", "No readable comic archives were found.")
+                OptionalMessageDialog.information(
+                    self, "File Open", "Selected file doesn't seem to be a comic archive."
+                )
+                return
+            OptionalMessageDialog.information(self, "File/Folder Open", "No readable comic archives were found.")
+            return
 
         if rar_added_ro:
             self.rar_ro_message()

@@ -20,12 +20,13 @@ import logging
 import operator
 
 import natsort
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi import utils
 from comicapi.comicarchive import tags
 from comicapi.genericmetadata import Credit
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
+from comictaggerlib.ui import ui_path
 from comictaggerlib.ui.qtutils import enable_widget
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,16 @@ class CreditEditorWindow(QtWidgets.QDialog):
 
         self.cbPrimary.setChecked(credit.primary)
         self.update_tag_tweaks()
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def get_credit(self) -> Credit:
         lang = self.cbLanguage.currentData() or self.cbLanguage.currentText()
@@ -116,7 +127,8 @@ class CreditEditorWindow(QtWidgets.QDialog):
 
     def accept(self) -> None:
         if self.leName.text() == "":
-            return qtutils.warning(self, "Whoops", "You need to enter a name for a credit.")
+            OptionalMessageDialog.warning(self, "Whoops", "You need to enter a name for a credit.")
+            return
 
         QtWidgets.QDialog.accept(self)
         new = self.get_credit()

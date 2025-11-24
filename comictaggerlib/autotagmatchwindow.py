@@ -25,8 +25,9 @@ from comicapi.comicarchive import ComicArchive, tags
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.md import prepare_metadata, read_selected_tags
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
 from comictaggerlib.resulttypes import IssueResult, Result
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.ui import ui_path
 from comictalker.comictalker import ComicTalker, TalkerError
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,16 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.skipButton.clicked.connect(self.skip_to_next)
 
         self.update_data()
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
         self.finished.connect(self.comic_list_emit)
 
     def comic_list_emit(self) -> None:
@@ -212,11 +223,12 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             self.update_data()
 
     def reject(self) -> None:
-        qmsg = QtWidgets.QMessageBox(self)
-        qmsg.setIcon(qmsg.Icon.Question)
-        qmsg.setText("Cancel Matching")
-        qmsg.setInformativeText("Are you sure you wish to cancel the matching process?")
-        qmsg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+        qmsg = OptionalMessageDialog.msg_no_checkbox(
+            self,
+            "Cancel Matching",
+            "Are you sure you wish to cancel the matching process?",
+            icon=OptionalMessageDialog.Icon.Warning,
+        )
         qmsg.accepted.connect(self._cancel)
         qmsg.show()
 
@@ -236,11 +248,12 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             logger.error("Failed to load tags for %s: %s", ca.path, error)
 
             QtWidgets.QApplication.restoreOverrideCursor()
-            return qtutils.critical(
+            OptionalMessageDialog.critical(
                 self,
                 "Read Failed!",
                 f"One or more of the read tags failed to load for {ca.path}, check log for details",
             )
+            return
 
         if md.is_empty:
             md = ca.metadata_from_filename(
@@ -257,11 +270,12 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             self.current_match_set[0].md = ct_md = self.talker.fetch_comic_data(issue_id=match.md.issue_id)
         except TalkerError as e:
             QtWidgets.QApplication.restoreOverrideCursor()
-            qtutils.critical(self, f"{e.source} {e.code_name} Error", str(e))
+            OptionalMessageDialog.critical(self, f"{e.source} {e.code_name} Error", str(e))
             return
 
         if ct_md is None or ct_md.is_empty:
-            return qtutils.critical(self, "Network Issue", "Could not retrieve issue details!")
+            OptionalMessageDialog.critical(self, "Network Issue", "Could not retrieve issue details!")
+            return
 
         QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
         md = prepare_metadata(md, ct_md, self.config)
@@ -269,7 +283,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             success = ca.write_tags(md, tag_id)
             QtWidgets.QApplication.restoreOverrideCursor()
             if not success:
-                qtutils.warning(
+                OptionalMessageDialog.warning(
                     self,
                     "Write Error",
                     f"Saving {tags[tag_id].name()} the tags to the archive seemed to fail!",

@@ -88,6 +88,16 @@ class ImagePopup(QtWidgets.QDialog):
 
             self.showFullScreen()
             self.raise_()
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:

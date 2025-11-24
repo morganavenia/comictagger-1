@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 
 import settngs
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from PyQt6.QtGui import QColorConstants
 
 from comicapi import utils
@@ -28,8 +28,9 @@ from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.filerenamer import FileRenamer, get_rename_dir
 from comictaggerlib.md import read_selected_tags
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
 from comictaggerlib.settingswindow import SettingsWindow
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.ui import ui_path
 from comictaggerlib.ui.qtutils import center_window_on_parent
 from comictalker.comictalker import ComicTalker
 
@@ -71,6 +72,16 @@ class RenameWindow(QtWidgets.QDialog):
         self.renamer = FileRenamer(None, platform=platform, replacements=self.config[0].File_Rename__replacements)
 
         self.do_preview()
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def config_renamer(self, ca: ComicArchive, md: GenericMetadata = GenericMetadata()) -> tuple[str, Exception | None]:
         self.renamer.set_template(self.config[0].File_Rename__template)
@@ -118,29 +129,27 @@ class RenameWindow(QtWidgets.QDialog):
                 new_name = self.renamer.determine_name(new_ext)
             except ValueError as e:
                 logger.exception("Invalid format string: %s", self.config[0].File_Rename__template)
-                qtutils.critical(
+                OptionalMessageDialog.critical(
                     self,
                     "Invalid format string!",
                     "Your rename template is invalid!"
-                    f"<br/><br/>{e}<br/><br/>"
+                    f"\n\n{e}\n\n"
                     "Please consult the template help in the "
                     "settings and the documentation on the format at "
-                    "<a href='https://docs.python.org/3/library/string.html#format-string-syntax'>"
-                    "https://docs.python.org/3/library/string.html#format-string-syntax</a>",
+                    "https://docs.python.org/3/library/string.html#format-string-syntax",
                 )
                 return
             except Exception as e:
                 logger.exception(
                     "Formatter failure: %s metadata: %s", self.config[0].File_Rename__template, self.renamer.metadata
                 )
-                qtutils.critical(
+                OptionalMessageDialog.critical(
                     self,
                     "The formatter had an issue!",
                     "The formatter has experienced an unexpected error!"
-                    f"<br/><br/>{type(e).__name__}: {e}<br/><br/>"
+                    f"\n\n{type(e).__name__}: {e}\n\n"
                     "Please open an issue at "
-                    "<a href='https://github.com/comictagger/comictagger'>"
-                    "https://github.com/comictagger/comictagger</a>",
+                    "https://github.com/comictagger/comictagger",
                 )
                 return
 
@@ -187,16 +196,19 @@ class RenameWindow(QtWidgets.QDialog):
 
         self.twList.setSortingEnabled(True)
         if errors:
-            qtutils.warning(self, "Read Failed!", "One or more of the read tags failed to load, check log for details")
+            OptionalMessageDialog.warning(
+                self, "Read Failed!", "One or more of the read tags failed to load, check log for details"
+            )
 
     def modify_settings(self) -> None:
-        settingswin = SettingsWindow(self, self.config, self.talkers)
-        settingswin.setModal(True)
-        settingswin.show_rename_tab()
-        settingswin.accepted.connect(self.settings_closed)
-        settingswin.show()
+        self.settingswin = SettingsWindow(self, self.config, self.talkers)
+        self.settingswin.setModal(True)
+        self.settingswin.show_rename_tab()
+        self.settingswin.accepted.connect(self.settings_closed)
+        self.settingswin.show()
 
     def settings_closed(self) -> None:
+        self.config = self.settingswin.config
         self.do_preview()
 
     def accept(self) -> None:
@@ -247,19 +259,19 @@ class RenameWindow(QtWidgets.QDialog):
         except Exception as e:
             assert comic
             logger.exception("Failed to rename comic archive: %s", comic[0].path)
-            qtutils.critical(
+            OptionalMessageDialog.critical(
                 self,
                 "There was an issue when renaming!",
-                f"Renaming failed!<br/><br/>{type(e).__name__}: {e}<br/><br/>",
+                f"Renaming failed!\n\n{type(e).__name__}: {e}\n\n",
             )
 
         if failed_renames:
-            qtutils.critical(
+            OptionalMessageDialog.critical(
                 self,
                 f"Failed to rename {len(failed_renames)} files!",
-                "Renaming failed for {} files!<br/><br/>{}<br/><br/>".format(
+                "Renaming failed for {} files!\n\n{}\n\n".format(
                     len(failed_renames),
-                    "<br/>".join([f"{x[0]!r} -> {x[1]!r}: {x[2]}" for x in failed_renames]),
+                    "\n".join([f"- {x[0]!r} -> {x[1]!r}: {x[2]}" for x in failed_renames]),
                 ),
             )
 

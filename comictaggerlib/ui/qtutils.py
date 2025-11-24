@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import logging
-import traceback
 import webbrowser
 from collections.abc import Collection, Sequence
 
@@ -148,13 +147,6 @@ try:
             img.load(":/graphics/nocover.png")
         return img
 
-    def qt_error(msg: str, e: Exception | None = None) -> None:
-        trace = ""
-        if e:
-            trace = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
-
-        return critical(QtWidgets.QMainWindow(), "Error", msg + trace)
-
     def enable_widget(widget: QtWidgets.QWidget | Collection[QtWidgets.QWidget], enable: bool) -> None:
         if isinstance(widget, Sequence):
             for w in widget:
@@ -237,27 +229,6 @@ try:
         # QSplitter has issues with replacing a widget before it's been first shown. Assume it should be visible
         new_widget.show()
         return new_widget
-
-    def critical(parent: QWidget | None, title: str, text: str) -> None:
-        qmsg = QtWidgets.QMessageBox(parent=parent)
-        qmsg.setIcon(qmsg.Icon.Critical)
-        qmsg.setText(title)
-        qmsg.setInformativeText(text)
-        return qmsg.show()
-
-    def warning(parent: QWidget | None, title: str, text: str) -> None:
-        qmsg = QtWidgets.QMessageBox(parent=parent)
-        qmsg.setIcon(qmsg.Icon.Warning)
-        qmsg.setText(title)
-        qmsg.setInformativeText(text)
-        return qmsg.show()
-
-    def information(parent: QWidget | None, title: str, text: str) -> None:
-        qmsg = QtWidgets.QMessageBox(parent=parent)
-        qmsg.setIcon(qmsg.Icon.Information)
-        qmsg.setText(title)
-        qmsg.setInformativeText(text)
-        return qmsg.show()
 
 except ImportError:
     qt_available = False

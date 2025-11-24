@@ -20,7 +20,7 @@ import logging
 import pathlib
 import re
 
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive, tags
@@ -29,9 +29,10 @@ from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings.settngs_namespace import SettngsNS
 from comictaggerlib.issueidentifier import IssueIdentifierCancelled
 from comictaggerlib.md import read_selected_tags
+from comictaggerlib.optionalmsgdialog import OptionalMessageDialog
 from comictaggerlib.resulttypes import Action, OnlineMatchResults, Result, Status
 from comictaggerlib.tag import identify_comic
-from comictaggerlib.ui import qtutils, ui_path
+from comictaggerlib.ui import ui_path
 from comictalker.comictalker import ComicTalker, RLCallBack
 
 logger = logging.getLogger(__name__)
@@ -113,7 +114,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
         # read in tags, and parse file name if not there
         md, tags_used, error = read_selected_tags(self.config.Runtime_Options__tags_read, ca)
         if error is not None:
-            qtutils.critical(
+            OptionalMessageDialog.critical(
                 None,
                 "Aborting...",
                 f"One or more of the read tags failed to load for {ca.path}. Aborting to prevent any possible further damage. Check log for details.",
@@ -249,6 +250,16 @@ class AutoTagProgressWindow(QtWidgets.QDialog):
                 | QtCore.Qt.WindowType.WindowMaximizeButtonHint
             )
         )
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def set_archive_image(self, img_data: bytes) -> None:
         self.set_cover_image(img_data, self.archiveCoverWidget)

@@ -20,7 +20,7 @@ import copy
 import logging
 from typing import NamedTuple
 
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib.ctsettings import ct_ns, settngs_namespace
@@ -113,6 +113,16 @@ class AutoTagStartWindow(QtWidgets.QDialog):
         self.split_words = self.cbxSplitWords.isChecked()
         self.adjustSize()
         self.setModal(True)
+        from . import gui
+
+        if gui.tagger_window:
+            self.addAction(gui.tagger_window.actionExit)
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def search_string_toggle(self) -> None:
         enable = self.cbxSpecifySearchString.isChecked()

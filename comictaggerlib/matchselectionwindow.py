@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 
-from PyQt6 import QtCore, QtWidgets, uic
+from PyQt6 import QtCore, QtGui, QtWidgets, uic
 
 from comicapi.comicarchive import ComicArchive
 from comictaggerlib.coverimagewidget import CoverImageWidget
@@ -75,6 +75,12 @@ class MatchSelectionWindow(QtWidgets.QDialog):
         self.accepted.connect(self.selected)
 
         self.update_data()
+        # Qt sucks
+        cancel = QtGui.QAction(self)
+        cancel.triggered.connect(self.reject)
+        cancel.setShortcut(QtGui.QKeySequence.StandardKey.Cancel)
+
+        self.addAction(cancel)
 
     def update_data(self) -> None:
         self.set_cover_image()
