@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import io
 from enum import auto
 from sys import platform
-from typing import Any
+from typing import Any, cast
 
+from PIL import Image
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QEvent, QModelIndex, QPoint, QRect, QSize, Qt, pyqtSignal
 
 from comicapi.utils import StrEnum
+from comictaggerlib.graphics import graphics_path
 
 
 class ClickedButtonEnum(StrEnum):
@@ -223,6 +226,15 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
 
         self.down_icon = QtGui.QImage(":/graphics/down.png")
         self.up_icon = QtGui.QImage(":/graphics/up.png")
+        self.gray_down_icon = QtGui.QImage()
+        self.gray_up_icon = QtGui.QImage()
+
+        buffer = io.BytesIO()
+        Image.open(graphics_path / "up.png").convert("LA").save(buffer, format="png")
+        self.gray_up_icon.loadFromData(buffer.getvalue())
+        buffer = io.BytesIO()
+        Image.open(graphics_path / "down.png").convert("LA").save(buffer, format="png")
+        self.gray_down_icon.loadFromData(buffer.getvalue())
 
         self.button_width = self.down_icon.width()
         self.button_padding = 5
@@ -274,11 +286,17 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # Draw buttons
         if checked and (options.state & QtWidgets.QStyle.StateFlag.State_Selected):
+            up_icon = self.up_icon
+            down_icon = self.down_icon
+            if index.row() == 0:
+                up_icon = self.gray_up_icon
+            if index.row() >= index.model().rowCount() - 1:
+                down_icon = self.gray_down_icon
+
             up_rect = self._button_up_rect(options.rect)
             down_rect = self._button_down_rect(options.rect)
-
-            painter.drawImage(up_rect, self.up_icon)
-            painter.drawImage(down_rect, self.down_icon)
+            painter.drawImage(up_rect, up_icon)
+            painter.drawImage(down_rect, down_icon)
 
     def _button_up_rect(self, rect: QRect) -> QRect:
         return QRect(
@@ -402,9 +420,9 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
 
     def buttonClicked(self, index: QModelIndex, button: ClickedButtonEnum) -> None:
         if button == ClickedButtonEnum.up:
-            self.moveItem(index.row(), up=True)
+            self.moveItem(index.row(), index.row() - 1)
         elif button == ClickedButtonEnum.down:
-            self.moveItem(index.row(), up=False)
+            self.moveItem(index.row(), index.row() + 1)
         else:
             self.toggleItem(index.row())
 
@@ -466,34 +484,19 @@ class CheckableOrderComboBox(QtWidgets.QComboBox):
         if total_width > self.view().minimumWidth():
             self.view().setMinimumWidth(total_width)
 
-    def moveItem(self, index: int, up: bool = False, row: int | None = None) -> None:
+    def moveItem(self, index: int, row: int) -> None:
         """'Move' an item. Really swap the data and titles around on the two items"""
-        if row is None:
-            adjust = -1 if up else 1
-            row = index + adjust
 
-        # TODO Disable buttons at top and bottom. Do a check here for now
-        if up and index == 0:
+        model = cast(QtGui.QStandardItemModel, self.model())
+        if row == index or row < 0 or row >= model.rowCount():
             return
-        if up is False and row == self.count():
-            return
+        cur = model.item(index)
+        new = model.item(row)
+        cur_clone = cur.clone()
+        new_clone = new.clone()
 
-        # Grab values for the rows to swap
-        cur_data = self.model().item(index).data(Qt.ItemDataRole.UserRole)
-        cur_title = self.model().item(index).data(Qt.ItemDataRole.DisplayRole)
-        cur_state = self.model().item(index).checkState()
-
-        swap_data = self.model().item(row).data(Qt.ItemDataRole.UserRole)
-        swap_title = self.model().item(row).data(Qt.ItemDataRole.DisplayRole)
-        swap_state = self.model().item(row).checkState()
-
-        self.model().item(row).setData(cur_data, Qt.ItemDataRole.UserRole)
-        self.model().item(row).setCheckState(cur_state)
-        self.model().item(row).setText(cur_title)
-
-        self.model().item(index).setData(swap_data, Qt.ItemDataRole.UserRole)
-        self.model().item(index).setCheckState(swap_state)
-        self.model().item(index).setText(swap_title)
+        model.setItem(cur.row(), cur.column(), new_clone)
+        model.setItem(new.row(), new.column(), cur_clone)
 
     def _updateText(self) -> None:
         texts = []
