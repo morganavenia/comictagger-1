@@ -1034,7 +1034,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         md.imprint = utils.xlate(self.leImprint.text())
         md.description = utils.xlate(self.teComments.toPlainText())
         md.notes = utils.xlate(self.teNotes.toPlainText())
-        md.maturity_rating = self.cbMaturityRating.currentText()
+        md.maturity_rating = utils.xlate(self.cbMaturityRating.currentText())
 
         md.critical_rating = utils.xlate_float(self.dsbCriticalRating.cleanText())
         if md.critical_rating == 0.0:
@@ -1043,7 +1043,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         md.story_arcs = utils.split(self.leStoryArc.text(), ",")
         md.scan_info = utils.xlate(self.leScanInfo.text())
         md.series_groups = utils.split(self.leSeriesGroup.text(), ",")
-        md.alternate_series = self.leAltSeries.text()
+        md.alternate_series = utils.xlate(self.leAltSeries.text())
         md.gtin = utils.xlate(self.leGtin.text())
         md.web_links = [utils.parse_url(self.leWebLink.item(i).text()) for i in range(self.leWebLink.count())]
         md.characters = set(utils.split(self.teCharacters.toPlainText(), "\n"))
