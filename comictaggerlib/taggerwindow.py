@@ -2172,6 +2172,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def version_check_complete(self, new_version: tuple[str, str]) -> None:
         if new_version[0] not in (self.version, self.config[0].Dialog_Flags__dont_notify_about_this_version):
+            from packaging.version import parse
+
+            if parse(new_version[0]) <= parse(self.version):
+                return
             website = "https://github.com/comictagger/comictagger"
 
             def set_checked(checked: bool) -> None:
