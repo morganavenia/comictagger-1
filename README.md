@@ -153,20 +153,27 @@ winget install ComicTagger.ComicTagger
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/kiryl85">
+            <img src="https://avatars.githubusercontent.com/u/12550714?v=4" width="100;" alt="kiryl85"/>
+            <br />
+            <sub><b>kiryl85</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/rhaussmann">
             <img src="https://avatars.githubusercontent.com/u/7084007?v=4" width="100;" alt="rhaussmann"/>
             <br />
             <sub><b>rhaussmann</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/AlbanSeurat">
             <img src="https://avatars.githubusercontent.com/u/500180?v=4" width="100;" alt="AlbanSeurat"/>
             <br />
             <sub><b>AlbanSeurat</b></sub>
         </a>
-    </td></tr>
-<tr>
+    </td>
     <td align="center">
         <a href="https://github.com/Sn1cket">
             <img src="https://avatars.githubusercontent.com/u/32904645?v=4" width="100;" alt="Sn1cket"/>
@@ -201,20 +208,13 @@ winget install ComicTagger.ComicTagger
             <br />
             <sub><b>DrMcCoy</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/Xav83">
             <img src="https://avatars.githubusercontent.com/u/6787157?v=4" width="100;" alt="Xav83"/>
             <br />
             <sub><b>Xav83</b></sub>
-        </a>
-    </td></tr>
-<tr>
-    <td align="center">
-        <a href="https://github.com/kiryl85">
-            <img src="https://avatars.githubusercontent.com/u/12550714?v=4" width="100;" alt="kiryl85"/>
-            <br />
-            <sub><b>kiryl85</b></sub>
         </a>
     </td>
     <td align="center">
