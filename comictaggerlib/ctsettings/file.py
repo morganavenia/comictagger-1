@@ -6,6 +6,7 @@ import uuid
 import settngs
 
 from comicapi import merge, utils
+from comicapi.comicarchive import tags
 from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib.ctsettings.settngs_namespace import SettngsNS as ct_ns
 from comictaggerlib.ctsettings.types import parse_metadata_from_string
@@ -28,8 +29,8 @@ def internal(parser: settngs.Manager) -> None:
     # automatic settings
     parser.add_setting("install_id", default=uuid.uuid4().hex, cmdline=False)
     parser.add_setting("embedded_hash_type", default="shake_256", cmdline=False)
-    parser.add_setting("write_tags", default=["cr"], cmdline=False)
-    parser.add_setting("read_tags", default=["cr"], cmdline=False)
+    parser.add_setting("write_tags", default=["cix" if "cix" in tags else "cr"], cmdline=False)
+    parser.add_setting("read_tags", default=["cix" if "cix" in tags else "cr"], cmdline=False)
     parser.add_setting("last_opened_folder", default="", cmdline=False)
     parser.add_setting("window_width", default=0, cmdline=False)
     parser.add_setting("window_height", default=0, cmdline=False)
