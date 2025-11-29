@@ -250,9 +250,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
         self.qicon = QtGui.QIcon(str(graphics_path / "app.png"))
         self.setWindowIcon(self.qicon)
+        # See self._toast for more info
         self.tray = QtWidgets.QSystemTrayIcon(self)
         self.tray.show()
-        self.tray.hide()  # QT doesn't initialize until you call show. on_ratelimit calls .show, .showMessage, and then .hide so that a tray item is not persistent. Specifically macOS will make an invisible tray icon if you keep it visible, even without an icon
+        self.tray.hide()
 
         # respect the command line selected tags
         if config[0].Runtime_Options__tags_write:
@@ -1233,6 +1234,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
         )
 
     def _toast(self, title: str, text: str, duration: int) -> None:
+        # QT doesn't initialize QSystemTrayIcon until you call show. on_ratelimit calls .show, .showMessage, and then .hide so that a tray item is not persistent.
+        # Specifically macOS will make an invisible tray icon if you keep it visible, even without an icon
+        # macOS wil also not popup the notification if the tray icon is hidden immediately after sending a message
+        # testing indicates 200ms wait is needed to let the popup show
+
         if QtWidgets.QSystemTrayIcon.supportsMessages():
             self.tray.show()
             self.tray.showMessage(
@@ -1241,7 +1247,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.windowIcon(),
                 abs(duration),
             )
-            self.tray.hide()
+            QtCore.QTimer.singleShot(200, self.tray.hide)
             return
         self.toast = Toast(self)
         # self.toast.__position_relative_to_widget = self
