@@ -138,7 +138,7 @@ class FileSelectionList(QtWidgets.QWidget):
             # since on a removal, we select row 0, make sure callback occurs if
             # we're already there
             if self.twList.currentRow() == 0:
-                self.current_item_changed_cb(self.twList.currentItem(), None)
+                self.current_item_changed_cb(self.twList.currentIndex(), None)
             self.twList.selectRow(0)
         elif self.twList.rowCount() <= 0:
             self.listCleared.emit()
@@ -184,7 +184,7 @@ class FileSelectionList(QtWidgets.QWidget):
             # since on a removal, we select row 0, make sure callback occurs if
             # we're already there
             if self.twList.currentRow() == 0:
-                self.current_item_changed_cb(self.twList.currentItem(), None)
+                self.current_item_changed_cb(self.twList.currentIndex(), None)
             self.twList.selectRow(0)
         else:
             self.listCleared.emit()
@@ -425,7 +425,7 @@ class FileSelectionList(QtWidgets.QWidget):
                     "Change Archive", "If you change archives now, data in the form will be lost.  Are you sure?"
                 ):
                     self.twList.currentItemChanged.disconnect(self.current_item_changed_cb)
-                    self.twList.setCurrentItem(prev)
+                    self.twList.setCurrentIndex(prev)
                     self.twList.currentItemChanged.connect(self.current_item_changed_cb)
                     # Need to defer this revert selection, for some reason
                     QtCore.QTimer.singleShot(1, self.revert_selection)
