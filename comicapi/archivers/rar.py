@@ -40,6 +40,7 @@ class RarArchiver(Archiver):
     _rar: rarfile.RarFile | None = None
     _rar_setup: rarfile.ToolSetup | None = None
     _writeable: bool | None = None
+    _exe_ok: bool | None = None
 
     def __init__(self) -> None:
         super().__init__()
@@ -284,19 +285,8 @@ class RarArchiver(Archiver):
 
     @classmethod
     def _setup_rar(cls) -> None:
-        if cls._rar_setup is None:
-            assert rarfile
-            orig = rarfile.UNRAR_TOOL
-            rarfile.UNRAR_TOOL = cls.exe
-            try:
-                cls._rar_setup = rarfile.tool_setup(sevenzip=False, sevenzip2=False, force=True)
-            except rarfile.RarCannotExec:
-                rarfile.UNRAR_TOOL = orig
 
-            try:
-                cls._rar_setup = rarfile.tool_setup(force=True)
-            except rarfile.RarCannotExec as e:
-                logger.info(e)
+        cls._exe_ok = False
         if cls._writeable is None:
             try:
                 cls._writeable = (
@@ -309,8 +299,31 @@ class RarArchiver(Archiver):
                     .stdout.strip()
                     .startswith(b"RAR")
                 )
+                cls._exe_ok = True
             except OSError:
                 cls._writeable = False
+
+        if cls._rar_setup is None:
+            assert rarfile
+            orig = rarfile.UNRAR_TOOL
+            if cls._exe_ok:
+                # pyrefly: ignore [bad-assignment]
+                rarfile.UNRAR_TOOL = cls.exe
+            success = False
+            try:
+                # First we disable 7z as it's known to have issues with current rar format
+                # Should probably also disable bsdtar as macos bsdtar has issues with `--` added directly after the `-f` flag
+                cls._rar_setup = rarfile.tool_setup(sevenzip=False, sevenzip2=False, force=True)
+                success = True
+            except rarfile.RarCannotExec as e:
+                logger.debug("Failed to setup tool for rarfile", exc_info=e)
+                rarfile.UNRAR_TOOL = orig
+
+            try:
+                if not success:
+                    cls._rar_setup = rarfile.tool_setup(force=True)
+            except rarfile.RarCannotExec as e:
+                logger.info(e)
 
         if not cls._writeable:
             cls._log_not_writeable(cls.exe or "rar")
