@@ -427,10 +427,7 @@ class CLI:
                 res.status = status
         return res
 
-    def try_quick_tag(self, ca: ComicArchive, md: GenericMetadata) -> GenericMetadata | None:
-        if not self.config.Runtime_Options__enable_quick_tag:
-            self.output("skipping quick tag")
-            return None
+    def try_quick_tag(self, ca: ComicArchive, md: GenericMetadata) -> tuple[GenericMetadata, bool]:
         self.output("starting quick tag")
         try:
             qt = QuickTag(
@@ -449,13 +446,70 @@ class CLI:
                 self.config.Quick_Tag__aggressive_filtering,
                 self.config.Quick_Tag__max,
             )
-            if ct_md is None:
-                ct_md = GenericMetadata()
-            return ct_md
+            if ct_md is None or ct_md.is_empty:
+                self.output("Failed to find match via quick tag")
+                return GenericMetadata(), False
+            return ct_md, True
         except Exception as e:
             logger.exception("Quick Tagging failed: %s", e)
             logger.debug("", exc_info=True)
-        return None
+        return GenericMetadata(), False
+
+    def online_tag(
+        self, ca: ComicArchive, md: GenericMetadata, tags_read: list[str], match_results: OnlineMatchResults
+    ) -> tuple[Result, OnlineMatchResults]:
+        res = Result(
+            Action.save,
+            original_path=ca.path,
+            status=Status.success,
+            tags_read=tags_read,
+        )
+        if self.config.Auto_Tag__issue_id is not None:
+            try:
+                ct_md = self.current_talker().fetch_comic_data(
+                    issue_id=self.config.Auto_Tag__issue_id, on_rate_limit=None
+                )
+            except TalkerError as e:
+                logger.error("Error retrieving issue details. Save aborted. %s", e)
+
+                res.status = Status.fetch_data_failure
+                match_results.fetch_data_failures.append(res)
+                return res, match_results
+
+            if ct_md is None or ct_md.is_empty:
+                logger.error("No match for ID %s was found.", self.config.Auto_Tag__issue_id)
+
+                res.status = Status.match_failure
+                res.match_status = MatchStatus.no_match
+                match_results.no_matches.append(res)
+
+                return res, match_results
+
+            res.match_status = MatchStatus.good_match
+            res.md = prepare_metadata(md, ct_md, self.config)
+            return res, match_results
+
+        query_md = md.copy()
+        if self.config.Runtime_Options__enable_quick_tag:
+            qt_md, qt_success = self.try_quick_tag(ca, query_md)
+            if qt_success and not qt_md.is_empty:
+                self.output("Successfully matched via quick tag")
+                res.match_status = MatchStatus.good_match
+                res.md = prepare_metadata(md, qt_md, self.config)
+                return res, match_results
+        if query_md.issue is None or query_md.issue == "":
+            if self.config.Auto_Tag__assume_issue_one:
+                query_md.issue = "1"
+        return identify_comic(
+            ca,
+            md,
+            tags_read,
+            match_results,
+            self.config,
+            self.current_talker(),
+            partial(self.output, already_logged=True),
+            on_rate_limit=None,
+        )
 
     def save(self, ca: ComicArchive, match_results: OnlineMatchResults) -> tuple[Result, OnlineMatchResults]:
         if self.config.Runtime_Options__skip_existing_tags:
@@ -476,9 +530,6 @@ class CLI:
 
         md, tags_read = self.create_local_metadata(ca, self.config.Runtime_Options__tags_read)
 
-        # matches: list[IssueResult] = []
-        # now, search online
-
         ct_md = GenericMetadata()
         res = Result(
             Action.save,
@@ -488,69 +539,11 @@ class CLI:
             tags_read=tags_read,
         )
         if self.config.Auto_Tag__online:
-            if self.config.Auto_Tag__issue_id is not None:
-                # we were given the actual issue ID to search with
-                try:
-                    ct_md = self.current_talker().fetch_comic_data(
-                        issue_id=self.config.Auto_Tag__issue_id, on_rate_limit=None
-                    )
-                except TalkerError as e:
-                    logger.error("Error retrieving issue details. Save aborted. %s", e)
-                    res = Result(
-                        Action.save,
-                        original_path=ca.path,
-                        status=Status.fetch_data_failure,
-                        tags_read=tags_read,
-                    )
-                    match_results.fetch_data_failures.append(res)
-                    return res, match_results
-
-                if ct_md is None or ct_md.is_empty:
-                    logger.error("No match for ID %s was found.", self.config.Auto_Tag__issue_id)
-                    res = Result(
-                        Action.save,
-                        status=Status.match_failure,
-                        original_path=ca.path,
-                        match_status=MatchStatus.no_match,
-                        tags_read=tags_read,
-                    )
-                    match_results.no_matches.append(res)
-                    return res, match_results
-                res = Result(
-                    Action.save,
-                    status=Status.success,
-                    original_path=ca.path,
-                    match_status=MatchStatus.good_match,
-                    md=prepare_metadata(md, ct_md, self.config),
-                    tags_read=tags_read,
-                )
-
-            else:
-                query_md = md.copy()
-                qt_md = self.try_quick_tag(ca, query_md)
-                if query_md.issue is None or query_md.issue == "":
-                    if self.config.Auto_Tag__assume_issue_one:
-                        query_md.issue = "1"
-                if qt_md is None or qt_md.is_empty:
-                    if qt_md is not None:
-                        self.output("Failed to find match via quick tag")
-                    res, match_results = identify_comic(
-                        ca,
-                        md,
-                        tags_read,
-                        match_results,
-                        self.config,
-                        self.current_talker(),
-                        partial(self.output, already_logged=True),
-                        on_rate_limit=None,
-                    )
-
-                    if res.status != Status.success:
-                        return res, match_results
-                else:
-                    self.output("Successfully matched via quick tag")
+            res, match_results = self.online_tag(ca, md, tags_read, match_results)
         assert res.md
 
+        if res.status != Status.success:
+            return res, match_results
         res.tags_written = self.config.Runtime_Options__tags_write
         # ok, done building our metadata. time to save
         if self.write_tags(ca, res.md):
