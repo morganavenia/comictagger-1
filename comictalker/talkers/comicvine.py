@@ -722,7 +722,7 @@ class ComicVineTalker(ComicTalker):
                 with self.limiter.ratelimit(ratelimit_key, delay=True, on_rate_limit=on_rate_limit):
                     logged_params = final_params.copy()
                     logged_params.pop("api_key")
-                    logger.debug("Requesting: %s?%s", url, urlencode(final_params))
+                    logger.debug("Requesting: %s?%s", url, urlencode(logged_params))
                     self.total_requests_made[ratelimit_key] += 1
                     resp = requests.get(
                         url, params=final_params, headers={"user-agent": "comictagger/" + self.version}, timeout=60
