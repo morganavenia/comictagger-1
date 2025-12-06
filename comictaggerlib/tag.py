@@ -78,7 +78,7 @@ def identify_comic(
         match_results.low_confidence_matches.append(res)
         return res, match_results
 
-    if result == IIResult.single_bad_cover_score and config.Runtime_Options__abort_on_low_confidence:
+    if result == IIResult.single_bad_cover_score and not config.Auto_Tag__save_on_low_confidence:
         logger.error("Online search: Low confidence match. Save aborted")
         res.match_status = MatchStatus.low_confidence_match
 

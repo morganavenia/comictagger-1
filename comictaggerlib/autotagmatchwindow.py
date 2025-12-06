@@ -24,7 +24,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets, uic
 from comicapi.comicarchive import ComicArchive, tags
 from comictaggerlib.coverimagewidget import CoverImageWidget
 from comictaggerlib.ctsettings import ct_ns
-from comictaggerlib.md import prepare_metadata
+from comictaggerlib.md import prepare_metadata, read_selected_tags
 from comictaggerlib.resulttypes import IssueResult, Result
 from comictaggerlib.ui import qtutils, ui_path
 from comictalker.comictalker import ComicTalker, TalkerError
@@ -39,7 +39,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self,
         parent: QtWidgets.QWidget,
         match_set_list: list[tuple[Result, ComicArchive]],
-        read_tags: list[str],
         config: ct_ns,
         talker: ComicTalker,
     ) -> None:
@@ -48,7 +47,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         with (ui_path / "matchselectionwindow.ui").open(encoding="utf-8") as uifile:
             uic.loadUi(uifile, self)
 
-        self.config = config
+        self.config: ct_ns = config
         self.matched_comics: list[ComicArchive] = []
 
         self.current_match_set: tuple[Result, ComicArchive] = match_set_list[0]
@@ -78,7 +77,6 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         self.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText("Accept and Write Tags")
 
         self.match_set_list = match_set_list
-        self._tags = read_tags
         self.talker = talker
 
         self.current_match_set_idx = 0
@@ -227,7 +225,12 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
     def save_match(self) -> None:
         match = self.current_match()
         ca = self.current_match_set[1]
-        md, _, error = self.parent().read_selected_tags(self._tags, ca)
+        md, _, error = read_selected_tags(
+            self.config.Runtime_Options__tags_read,
+            ca,
+            self.config.Metadata_Options__tag_merge,
+            self.config.Metadata_Options__tag_merge_lists,
+        )
         if error is not None:
             logger.error("Failed to load tags for %s: %s", ca.path, error)
 
@@ -260,7 +263,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
         QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
         md = prepare_metadata(md, ct_md, self.config)
-        for tag_id in self._tags:
+        for tag_id in self.config.Runtime_Options__tags_write:
             success = ca.write_tags(md, tag_id)
             QtWidgets.QApplication.restoreOverrideCursor()
             if not success:

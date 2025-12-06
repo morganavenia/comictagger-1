@@ -27,7 +27,6 @@ class SettngsNS(settngs.TypedNS):
     Runtime_Options__json: bool
     Runtime_Options__raw: bool
     Runtime_Options__interactive: bool
-    Runtime_Options__abort_on_low_confidence: bool
     Runtime_Options__dryrun: bool
     Runtime_Options__summary: bool
     Runtime_Options__directory: bool
@@ -151,7 +150,6 @@ class Runtime_Options(typing.TypedDict):
     json: bool
     raw: bool
     interactive: bool
-    abort_on_low_confidence: bool
     dryrun: bool
     summary: bool
     directory: bool

@@ -26,7 +26,7 @@ import platform
 import sys
 import webbrowser
 from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import Any
 
 import natsort
 import settngs
@@ -1329,6 +1329,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         ):
             self.selected_read_tags = list(reversed(tag_ids))
             self.config[0].internal__read_tags = self.selected_read_tags
+            self.config[0].Runtime_Options__tags_read = self.selected_read_tags
             self.update_menus()
             if self.comic_archive is not None:
                 self.load_archive(self.comic_archive)
@@ -1340,6 +1341,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def select_write_tags(self) -> None:
         self.selected_write_tags = self.cbSelectedWriteTags.currentData()
         self.config[0].internal__write_tags = self.selected_write_tags
+        self.config[0].Runtime_Options__tags_write = self.selected_write_tags
         self.update_tag_tweaks()
         self.update_menus()
 
@@ -1904,17 +1906,10 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.atprogdialog.setWindowTitle("Auto-Tagging")
 
         center_window_on_parent(self.atprogdialog)
-        temp_opts = cast(ct_ns, settngs.get_namespace(self.config, True, True, True, False)[0])
-        temp_opts.Auto_Tag__clear_tags = auto_tag.settings["clear_tags"]
+        temp_config = auto_tag.new_settings(self.config[0])
+        self.autotagthread = AutoTagThread(auto_tag.search_string, ca_list, temp_config, self.current_talker())
 
-        temp_opts.Issue_Identifier__series_match_identify_thresh = auto_tag.series_match_identify_thresh
-
-        temp_opts.Runtime_Options__tags_read = self.selected_read_tags
-        temp_opts.Runtime_Options__tags_write = self.selected_write_tags
-
-        self.autotagthread = AutoTagThread(auto_tag.search_string, ca_list, self.config[0], self.current_talker())
-
-        self.autotagthread.autoTagComplete.connect(self.auto_tag_finished)
+        self.autotagthread.autoTagComplete.connect(functools.partial(self.auto_tag_finished, config=temp_config))
         self.autotagthread.autoTagLogMsg.connect(self.auto_tag_log)
         self.autotagthread.autoTagProgress.connect(self.atprogdialog.on_progress)
         self.autotagthread.ratelimit.connect(self.ratelimit)
@@ -1927,7 +1922,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.autotagthread.start()
         self.atprogdialog.open()
 
-    def auto_tag_finished(self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive]) -> None:
+    def auto_tag_finished(
+        self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive], *, config: ct_ns
+    ) -> None:
         tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
         if self.atprogdialog:
             self.atprogdialog.accept()
@@ -1974,17 +1971,16 @@ class TaggerWindow(QtWidgets.QMainWindow):
         logger.info(summary)
 
         qmsg.setInformativeText(summary)
-        qmsg.accepted.connect(functools.partial(self.open_auto_tag_match_window, match_results))
+        qmsg.accepted.connect(functools.partial(self.open_auto_tag_match_window, match_results, config=config))
         qmsg.show()
 
-    def open_auto_tag_match_window(self, match_results: OnlineMatchResults) -> None:
+    def open_auto_tag_match_window(self, match_results: OnlineMatchResults, *, config: ct_ns) -> None:
         match_results.multiple_matches.extend(match_results.low_confidence_matches)
         auto_tagged_archives = {a.path: a for a in self.fileSelectionList.get_selected_archive_list()}
         matchdlg = AutoTagMatchWindow(
             self,
             [(m, auto_tagged_archives[m.original_path]) for m in match_results.multiple_matches],
-            self.selected_write_tags,
-            self.config[0],
+            config,
             self.current_talker(),
         )
 

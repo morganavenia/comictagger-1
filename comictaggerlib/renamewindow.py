@@ -27,6 +27,7 @@ from comicapi.comicarchive import ComicArchive, tags
 from comicapi.genericmetadata import GenericMetadata
 from comictaggerlib.ctsettings import ct_ns
 from comictaggerlib.filerenamer import FileRenamer, get_rename_dir
+from comictaggerlib.md import read_selected_tags
 from comictaggerlib.settingswindow import SettingsWindow
 from comictaggerlib.ui import qtutils, ui_path
 from comictaggerlib.ui.qtutils import center_window_on_parent
@@ -84,7 +85,12 @@ class RenameWindow(QtWidgets.QDialog):
             new_ext = ca.extension()
 
         if md is None or md.is_empty:
-            md, _, error = self.parent().read_selected_tags(self.read_tag_ids, ca)
+            md, _, error = read_selected_tags(
+                self.read_tag_ids,
+                ca,
+                self.config[0].Metadata_Options__tag_merge,
+                self.config[0].Metadata_Options__tag_merge_lists,
+            )
             if error is not None:
                 logger.error("Failed to load tags from %s: %s", ca.path, error)
 

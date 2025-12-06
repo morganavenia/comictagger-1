@@ -16,6 +16,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import logging
 from typing import NamedTuple
 
@@ -34,6 +35,27 @@ class AutoTagSettings(NamedTuple):
     series_match_identify_thresh: bool
     split_words: bool
     search_string: str
+
+    def new_settings(self, config: ct_ns) -> ct_ns:
+        new = copy.copy(config)
+        new.internal__remove_archive_after_successful_match = self.remove_after_success
+        new.Issue_Identifier__series_match_identify_thresh = self.series_match_identify_thresh
+        new.Filename_Parsing__split_words = self.split_words
+        new.Auto_Tag__online = self.settings["online"]
+        new.Auto_Tag__save_on_low_confidence = self.settings["save_on_low_confidence"]
+        new.Auto_Tag__use_year_when_identifying = self.settings["use_year_when_identifying"]
+        new.Auto_Tag__assume_issue_one = self.settings["assume_issue_one"]
+        new.Auto_Tag__ignore_leading_numbers_in_filename = self.settings["ignore_leading_numbers_in_filename"]
+        new.Auto_Tag__parse_filename = self.settings["parse_filename"]
+        new.Auto_Tag__prefer_filename = self.settings["prefer_filename"]
+        new.Auto_Tag__issue_id = self.settings["issue_id"]
+        new.Auto_Tag__metadata = self.settings["metadata"]
+        new.Auto_Tag__clear_tags = self.settings["clear_tags"]
+        new.Auto_Tag__publisher_filter = self.settings["publisher_filter"]
+        new.Auto_Tag__use_publisher_filter = self.settings["use_publisher_filter"]
+        new.Auto_Tag__auto_imprint = self.settings["auto_imprint"]
+
+        return new
 
 
 class AutoTagStartWindow(QtWidgets.QDialog):

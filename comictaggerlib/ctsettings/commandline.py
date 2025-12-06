@@ -120,14 +120,6 @@ def register_runtime(parser: settngs.Manager) -> None:
         file=False,
     )
     parser.add_setting(
-        "--abort",
-        dest="abort_on_low_confidence",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="""Abort save operation when online match is of low confidence.\ndefault: %(default)s""",
-        file=False,
-    )
-    parser.add_setting(
         "-n",
         "--dryrun",
         action="store_true",

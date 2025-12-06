@@ -254,7 +254,6 @@ def autotag(parser: settngs.Manager) -> None:
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Automatically save tags on low-confidence matches.\ndefault: %(default)s",
-        cmdline=False,
     )
     parser.add_setting(
         "--use-year-when-identifying",
