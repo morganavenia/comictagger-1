@@ -540,10 +540,10 @@ class CLI:
         )
         if self.config.Auto_Tag__online:
             res, match_results = self.online_tag(ca, md, tags_read, match_results)
-        assert res.md
 
         if res.status != Status.success:
             return res, match_results
+        assert res.md
         res.tags_written = self.config.Runtime_Options__tags_write
         # ok, done building our metadata. time to save
         if self.write_tags(ca, res.md):
