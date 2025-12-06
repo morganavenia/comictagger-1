@@ -230,10 +230,10 @@ class ReadStyleItemDelegate(QtWidgets.QStyledItemDelegate):
         self.gray_up_icon = QtGui.QImage()
 
         buffer = io.BytesIO()
-        Image.open(graphics_path / "up.png").convert("LA").save(buffer, format="png")
+        Image.open((graphics_path / "up.png").read_bytes()).convert("LA").save(buffer, format="png")
         self.gray_up_icon.loadFromData(buffer.getvalue())
         buffer = io.BytesIO()
-        Image.open(graphics_path / "down.png").convert("LA").save(buffer, format="png")
+        Image.open((graphics_path / "down.png").read_bytes()).convert("LA").save(buffer, format="png")
         self.gray_down_icon.loadFromData(buffer.getvalue())
 
         self.button_width = self.down_icon.width()
