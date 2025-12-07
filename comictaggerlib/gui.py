@@ -103,13 +103,16 @@ def open_tagger_window(
 ) -> None:
     os.environ["QtWidgets.QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
     args = [sys.argv[0]]
-    if config[0].Runtime_Options__darkmode:
-        args.extend(["-platform", "windows:darkmode=2"])
     app = Application(args)
     if error is not None:
         show_exception_box(error[0], " ")
         if error[1]:
             raise SystemExit(1)
+
+    sh = app.styleHints()
+    assert sh
+    if (darkmode := config[0].Runtime_Options__darkmode) is not None:
+        sh.setColorScheme(QtCore.Qt.ColorScheme.Dark if darkmode else QtCore.Qt.ColorScheme.Light)
 
     # needed to catch initial open file events (macOS)
     app.openFileRequest.connect(lambda x: config[0].Runtime_Options__files.append(x.toLocalFile()))

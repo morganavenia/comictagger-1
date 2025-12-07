@@ -141,7 +141,7 @@ def register_runtime(parser: settngs.Manager) -> None:
         file=False,
     )
     parser.add_setting("-g", "--glob", action="store_true", help="Windows only. Enable globbing", file=False)
-    parser.add_setting("--darkmode", action="store_true", help="Windows only. Force a dark pallet", file=False)
+    parser.add_setting("--darkmode", action=argparse.BooleanOptionalAction, help="Force light or dark mode", file=False)
     parser.add_setting("--no-gui", action="store_true", help="Do not open the GUI, force the commandline", file=False)
 
     parser.add_setting(
