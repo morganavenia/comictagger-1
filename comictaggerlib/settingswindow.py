@@ -392,17 +392,17 @@ class SettingsWindow(QtWidgets.QDialog):
             platform="universal" if self.cbxRenameStrict.isChecked() else "auto",
             replacements=self.get_replacements(),
         )
-        self.parent().form_to_metadata()
         metadata = md_test
         name = "cory doctorow #1.cbz"
+        if hasattr(self.parent(), "form_to_metadata") and hasattr(self.parent(), "metadata"):
+            self.parent().form_to_metadata()
+            md: GenericMetadata = self.parent().metadata.copy()
+            md.series = None
+            md.pages = []
 
-        md: GenericMetadata = self.parent().metadata.copy()
-        md.series = None
-        md.pages = []
-
-        if self.parent().comic_archive and not md.is_empty:
-            metadata = self.parent().metadata
-            name = self.parent().comic_archive.path.name
+            if self.parent().comic_archive and not md.is_empty:
+                metadata = self.parent().metadata
+                name = self.parent().comic_archive.path.name
 
         fr.set_metadata(metadata, name)
         fr.move_only = self.cbxMoveOnly.isChecked()
@@ -632,8 +632,10 @@ class SettingsWindow(QtWidgets.QDialog):
         # Update tag names if required
         if self.config[0].Metadata_Options__use_short_tag_names != self.cbxShortTagNames.isChecked():
             self.config[0].Metadata_Options__use_short_tag_names = self.cbxShortTagNames.isChecked()
-            self.parent().populate_tag_names()
-            self.parent().adjust_tags_combo()
+            if hasattr(self.parent(), "populate_tag_names"):
+                self.parent().populate_tag_names()
+            if hasattr(self.parent(), "adjust_tags_combo"):
+                self.parent().adjust_tags_combo()
 
         self.config[0].File_Rename__template = str(self.leRenameTemplate.text())
         self.config[0].File_Rename__issue_number_padding = int(self.leIssueNumPadding.text())

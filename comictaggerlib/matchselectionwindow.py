@@ -72,7 +72,7 @@ class MatchSelectionWindow(QtWidgets.QDialog):
 
         self.twList.currentItemChanged.connect(self.current_item_changed)
         self.twList.cellDoubleClicked.connect(self.cell_double_clicked)
-        self.accepted.connect(self.select)
+        self.accepted.connect(self.selected)
 
         self.update_data()
 
