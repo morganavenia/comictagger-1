@@ -59,8 +59,7 @@ def test_get_primary_credit(md, role, expected):
 
 
 def test_str(md):
-    expected = textwrap.dedent(
-        """\
+    expected = textwrap.dedent("""\
         data_origin:      Comic Vine
         series:           Cory Doctorow's Futuristic Tales of the Here and Now
         issue:            1
@@ -96,7 +95,6 @@ def test_str(md):
         credit:           Letterer: Neil Uyetake
         credit:           Cover: Sam Kieth
         credit:           Editor: Ted Adams
-    """
-    )
+    """)
 
     assert str(md) == expected

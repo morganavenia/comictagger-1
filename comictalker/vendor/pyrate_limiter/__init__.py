@@ -1,5 +1,6 @@
 # flake8: noqa
 """PyrateLimiter"""
+
 from __future__ import annotations
 
 from .bucket import *
