@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-import logging.handlers
+import logging
 import os
 import platform
 import sys
@@ -101,7 +101,7 @@ except ImportError as e:
 
 def pre_gui_file_request(config: ct_ns, url: QUrl) -> None:
     if url.toLocalFile() not in sys.argv:
-        config.Runtime_Options__files.append(pathlib.Path(url.toLocalFile()))
+        config.Runtime_Options__files.append(url.toLocalFile())
 
 
 def open_tagger_window(
