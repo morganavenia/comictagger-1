@@ -196,20 +196,27 @@ winget install ComicTagger.ComicTagger
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/jbcpollak">
+            <img src="https://avatars.githubusercontent.com/u/188558?v=4" width="100;" alt="jbcpollak"/>
+            <br />
+            <sub><b>jbcpollak</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/PawlakMarek">
             <img src="https://avatars.githubusercontent.com/u/26022173?v=4" width="100;" alt="PawlakMarek"/>
             <br />
             <sub><b>PawlakMarek</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/DrMcCoy">
             <img src="https://avatars.githubusercontent.com/u/156130?v=4" width="100;" alt="DrMcCoy"/>
             <br />
             <sub><b>DrMcCoy</b></sub>
         </a>
-    </td></tr>
-<tr>
+    </td>
     <td align="center">
         <a href="https://github.com/Xav83">
             <img src="https://avatars.githubusercontent.com/u/6787157?v=4" width="100;" alt="Xav83"/>
