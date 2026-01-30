@@ -114,36 +114,30 @@ class ComicCacher:
 
         # create tables
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
-            cur.execute(
-                """CREATE TABLE IF NOT EXISTS SeriesSearchCache(
+            cur.execute("""CREATE TABLE IF NOT EXISTS SeriesSearchCache(
                 timestamp DATE DEFAULT (datetime('now','localtime')),
                 id          TEXT NOT NULL,
                 source      TEXT NOT NULL,
                 search_term TEXT,
-                PRIMARY KEY (id, source, search_term))"""
-            )
+                PRIMARY KEY (id, source, search_term))""")
             cur.execute("CREATE TABLE IF NOT EXISTS Source(id TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (id))")
 
-            cur.execute(
-                """CREATE TABLE IF NOT EXISTS Series(
+            cur.execute("""CREATE TABLE IF NOT EXISTS Series(
                 timestamp DATE DEFAULT (datetime('now','localtime')),
                 id       TEXT NOT NULL,
                 source   TEXT NOT NULL,
                 data     BLOB,
                 complete BOOL,
-                PRIMARY KEY (id, source))"""
-            )
+                PRIMARY KEY (id, source))""")
 
-            cur.execute(
-                """CREATE TABLE IF NOT EXISTS Issues(
+            cur.execute("""CREATE TABLE IF NOT EXISTS Issues(
                 timestamp DATE DEFAULT (datetime('now','localtime')),
                 id        TEXT NOT NULL,
                 source    TEXT NOT NULL,
                 series_id TEXT,
                 data      BLOB,
                 complete  BOOL,
-                PRIMARY KEY (id, source))"""
-            )
+                PRIMARY KEY (id, source))""")
 
     def expire_stale_records(self, cur: sqlite3.Cursor, table: str, expiration: datetime.datetime) -> None:
         if "'" in table:

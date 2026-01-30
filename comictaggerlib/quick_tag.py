@@ -215,12 +215,10 @@ class IDCache:
     def create_cache_db(self) -> None:
         # create tables
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:
-            cur.execute(
-                """CREATE TABLE IF NOT EXISTS bad_ids(
+            cur.execute("""CREATE TABLE IF NOT EXISTS bad_ids(
                 domain      TEXT NOT NULL,
                 id          TEXT NOT NULL,
-                PRIMARY KEY (id, domain))"""
-            )
+                PRIMARY KEY (id, domain))""")
 
     def add_ids(self, bad_ids: set[ID]) -> None:
         with self.connect() as con, contextlib.closing(con.cursor()) as cur:

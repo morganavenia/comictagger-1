@@ -1,5 +1,6 @@
 #!/usr/bin/python
 """ComicTagger CLI functions"""
+
 #
 # Copyright 2013 ComicTagger Authors
 #
