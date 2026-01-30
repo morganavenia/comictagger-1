@@ -396,8 +396,12 @@ class IssueIdentifier:
 
     def _process_cover(self, name: str, image_data: bytes) -> list[tuple[str, Image.Image]]:
         assert Image
-        cover_image: Image.Image = Image.open(io.BytesIO(image_data))
-        images: list[tuple[str, Image.Image]] = [(name, cover_image)]
+        try:
+            cover_image: Image.Image = Image.open(io.BytesIO(image_data))
+            images: list[tuple[str, Image.Image]] = [(name, cover_image)]
+        except Exception as e:
+            logger.error("Failed to read image: %s", e)
+            return []
 
         # check the aspect ratio
         # if it's wider than it is high, it's probably a two page spread (back_cover, front_cover)
