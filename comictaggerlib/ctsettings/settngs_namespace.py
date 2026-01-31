@@ -31,7 +31,6 @@ class SettngsNS(settngs.TypedNS):
     Runtime_Options__summary: bool
     Runtime_Options__directory: bool
     Runtime_Options__glob: bool
-    Runtime_Options__darkmode: bool | None
     Runtime_Options__no_gui: bool
     Runtime_Options__abort_on_conflict: bool
     Runtime_Options__delete_original: bool
@@ -154,7 +153,6 @@ class Runtime_Options(typing.TypedDict):
     summary: bool
     directory: bool
     glob: bool
-    darkmode: bool | None
     no_gui: bool
     abort_on_conflict: bool
     delete_original: bool

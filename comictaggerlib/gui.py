@@ -117,11 +117,6 @@ def open_tagger_window(
         if error[1]:
             raise SystemExit(1)
 
-    sh = app.styleHints()
-    assert sh
-    if (darkmode := config[0].Runtime_Options__darkmode) is not None:
-        sh.setColorScheme(QtCore.Qt.ColorScheme.Dark if darkmode else QtCore.Qt.ColorScheme.Light)
-
     # needed to catch initial open file events (macOS)
     app.openFileRequest.connect(functools.partial(pre_gui_file_request, config[0]))
 
