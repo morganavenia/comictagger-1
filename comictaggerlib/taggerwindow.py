@@ -627,12 +627,11 @@ class TaggerWindow(QtWidgets.QMainWindow):
             export_name = ca.path.with_suffix(".cbz")
             export = True
 
-            if export_name.exists():
-                if export_config.conflict == ExportConflictOpts.DONT_CREATE:
-                    export = False
-                    skipped_list.append(ca.path)
-                elif export_config.conflict == ExportConflictOpts.CREATE_UNIQUE:
-                    export_name = utils.unique_file(export_name)
+            if export_config.conflict == ExportConflictOpts.DONT_CREATE:
+                export = False
+                skipped_list.append(ca.path)
+            elif export_config.conflict == ExportConflictOpts.CREATE_UNIQUE:
+                export_name = utils.unique_file(export_name)
 
             if export:
                 logger.debug("Exporting %s to %s", ca.path, export_name)
