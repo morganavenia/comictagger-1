@@ -197,7 +197,7 @@ class ComicArchive:
         if check_archive_status and not self.archiver.is_writable():
             return False
 
-        if not (os.access(self.path, os.W_OK) or os.access(self.path.parent, os.W_OK)):
+        if not (os.access(self.path, os.W_OK) and os.access(self.path.parent, os.W_OK)):
             return False
 
         return True
