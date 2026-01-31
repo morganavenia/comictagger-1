@@ -321,6 +321,9 @@ class FileSelectionList(QtWidgets.QWidget):
             folder_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, FileSelectionList.folderColNum, folder_item)
 
+            item_text = ca.archiver.name()
+            type_item.setText(item_text)
+            type_item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
             type_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, FileSelectionList.typeColNum, type_item)
 
@@ -330,14 +333,15 @@ class FileSelectionList(QtWidgets.QWidget):
             self.twList.setItem(row, FileSelectionList.MDFlagColNum, md_item)
 
             if not ca.is_writable():
-                readonly_item.setCheckState(QtCore.Qt.CheckState.Checked)
                 readonly_item.setData(QtCore.Qt.ItemDataRole.UserRole, True)
+                readonly_item.setCheckState(QtCore.Qt.CheckState.Checked)
                 readonly_item.setText(" ")
             else:
                 readonly_item.setData(QtCore.Qt.ItemDataRole.UserRole, False)
                 readonly_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
                 # This is a nbsp it sorts after a space ' '
                 readonly_item.setText("\xa0")
+
             readonly_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             readonly_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
             self.twList.setItem(row, FileSelectionList.readonlyColNum, readonly_item)
