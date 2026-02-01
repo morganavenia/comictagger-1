@@ -23,7 +23,7 @@ import math
 import statistics
 from collections.abc import Sequence
 from statistics import median
-from typing import TypeVar
+from typing import TypeVar, cast
 
 try:
     from PIL import Image
@@ -70,7 +70,8 @@ class ImageHasher:
             logger.exception("average_hash error")
             return 0
 
-        pixels = list(image.getdata())
+        # This is always a float because of the .convert("L") above
+        pixels = cast(tuple[float], image.get_flattened_data())
         avg = statistics.mean(pixels)
 
         h = 0
@@ -87,7 +88,8 @@ class ImageHasher:
             logger.exception("difference_hash error")
             return 0
 
-        pixels = list(image.getdata())
+        # This is always a float because of the .convert("L") above
+        pixels = cast(tuple[float], image.get_flattened_data())
         h = 0
         z = (self.width * self.height) - 1
         for y in range(self.height):
@@ -141,7 +143,7 @@ class ImageHasher:
 
             return dct_block
 
-        def convert_to_array(data: list[float | int]) -> list[list[float | int]]:
+        def convert_to_2d_array(data: Sequence[float | int]) -> Sequence[Sequence[float | int]]:
 
             pixels2 = []
             for row in range(32):
@@ -158,7 +160,8 @@ class ImageHasher:
             logger.exception("p_hash error converting to greyscale and resizing")
             return 0
 
-        pixels = convert_to_array(list(image.getdata()))
+        # This is always a float because of the .convert("L") above
+        pixels = convert_to_2d_array(cast(tuple[float], image.get_flattened_data()))
 
         dct = generate_dct2(generate_dct2(pixels, axis=0), axis=1)
         dctlowfreq = list(itertools.chain.from_iterable(row[:8] for row in dct[:8]))

@@ -142,4 +142,4 @@ def test_crop_border(cbz, config, comicvine_api):
     assert cropped
     assert cropped.width == fg.width
     assert cropped.height == fg.height
-    assert list(cropped.getdata()) == list(fg.getdata())
+    assert list(cropped.get_flattened_data()) == list(fg.get_flattened_data())
