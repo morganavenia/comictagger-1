@@ -255,25 +255,28 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.tray.show()
         self.tray.hide()
 
-        # respect the command line selected tags
-        if config[0].Runtime_Options__tags_write:
-            config[0].internal__write_tags = config[0].Runtime_Options__tags_write
+        # If no tags on CLI, use last tags
+        if not config[0].Runtime_Options__tags_write:
+            config[0].Runtime_Options__tags_write = config[0].internal__write_tags
 
-        if config[0].Runtime_Options__tags_read:
-            config[0].internal__read_tags = config[0].Runtime_Options__tags_read
+        if not config[0].Runtime_Options__tags_read:
+            config[0].Runtime_Options__tags_read = config[0].internal__read_tags
 
-        for tag_id in config[0].internal__write_tags.copy():
+        # Ensure we have tags at all
+        config[0].Runtime_Options__tags_write = config[0].Runtime_Options__tags_write or list(self.enabled_tags())
+        config[0].Runtime_Options__tags_read = config[0].Runtime_Options__tags_read or list(self.enabled_tags())
+
+        # Remove any tags we don't know about
+        for tag_id in config[0].Runtime_Options__tags_write.copy():
             if tag_id not in self.enabled_tags():
-                config[0].internal__write_tags.remove(tag_id)
+                config[0].Runtime_Options__tags_write.remove(tag_id)
 
-        for tag_id in config[0].internal__read_tags.copy():
+        for tag_id in config[0].Runtime_Options__tags_read.copy():
             if tag_id not in self.enabled_tags():
-                config[0].internal__read_tags.remove(tag_id)
-        if self.config[0].Runtime_Options__preferred_hash:
-            self.config[0].internal__embedded_hash_type = self.config[0].Runtime_Options__preferred_hash
+                config[0].Runtime_Options__tags_read.remove(tag_id)
 
-        self.selected_write_tags: list[str] = config[0].internal__write_tags or list(self.enabled_tags())
-        self.selected_read_tags: list[str] = config[0].internal__read_tags or list(self.enabled_tags())
+        if not self.config[0].Runtime_Options__preferred_hash:
+            self.config[0].Runtime_Options__preferred_hash = self.config[0].internal__embedded_hash_type
 
         self.setAcceptDrops(True)
         self.view_tag_actions, self.remove_tag_actions = self.tag_actions()
@@ -404,10 +407,6 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 """,
                 callback=set_checked,
             )
-        if self.enabled_tags():
-            # This should never be false
-            self.selected_write_tags = [self.enabled_tags()[0]]
-            self.selected_read_tags = [self.enabled_tags()[0]]
 
         if self.config[0].General__check_for_new_version:
             self.check_latest_version_online()
@@ -497,7 +496,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def toggle_enable_embedding_hashes(self) -> None:
         self.config[0].Runtime_Options__enable_embedding_hashes = self.actionEnableEmbeddingHashes.isChecked()
         enabled_widgets = set()
-        for tag_id in self.selected_write_tags:
+        for tag_id in self.config[0].Runtime_Options__tags_write:
             if not tags[tag_id].enabled:
                 continue
             enabled_widgets.update(tags[tag_id].supported_attributes)
@@ -1274,7 +1273,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         qmsg = QtWidgets.QMessageBox(self)
         qmsg.setText("Save Tags")
         qmsg.setInformativeText(
-            f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.selected_write_tags])} tags to this archive?"
+            f"Are you sure you wish to save {', '.join([tags[tag_id].name() for tag_id in self.config[0].Runtime_Options__tags_write])} tags to this archive?"
         )
         qmsg.setStandardButtons(qmsg.StandardButton.Yes | qmsg.StandardButton.No)
         qmsg.setDefaultButton(qmsg.StandardButton.No)
@@ -1287,7 +1286,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         assert self.comic_archive
         failed_tag: str = ""
         # Save each tag
-        for tag_id in self.selected_write_tags:
+        for tag_id in self.config[0].Runtime_Options__tags_write:
             success = self.comic_archive.write_tags(self.metadata, tag_id)
             if not success:
                 failed_tag = tags[tag_id].name()
@@ -1308,7 +1307,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.update_menus()
 
             # Only try to read if write was successful
-            self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
+            self.metadata, _, error = self.read_selected_tags(self.config[0].Runtime_Options__tags_read, self.comic_archive)
             if error is not None:
                 logger.error("Failed to load metadata for %s: %s", self.comic_archive.path, error)
                 qtutils.warning(
@@ -1326,9 +1325,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
             "Change Read Tags",
             "If you change read tag(s) now, data in the form will be lost.  Are you sure?",
         ):
-            self.selected_read_tags = list(reversed(tag_ids))
-            self.config[0].internal__read_tags = self.selected_read_tags
-            self.config[0].Runtime_Options__tags_read = self.selected_read_tags
+            # Tags are reversed for display to the user
+            self.config[0].Runtime_Options__tags_read = list(reversed(tag_ids))
             self.update_menus()
             if self.comic_archive is not None:
                 self.load_archive(self.comic_archive)
@@ -1338,9 +1336,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.cbSelectedReadTags.dropdownClosed.connect(self.select_read_tags)
 
     def select_write_tags(self) -> None:
-        self.selected_write_tags = self.cbSelectedWriteTags.currentData()
-        self.config[0].internal__write_tags = self.selected_write_tags
-        self.config[0].Runtime_Options__tags_write = self.selected_write_tags
+        self.config[0].Runtime_Options__tags_write = self.cbSelectedWriteTags.currentData()
         self.update_tag_tweaks()
         self.update_menus()
 
@@ -1348,7 +1344,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.config[0].Sources__source = self.cbx_sources.itemData(s)
 
     def update_credit_colors(self) -> None:
-        selected_tags = [tags[tag_id] for tag_id in self.selected_write_tags]
+        selected_tags = [tags[tag_id] for tag_id in self.config[0].Runtime_Options__tags_write]
         enabled = set()
         for tag in selected_tags:
             enabled.update(tag.supported_attributes)
@@ -1368,7 +1364,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def update_tag_tweaks(self) -> None:
         # depending on the current data tag, certain fields are disabled
         enabled_widgets = set()
-        for tag_id in self.selected_write_tags:
+        for tag_id in self.config[0].Runtime_Options__tags_write:
             if not tags[tag_id].enabled:
                 continue
             enabled_widgets.update(tags[tag_id].supported_attributes)
@@ -1378,12 +1374,12 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 enable_widget(widget, md_field in enabled_widgets)
 
         self.update_credit_colors()
-        self.page_list_editor.select_write_tags(self.selected_write_tags)
+        self.page_list_editor.select_write_tags(self.config[0].Runtime_Options__tags_write)
         self.toggle_enable_embedding_hashes()
 
     def add_credit(self) -> None:
         row = self.twCredits.rowCount()
-        editor = CreditEditorWindow(self, self.selected_write_tags, row, Credit())
+        editor = CreditEditorWindow(self, self.config[0].Runtime_Options__tags_write, row, Credit())
         editor.creditChanged.connect(self._credit_added)
         editor.show()
 
@@ -1401,7 +1397,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.twCredits.item(row, self.md_attributes["credits.primary"]).text() != "",
             lang,
         )
-        editor = CreditEditorWindow(self, self.selected_write_tags, row, old, "Edit Credit")
+        editor = CreditEditorWindow(self, self.config[0].Runtime_Options__tags_write, row, old, "Edit Credit")
         editor.creditChanged.connect(self._credit_changed)
         editor.show()
 
@@ -1523,8 +1519,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def adjust_tags_combo(self) -> None:
         """Select the enabled tags. Since tags are merged in an overlay fashion the last item in the list takes priority. We reverse the order for display to the user"""
-        unchecked = set(self.enabled_tags()) - set(self.selected_read_tags)
-        for i, tag_id in enumerate(reversed(self.selected_read_tags)):
+        unchecked = set(self.enabled_tags()) - set(self.config[0].Runtime_Options__tags_read)
+        for i, tag_id in enumerate(reversed(self.config[0].Runtime_Options__tags_read)):
             if not tags[tag_id].enabled:
                 continue
             item_idx = self.cbSelectedReadTags.findData(tag_id)
@@ -1536,8 +1532,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.cbSelectedReadTags.setItemChecked(self.cbSelectedReadTags.findData(tag_id), False)
 
         # select the current tag_id
-        unchecked = set(self.enabled_tags()) - set(self.selected_write_tags)
-        for tag_id in self.selected_write_tags:
+        unchecked = set(self.enabled_tags()) - set(self.config[0].Runtime_Options__tags_write)
+        for tag_id in self.config[0].Runtime_Options__tags_write:
             if not tags[tag_id].enabled:
                 continue
             self.cbSelectedWriteTags.setItemChecked(self.cbSelectedWriteTags.findData(tag_id), True)
@@ -1664,7 +1660,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.cbFormat.addItem("Year One")
 
     def remove_auto(self) -> None:
-        self.prompt_remove_tags(self.selected_write_tags)
+        self.prompt_remove_tags(self.config[0].Runtime_Options__tags_write)
 
     def prompt_remove_tags(self, tag_ids: list[str]) -> None:
         # remove the indicated tag_ids from the archive
@@ -1752,8 +1748,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
         ca_list = self.fileSelectionList.get_selected_archive_list()
         src_count = 0
 
-        src_tag_ids: list[str] = self.selected_read_tags
-        dest_tag_ids: list[str] = self.selected_write_tags
+        src_tag_ids: list[str] = self.config[0].Runtime_Options__tags_read
+        dest_tag_ids: list[str] = self.config[0].Runtime_Options__tags_write
 
         if len(src_tag_ids) == 1 and src_tag_ids[0] in dest_tag_ids:
             # Remove the read tag from the write tag
@@ -1839,7 +1835,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
                     failed_list.append(ca.path)
 
             ca.reset_cache()
-            ca.load_cache({*self.selected_read_tags, *self.selected_write_tags})
+            ca.load_cache({*self.config[0].Runtime_Options__tags_read, *self.config[0].Runtime_Options__tags_write})
 
         prog_dialog.hide()
         QtCore.QCoreApplication.processEvents()
@@ -1866,7 +1862,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
 
     def auto_tag(self) -> None:
         ca_list = self.fileSelectionList.get_selected_archive_list()
-        tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
+        tag_names = ", ".join([tags[tag_id].name() for tag_id in self.config[0].Runtime_Options__tags_write])
 
         if not ca_list:
             return qtutils.information(self, "Auto-Tag", "No archives selected!")
@@ -1924,7 +1920,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
     def auto_tag_finished(
         self, match_results: OnlineMatchResults, archives_to_remove: list[ComicArchive], *, config: ct_ns
     ) -> None:
-        tag_names = ", ".join([tags[tag_id].name() for tag_id in self.selected_write_tags])
+        tag_names = ", ".join([tags[tag_id].name() for tag_id in self.config[0].Runtime_Options__tags_write])
         if self.atprogdialog:
             self.atprogdialog.accept()
 
@@ -2035,6 +2031,8 @@ class TaggerWindow(QtWidgets.QMainWindow):
                 self.config[0].internal__sort_column,
                 self.config[0].internal__sort_direction,
             ) = self.fileSelectionList.get_sorting()
+            self.config[0].internal__write_tags = self.config[0].Runtime_Options__tags_write
+            self.config[0].internal__read_tags = self.config[0].Runtime_Options__tags_read
             ctsettings.save_file(self.config, self.config[0].Runtime_Options__config.user_config_dir / "settings.json")
 
             event.accept()
@@ -2109,7 +2107,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         if self.dirty_flag_verification(
             "File Rename", "If you rename files now, unsaved data in the form will be lost.  Are you sure?"
         ):
-            dlg = RenameWindow(self, ca_list, self.selected_read_tags, self.config, self.talkers)
+            dlg = RenameWindow(self, ca_list, self.config[0].Runtime_Options__tags_read, self.config, self.talkers)
             dlg.finished.connect(self._reload_page)
             dlg.open()
 
@@ -2126,7 +2124,7 @@ class TaggerWindow(QtWidgets.QMainWindow):
         self.config[0].internal__last_opened_folder = os.path.abspath(os.path.split(comic_archive.path)[0])
         self.comic_archive = comic_archive
 
-        self.metadata, _, error = self.read_selected_tags(self.selected_read_tags, self.comic_archive)
+        self.metadata, _, error = self.read_selected_tags(self.config[0].Runtime_Options__tags_read, self.comic_archive)
         if error is not None:
             logger.error("Failed to load tags from %s: %s", self.comic_archive.path, error)
             self.exception(f"Failed to load tags from {self.comic_archive.path}, see log for details\n\n")

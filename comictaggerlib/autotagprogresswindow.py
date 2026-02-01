@@ -74,7 +74,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
                 self.log_output(f"Auto-Tagging {prog_idx} of {len(self.ca_list)}\n")
                 self.log_output(f"{ca.path}\n")
                 try:
-                    cover_idx = ca.read_tags(self.config.internal__read_tags[0]).get_cover_page_index_list()[0]
+                    cover_idx = ca.read_tags(self.config.Runtime_Options__tags_read[0]).get_cover_page_index_list()[0]
                 except Exception as e:
                     cover_idx = 0
                     logger.error("Failed to load metadata for %s: %s", ca.path, e)
@@ -111,7 +111,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
         )
 
         # read in tags, and parse file name if not there
-        md, tags_used, error = read_selected_tags(self.config.internal__read_tags, ca)
+        md, tags_used, error = read_selected_tags(self.config.Runtime_Options__tags_read, ca)
         if error is not None:
             qtutils.critical(
                 None,
@@ -197,7 +197,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
             assert res.md
 
             def write_Tags(ca: ComicArchive, md: GenericMetadata) -> bool:
-                for tag_id in self.config.internal__write_tags:
+                for tag_id in self.config.Runtime_Options__tags_write:
                     # write out the new data
                     if not ca.write_tags(md, tag_id):
                         self.log_output(f"{tags[tag_id].name()} save failed! Aborting any additional tag saves.\n")
@@ -207,7 +207,7 @@ class AutoTagThread(QtCore.QThread):  # TODO: re-check thread semantics. Specifi
             # Save tags
             if write_Tags(ca, res.md):
                 match_results.good_matches.append(res)
-                res.tags_written = self.config.internal__write_tags
+                res.tags_written = self.config.Runtime_Options__tags_write
                 self.log_output("Save complete!\n")
             else:
                 res.status = Status.write_failure
