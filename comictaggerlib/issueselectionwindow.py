@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
@@ -28,6 +29,10 @@ from comictaggerlib.seriesselectionwindow import SelectionWindow
 from comictaggerlib.ui import ui_path
 from comictaggerlib.ui.qtutils import center_window_on_parent
 from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
+
+if TYPE_CHECKING:
+    from PyQt6.QtWebEngineWidgets import QWebEngineView
+
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +152,12 @@ class IssueSelectionWindow(SelectionWindow):
 
     def cell_double_clicked(self, r: int, c: int) -> None:
         self.accept()
+
+    def set_description(self, widget: QtWidgets.QTextEdit | QWebEngineView, text: str) -> None:
+        if isinstance(widget, QtWidgets.QTextEdit):
+            widget.setText(text.replace("</figure>", "</div>").replace("<figure", "<div"))
+        else:
+            widget.setContent(text.encode("utf-8"), "text/html;charset=UTF-8", QtCore.QUrl(self.talker.website))
 
     def update_row(self, row: int, issue: GenericMetadata) -> None:  # type: ignore[override]
         self.twList.setStyleSheet(self.twList.styleSheet())
