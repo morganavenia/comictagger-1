@@ -1307,7 +1307,9 @@ class TaggerWindow(QtWidgets.QMainWindow):
             self.update_menus()
 
             # Only try to read if write was successful
-            self.metadata, _, error = self.read_selected_tags(self.config[0].Runtime_Options__tags_read, self.comic_archive)
+            self.metadata, _, error = self.read_selected_tags(
+                self.config[0].Runtime_Options__tags_read, self.comic_archive
+            )
             if error is not None:
                 logger.error("Failed to load metadata for %s: %s", self.comic_archive.path, error)
                 qtutils.warning(
