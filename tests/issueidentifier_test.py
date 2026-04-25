@@ -5,12 +5,13 @@ import io
 import pytest
 from PIL import Image
 
+import comicapi.genericmetadata
+import comicapi.utils
 import comictaggerlib.imagehasher
 import comictaggerlib.issueidentifier
+import comictaggerlib.resulttypes
 import testing.comicdata
 import testing.comicvine
-from comicapi.genericmetadata import ImageHash
-from comictaggerlib.resulttypes import IssueResult
 
 
 def test_crop(cbz_double_cover, config, tmp_path, comicvine_api):
@@ -61,8 +62,8 @@ def test_get_issue_cover_match_score(
     cbz,
     config,
     comicvine_api,
-    data: tuple[ImageHash, list[ImageHash], bool],
-    expected: comictaggerlib.issueidentifier.Score,
+    data: tuple[comicapi.genericmetadata.ImageHash, list[comicapi.genericmetadata.ImageHash], bool],
+    expected: comictaggerlib.resulttypes.Score,
 ):
     config, definitions = config
     iio = comictaggerlib.issueidentifier.IssueIdentifierOptions(
@@ -98,21 +99,45 @@ def test_search(cbz, config, comicvine_api):
     )
     ii = comictaggerlib.issueidentifier.IssueIdentifier(iio, None)
     result, issues = ii.identify(cbz, cbz.read_tags("cr"))
-    cv_expected = IssueResult(
-        series=f"{testing.comicvine.cv_volume_result['results']['name']} ({testing.comicvine.cv_volume_result['results']['start_year']})",
-        distance=0,
-        issue_number=testing.comicvine.cv_issue_result["results"]["issue_number"],
-        alt_image_urls=[],
-        issue_count=testing.comicvine.cv_volume_result["results"]["count_of_issues"],
-        issue_title=testing.comicvine.cv_issue_result["results"]["name"],
-        issue_id=str(testing.comicvine.cv_issue_result["results"]["id"]),
-        series_id=str(testing.comicvine.cv_volume_result["results"]["id"]),
-        month=testing.comicvine.date[1],
-        year=testing.comicvine.date[2],
-        publisher=testing.comicvine.cv_volume_result["results"]["publisher"]["name"],
-        image_url=testing.comicvine.cv_issue_result["results"]["image"]["super_url"],
-        description=testing.comicvine.cv_issue_result["results"]["description"],
-        url_image_hash=212201432349720,
+    cv_expected = comictaggerlib.resulttypes.IssueResult(
+        score=comictaggerlib.resulttypes.Score(
+            score=0,
+            url=testing.comicvine.cv_issue_result["results"]["image"]["super_url"],
+            remote_hash=212201432349720,
+            local_hash_name="0",
+            local_hash=212201432349720,
+        ),
+        series=comicapi.genericmetadata.ComicSeries(
+            id=str(testing.comicvine.cv_volume_result["results"]["id"]),
+            name=testing.comicvine.cv_volume_result["results"]["name"],
+            count_of_issues=testing.comicvine.cv_volume_result["results"]["count_of_issues"],
+            publisher=testing.comicvine.cv_volume_result["results"]["publisher"]["name"],
+            start_year=int(testing.comicvine.cv_volume_result["results"]["start_year"]),
+            description=testing.comicvine.cv_volume_result["results"]["description"],
+            aliases=set(),
+            count_of_volumes=None,
+            image_url=testing.comicvine.cv_volume_result["results"]["image"]["super_url"],
+            format=None,
+            web_links=[comicapi.utils.parse_url(testing.comicvine.cv_volume_result["results"]["site_detail_url"])],
+        ),
+        md=comicapi.genericmetadata.GenericMetadata(
+            day=testing.comicvine.date[0],
+            month=testing.comicvine.date[1],
+            year=testing.comicvine.date[2],
+            issue=testing.comicvine.cv_issue_result["results"]["issue_number"],
+            issue_id=str(testing.comicvine.cv_issue_result["results"]["id"]),
+            series_id=str(testing.comicvine.cv_volume_result["results"]["id"]),
+            series=str(testing.comicvine.cv_volume_result["results"]["name"]),
+            issue_count=testing.comicvine.cv_volume_result["results"]["count_of_issues"],
+            publisher=str(testing.comicvine.cv_volume_result["results"]["publisher"]["name"]),
+            title=testing.comicvine.cv_issue_result["results"]["name"],
+            data_origin=comicapi.genericmetadata.MetadataOrigin(name="Comic Vine", id="comicvine"),
+            description=testing.comicvine.cv_issue_result["results"]["description"],
+            web_links=[comicapi.utils.parse_url(testing.comicvine.cv_issue_result["results"]["site_detail_url"])],
+            _cover_image=comicapi.genericmetadata.ImageHash(
+                Hash=0, Kind="", URL=testing.comicvine.cv_issue_result["results"]["image"]["super_url"]
+            ),
+        ),
     )
     for r, e in zip(issues, [cv_expected]):
         assert r == e

@@ -517,8 +517,9 @@ class SeriesSelectionWindow(SelectionWindow):
         if self.iddialog is not None:
             self.iddialog.close()
 
-        self.series_id = utils.xlate(match.series_id) or ""
-        self.issue_number = match.issue_number
+        assert match.md.issue
+        self.series_id = match.series.id
+        self.issue_number = match.md.issue
         self.select_by_id()
         self.show_issues()
 

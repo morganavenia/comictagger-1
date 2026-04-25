@@ -164,18 +164,18 @@ class CLI:
         self.output(f"{match_set.original_path} -- {label}:", force_output=True)
 
         # sort match list by year
-        match_set.online_results.sort(key=lambda k: k.year or 0)
+        match_set.online_results.sort(key=lambda k: k.md.year or 0)
 
         for counter, m in enumerate(match_set.online_results, 1):
             self.output(
                 "    {}. {} #{} [{}] ({}/{}) - {}".format(
                     counter,
-                    m.series,
-                    m.issue_number,
-                    m.publisher,
-                    m.month,
-                    m.year,
-                    m.issue_title,
+                    m.series.name,
+                    m.md.issue,
+                    m.series.publisher,
+                    m.md.month,
+                    m.md.year,
+                    m.md.title,
                 ),
                 force_output=True,
             )
@@ -189,7 +189,9 @@ class CLI:
                 # we know at this point, that the file is all good to go
                 ca = ComicArchive(match_set.original_path, hash_archive=self.config.Runtime_Options__preferred_hash)
                 md, match_set.tags_read = self.create_local_metadata(ca, self.config.Runtime_Options__tags_read)
-                ct_md = self.fetch_metadata(match_set.online_results[int(i) - 1].issue_id)
+                match = match_set.online_results[int(i) - 1]
+                assert match.md.issue_id
+                ct_md = self.fetch_metadata(match.md.issue_id)
 
                 match_set.md = prepare_metadata(md, ct_md, self.config)
 

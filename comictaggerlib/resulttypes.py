@@ -3,30 +3,30 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 from enum import auto
+from typing import NamedTuple
 
 from comicapi import utils
-from comicapi.genericmetadata import GenericMetadata
+from comicapi.genericmetadata import ComicSeries, GenericMetadata
 
 
-@dataclasses.dataclass
-class IssueResult:
-    series: str
-    distance: int
-    issue_number: str
-    issue_count: int | None
-    url_image_hash: int
-    issue_title: str
-    issue_id: str
-    series_id: str
-    month: int | None
-    year: int | None
-    publisher: str | None
-    image_url: str
-    alt_image_urls: list[str]
-    description: str
+class Score(NamedTuple):
+    score: int
+    url: str
+    remote_hash: int
+    local_hash_name: str
+    local_hash: int
 
-    def __str__(self) -> str:
-        return f"series: {self.series}; series id: {self.series_id}; issue number: {self.issue_number}; issue id: {self.issue_id}; published: {self.month} {self.year}"
+
+class IssueResult(NamedTuple):
+    score: Score
+    series: ComicSeries
+    md: GenericMetadata
+
+    @property
+    def distance(self) -> int:
+        if self.score.score is None:
+            return 100
+        return self.score.score
 
 
 class Action(utils.StrEnum):

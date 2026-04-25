@@ -93,15 +93,15 @@ class MatchSelectionWindow(QtWidgets.QDialog):
         for row, match in enumerate(self.matches):
             self.twList.insertRow(row)
 
-            item_text = match.series
+            item_text = match.series.name
             item = QtWidgets.QTableWidgetItem(item_text)
             item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
             item.setData(QtCore.Qt.ItemDataRole.UserRole, (match,))
             item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, 0, item)
 
-            if match.publisher is not None:
-                item_text = str(match.publisher)
+            if match.series.publisher is not None:
+                item_text = str(match.series.publisher)
             else:
                 item_text = "Unknown"
             item = QtWidgets.QTableWidgetItem(item_text)
@@ -111,10 +111,10 @@ class MatchSelectionWindow(QtWidgets.QDialog):
 
             month_str = ""
             year_str = "????"
-            if match.month is not None:
-                month_str = f"-{int(match.month):02d}"
-            if match.year is not None:
-                year_str = str(match.year)
+            if match.md.month is not None:
+                month_str = f"-{int(match.md.month):02d}"
+            if match.md.year is not None:
+                year_str = str(match.md.year)
 
             item_text = year_str + month_str
             item = QtWidgets.QTableWidgetItem(item_text)
@@ -122,9 +122,7 @@ class MatchSelectionWindow(QtWidgets.QDialog):
             item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, 2, item)
 
-            item_text = match.issue_title
-            if item_text is None:
-                item_text = ""
+            item_text = match.md.title or ""
             item = QtWidgets.QTableWidgetItem(item_text)
             item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
             item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
@@ -147,14 +145,17 @@ class MatchSelectionWindow(QtWidgets.QDialog):
             return
 
         match = self.current_match()
+        assert match.md._cover_image
+        assert match.md._alternate_images
+        assert match.md.issue_id
         self.altCoverWidget.set_issue_details(
-            match.issue_id,
-            [match.image_url, *match.alt_image_urls],
+            match.md.issue_id,
+            [x.URL for x in [match.md._cover_image, *match.md._alternate_images] if x],
         )
-        if match.description is None:
+        if match.md.description is None:
             self.teDescription.setText("")
         else:
-            self.teDescription.setText(match.description)
+            self.teDescription.setText(match.md.description)
 
     def set_cover_image(self) -> None:
         self.archiveCoverWidget.set_archive(self.comic_archive)

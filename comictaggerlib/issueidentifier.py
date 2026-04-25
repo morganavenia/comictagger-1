@@ -27,7 +27,7 @@ from enum import Enum, auto
 from operator import attrgetter
 from typing import Any
 
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from comicapi import utils
 from comicapi.comicarchive import ComicArchive
@@ -35,7 +35,7 @@ from comicapi.genericmetadata import ComicSeries, GenericMetadata, ImageHash
 from comicapi.issuestring import IssueString
 from comictaggerlib.imagefetcher import ImageFetcher, ImageFetcherException
 from comictaggerlib.imagehasher import ImageHasher
-from comictaggerlib.resulttypes import IssueResult
+from comictaggerlib.resulttypes import IssueResult, Score
 from comictalker.comictalker import ComicTalker, RLCallBack, TalkerError
 
 logger = logging.getLogger(__name__)
@@ -58,14 +58,6 @@ class SearchKeys(TypedDict):
     alternate_count: int | None
     publisher: str | None
     imprint: str | None
-
-
-class Score(TypedDict):
-    score: NotRequired[int]
-    url: str
-    remote_hash: int
-    local_hash_name: str
-    local_hash: int
 
 
 class IssueIdentifierNetworkError(Exception): ...
@@ -201,9 +193,9 @@ class IssueIdentifier:
         # if we have a given issue count > 1 and the series from CV has count==1, remove it from match list
         if len(final_cover_matching) > 1 and terms["issue_count"] is not None and terms["issue_count"] != 1:
             for match in final_cover_matching.copy():
-                if match.issue_count == 1:
+                if match.md.issue_count == 1:
                     self.log_msg(
-                        f"Removing series {match.series} [{match.series_id}] from consideration (only 1 issue)"
+                        f"Removing series {match.series} [{match.md.series_id}] from consideration (only 1 issue)"
                     )
                     final_cover_matching.remove(match)
 
@@ -379,7 +371,7 @@ class IssueIdentifier:
         if not score_list:
             return Score(score=100, url="", remote_hash=0, local_hash=0, local_hash_name="0")
 
-        best_score_item = min(score_list, key=lambda x: x["score"])
+        best_score_item = min(score_list, key=lambda x: x.score)
 
         return best_score_item
 
@@ -549,36 +541,16 @@ class IssueIdentifier:
             )
 
             try:
-                # We only include urls in the IssueResult so we don't have to deal with it down the line
-                # TODO: display the hash to the user so they know a direct hash was used instead of downloading an image
-                alt_urls: list[str] = [img.URL for img in issue._alternate_images]
-
-                alt_images = issue._alternate_images if use_alternates else []
+                alt_images = []
+                if use_alternates:
+                    alt_images = issue._alternate_images
 
                 score_item = self._get_issue_cover_match_score(issue._cover_image, alt_images, hashes)
             except Exception:
                 logger.exception("Scoring series%s covers failed", alternate)
                 return []
 
-            match = IssueResult(
-                series=f"{series.name} ({series.start_year})",
-                distance=score_item["score"],
-                issue_number=terms["issue_number"],
-                issue_count=series.count_of_issues,
-                url_image_hash=score_item["remote_hash"],
-                issue_title=issue.title or "",
-                issue_id=issue.issue_id or "",
-                series_id=series.id,
-                month=issue.month,
-                year=issue.year,
-                publisher=None,
-                image_url=issue._cover_image.URL if issue._cover_image else "",
-                alt_image_urls=alt_urls,
-                description=issue.description or "",
-            )
-            if series.publisher is not None:
-                match.publisher = series.publisher
-
+            match = IssueResult(score=score_item, series=series, md=issue)
             match_results.append(match)
 
             self.log_msg(f"best score {match.distance:03}")
@@ -589,12 +561,12 @@ class IssueIdentifier:
     def _print_match(self, item: IssueResult) -> None:
         self.log_msg(
             "-----> {} #{} {} ({}/{}) -- score: {}".format(
-                item.series,
-                item.issue_number,
-                item.issue_title,
-                item.month,
-                item.year,
-                item.distance,
+                item.series.name,
+                item.md.issue,
+                item.md.title,
+                item.md.month,
+                item.md.year,
+                item.score.score,
             )
         )
 

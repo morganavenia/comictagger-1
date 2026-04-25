@@ -102,7 +102,8 @@ def identify_comic(
     # we got here, so we have a single match
     # now get the particular issue data
     try:
-        ct_md = talker.fetch_comic_data(issue_id=matches[0].issue_id, on_rate_limit=on_rate_limit)
+        assert matches[0].md.issue_id
+        ct_md = talker.fetch_comic_data(issue_id=matches[0].md.issue_id, on_rate_limit=on_rate_limit)
     except TalkerError as e:
         logger.exception("Error retrieving issue details. Save aborted. %s", e)
         ct_md = GenericMetadata()

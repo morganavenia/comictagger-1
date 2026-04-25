@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import comicapi.genericmetadata
+import comictaggerlib.resulttypes
 from comicapi import utils
 
 search_results = [
@@ -295,13 +296,13 @@ issueidentifier_score = (  # type: ignore[var-annotated]
             None,
             [],
         ),
-        {
-            "remote_hash": 0,
-            "score": 100,
-            "url": "",
-            "local_hash": 0,
-            "local_hash_name": "0",
-        },
+        comictaggerlib.resulttypes.Score(
+            remote_hash=0,
+            score=100,
+            url="",
+            local_hash=0,
+            local_hash_name="0",
+        ),
     ),
     (
         (
@@ -313,13 +314,13 @@ issueidentifier_score = (  # type: ignore[var-annotated]
             ),
             [],
         ),
-        {
-            "remote_hash": 0,
-            "score": 100,
-            "url": "",
-            "local_hash": 0,
-            "local_hash_name": "0",
-        },
+        comictaggerlib.resulttypes.Score(
+            remote_hash=0,
+            score=100,
+            url="",
+            local_hash=0,
+            local_hash_name="0",
+        ),
     ),
     (
         (
@@ -337,13 +338,13 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                 )
             ],
         ),
-        {
-            "remote_hash": 212201432349720,
-            "score": 0,
-            "url": "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
-            "local_hash": 212201432349720,
-            "local_hash_name": "Cover 1",
-        },
+        comictaggerlib.resulttypes.Score(
+            remote_hash=212201432349720,
+            score=0,
+            url="https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
+            local_hash=212201432349720,
+            local_hash_name="Cover 1",
+        ),
     ),
     (
         (
@@ -361,13 +362,13 @@ issueidentifier_score = (  # type: ignore[var-annotated]
                 ),
             ],
         ),
-        {
-            "remote_hash": 212201432349720,
-            "score": 0,
-            "url": "",
-            "local_hash": 212201432349720,
-            "local_hash_name": "Cover 1",
-        },
+        comictaggerlib.resulttypes.Score(
+            remote_hash=212201432349720,
+            score=0,
+            url="",
+            local_hash=212201432349720,
+            local_hash_name="Cover 1",
+        ),
     ),
     (
         (
@@ -378,13 +379,13 @@ issueidentifier_score = (  # type: ignore[var-annotated]
             ),
             [],
         ),
-        {
-            "remote_hash": 212201432349720,
-            "score": 0,
-            "url": "",
-            "local_hash": 212201432349720,
-            "local_hash_name": "Cover 1",
-        },
+        comictaggerlib.resulttypes.Score(
+            remote_hash=212201432349720,
+            score=0,
+            url="",
+            local_hash=212201432349720,
+            local_hash_name="Cover 1",
+        ),
     ),
     (
         (
@@ -395,12 +396,12 @@ issueidentifier_score = (  # type: ignore[var-annotated]
             ),
             [],
         ),
-        {
-            "remote_hash": 212201432349720,
-            "score": 0,
-            "url": "https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
-            "local_hash": 212201432349720,
-            "local_hash_name": "Cover 1",
-        },
+        comictaggerlib.resulttypes.Score(
+            remote_hash=212201432349720,
+            score=0,
+            url="https://comicvine.gamespot.com/a/uploads/scale_large/0/574/585444-109004_20080707014047_large.jpg",
+            local_hash=212201432349720,
+            local_hash_name="Cover 1",
+        ),
     ),
 )

@@ -123,15 +123,15 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         for row, match in enumerate(self.current_match_set[0].online_results):
             self.twList.insertRow(row)
 
-            item_text = match.series
+            item_text = match.series.publisher
             item = QtWidgets.QTableWidgetItem(item_text)
             item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
             item.setData(QtCore.Qt.ItemDataRole.UserRole, (match,))
             item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, 0, item)
 
-            if match.publisher is not None:
-                item_text = str(match.publisher)
+            if match.series.publisher is not None:
+                item_text = str(match.series.publisher)
             else:
                 item_text = "Unknown"
             item = QtWidgets.QTableWidgetItem(item_text)
@@ -141,10 +141,10 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
 
             month_str = ""
             year_str = "????"
-            if match.month is not None:
-                month_str = f"-{int(match.month):02d}"
-            if match.year is not None:
-                year_str = str(match.year)
+            if match.md.month is not None:
+                month_str = f"-{int(match.md.month):02d}"
+            if match.md.year is not None:
+                year_str = str(match.md.year)
 
             item_text = year_str + month_str
             item = QtWidgets.QTableWidgetItem(item_text)
@@ -152,9 +152,7 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.twList.setItem(row, 2, item)
 
-            item_text = match.issue_title
-            if item_text is None:
-                item_text = ""
+            item_text = match.md.issue or ""
             item = QtWidgets.QTableWidgetItem(item_text)
             item.setData(QtCore.Qt.ItemDataRole.ToolTipRole, item_text)
             item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
@@ -177,11 +175,14 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
             return None
 
         match = self.current_match()
-        self.altCoverWidget.set_issue_details(match.issue_id, [match.image_url, *match.alt_image_urls])
-        if match.description is None:
+        assert match.md.issue_id
+        self.altCoverWidget.set_issue_details(
+            match.md.issue_id, [x.URL for x in [match.md._cover_image, *match.md._alternate_images] if x]
+        )
+        if match.md.description is None:
             self.teDescription.setText("")
         else:
-            self.teDescription.setText(match.description)
+            self.teDescription.setText(match.md.description)
 
     def set_cover_image(self) -> None:
         self.archiveCoverWidget.set_archive(self.current_match_set[1])
@@ -252,7 +253,8 @@ class AutoTagMatchWindow(QtWidgets.QDialog):
         # now get the particular issue data
 
         try:
-            self.current_match_set[0].md = ct_md = self.talker.fetch_comic_data(issue_id=match.issue_id)
+            assert match.md.issue_id
+            self.current_match_set[0].md = ct_md = self.talker.fetch_comic_data(issue_id=match.md.issue_id)
         except TalkerError as e:
             QtWidgets.QApplication.restoreOverrideCursor()
             qtutils.critical(self, f"{e.source} {e.code_name} Error", str(e))
