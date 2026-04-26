@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.13]
+        python-version: [3.14]
         os: [ubuntu-latest]
 
     steps:
@@ -91,7 +91,7 @@ jobs:
             dist/binary/*.tar.gz
             dist/binary/*.dmg
             dist/binary/*.AppImage
-        if: matrix.python-version == 3.13
+        if: matrix.python-version == 3.14
 
       - name: PyTest
         run: |
