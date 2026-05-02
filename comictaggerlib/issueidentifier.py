@@ -134,8 +134,6 @@ class IssueIdentifier:
         self.cancel = False
         self.current_progress = (0, 0)
 
-        self.match_list: list[IssueResult] = []
-
     def calculate_hash(self, image_data: bytes = b"", image: Image.Image | None = None) -> int:
         if self.image_hasher == 3:
             return ImageHasher(data=image_data, image=image).perception_hash()
@@ -190,16 +188,7 @@ class IssueIdentifier:
         self.log_msg(f"Found {len(issues)} series that have an issue #{terms['issue_number']}")
 
         final_cover_matching, full = self._cover_matching(terms, images, extra_images, issues)
-
-        # One more test for the case choosing limited series first issue vs a trade with the same cover:
-        # if we have a given issue count > 1 and the series from CV has count==1, remove it from match list
-        if len(final_cover_matching) > 1 and terms["issue_count"] is not None and terms["issue_count"] != 1:
-            for match in final_cover_matching.copy():
-                if match.md.issue_count == 1:
-                    self.log_msg(
-                        f"Removing series {match.series} [{match.md.series_id}] from consideration (only 1 issue)"
-                    )
-                    final_cover_matching.remove(match)
+        final_cover_matching = self._filter_tpb(md, final_cover_matching)
 
         best_score = 0
         if final_cover_matching:
@@ -662,41 +651,36 @@ class IssueIdentifier:
 
     # TODO:  "<p>Brazilian publication, translates <a data-ref-id=\"4050-4937\" href=\"/spawn/4050-4937/\" slug=\"spawn\">Spawn</a>.</p><p><b>Publishers</b></p><ul><li><span>#001-150: <a data-ref-id=\"4010-2094\" href=\"/abril/4010-2094/\" slug=\"abril\">Abril</a></span></li><li><span>#151-178: Pixel</span></li></ul>"
 
-    def _filter_tpb(
-        self, terms: SearchKeys, final: list[IssueResult], full: list[IssueResult]
-    ) -> tuple[list[IssueResult], list[IssueResult]]:
-        if not self.tpb_detection or (terms["issue_count"] is None and terms["page_count"] is None):
-            return final, full
-        # One more test for the case choosing limited series first issue vs a trade with the same cover:
-        # if we have an issue count == 1 or a page count > 100, we only include TPBs
-        # if len(self.match_list) >= 2:
-        issue_count = terms["issue_count"] or 0
-        page_count = terms["page_count"] or 0
-        if issue_count == 1:
-            if page_count > 100:
-                new_list = []
-                for match in self.match_list:
-                    if self._is_tpb(match):
-                        new_list.append(match)
-                    else:
-                        self.log_msg(
-                            f"Removing series {match.series.name} [{match.series.id}] from consideration (not a tpb)"
-                        )
-        # if we have a given issue count > 1 and the series from CV has count==1, remove it from match list
-        else:
-            new_list = []
-            for match in self.match_list:
-                if match.series.count_of_issues == 1:
-                    self.log_msg(
-                        f"Removing series {match.series.name} [{match.series.id}] from consideration (only 1 issue)"
-                    )
-                else:
-                    new_list.append(match)
+    def _filter_tpb(self, md: GenericMetadata, results: list[IssueResult]) -> list[IssueResult]:
+        if not self.tpb_detection:
+            return results
+        if utils.xlate_int(md.issue_count) is None and len(md.pages) < 1:
+            self.log_msg(f"Unable to filter TPBs: comic must have a page count > 0: {md.pages}")
+            return results
+        if len(results) == 1:
+            self.log_msg("Unable to filter TPBs: Only a single result")
+            return results
+        issue_count = utils.xlate_int(md.issue_count) or 0
+        new_list = []
+        for match in results:
+            # One more test for the case choosing limited series first issue vs a trade with the same cover:
+            if issue_count > 1 and match.series.count_of_issues == 1:
+                self.log_msg(
+                    f"Removing series {match.series.name} [{match.series.id}] from consideration local comic reports issue count for series at {issue_count} issues. Match issue count is {match.series.count_of_issues}"
+                )
+                continue
+
+            if self._is_tpb(match) == self._comic_is_tpb(md):
+                new_list.append(match)
+            else:
+                self.log_msg(
+                    f"Removing series {match.series.name} [{match.series.id}] from consideration match is tpb: {self._is_tpb(match)}, comic is tpb: {self._comic_is_tpb(md)}"
+                )
 
             if len(new_list) > 0:
-                self.match_list = new_list
+                results = new_list
 
-        return final, full
+        return results
 
     def _cover_matching(
         self,
