@@ -626,7 +626,11 @@ class IssueIdentifier:
     @staticmethod
     def _comic_is_tpb(md: GenericMetadata) -> bool:
         title = utils.sanitize_title(md.title or "", basic=True).split()
-        if "tpb" in title or ["trade", "paper"] == title or ["trade", "paperback"] == title or "trade" == title[0]:
+        logger.debug("Checking if metadata is a tpb: %r", md)
+        if title and (
+            "tpb" in title or ["trade", "paper"] == title or ["trade", "paperback"] == title or ["trade"] == title
+        ):
+            logger.debug("Title indicates a tpb: %r", title)
             return True
         comic_format = (utils.xlate(md.format) or "").casefold()
         if comic_format and comic_format not in (
@@ -642,8 +646,10 @@ class IssueIdentifier:
             "webcomic",
             "web comic",
         ):
+            logger.debug("Format probably indicates a tpb: %r", comic_format)
             return True
         if len(md.pages) > 100:
+            logger.debug("Page count indicates a tpb: %d", len(md.pages))
             return True
         return False
         # TODO: "<p>Collects <a data-ref-id=\"4050-4937\" href=\"/spawn/4050-4937/\" slug=\"spawn\">Spawn</a> 1-5.</p>"
