@@ -632,19 +632,29 @@ class IssueIdentifier:
         ):
             logger.debug("Title indicates a tpb: %r", title)
             return True
-        comic_format = (utils.xlate(md.format) or "").casefold()
-        if comic_format and comic_format not in (
-            ".1",
-            "0.1",
-            "-1",
-            "1/2",
-            "annotation",
-            "annotations",
-            "crossover",
-            "graphic novel",
-            "nsfw",
-            "webcomic",
-            "web comic",
+        comic_format = utils.sanitize_title(utils.xlate(md.format) or "", basic=True)
+        if comic_format and (comic_format) in (
+            "annual",
+            "anthology",
+            "box set",
+            "box-set",
+            "directors cut",
+            "giant",
+            "giant size",
+            "giant-size",
+            "hardcover",
+            "hard-cover",
+            "king",
+            "king size",
+            "king-size",
+            "one shot",
+            "one-shot",
+            "point 1",
+            "special",
+            "tpb",
+            "trade paper back",
+            "year 1",
+            "year one",
         ):
             logger.debug("Format probably indicates a tpb: %r", comic_format)
             return True
