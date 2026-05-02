@@ -93,8 +93,9 @@ class ImageFetcher:
         # first look in the DB
         image_data = self.get_image_from_cache(url)
         try:
-            i = Image.open(io.BytesIO(image_data))
-            i.verify()
+            if image_data:
+                i = Image.open(io.BytesIO(image_data))
+                i.verify()
         except PIL.UnidentifiedImageError:
             logger.error("Unable to identify cached image from %s", url)
             image_data = b""
