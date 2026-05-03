@@ -20,7 +20,8 @@ def test_get_publisher(publisher: str, expected: tuple[str, str], seed_publisher
 
 # tests that update_publishers will initially set values
 @pytest.mark.parametrize("publisher, expected", imprints)
-def test_set_publisher(publisher: str, expected: tuple[str, str]):
+def test_set_publisher(publisher: str, expected: tuple[str, str], monkeypatch):
+    monkeypatch.setattr("comicapi.utils.publishers", {})
     utils.update_publishers(seed_imprints)
     assert expected == utils.get_publisher(publisher)
 

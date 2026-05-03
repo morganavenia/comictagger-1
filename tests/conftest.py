@@ -58,7 +58,8 @@ def cbz_double_cover(tmp_path, tmp_comic):
 
 
 @pytest.fixture
-def load_publishers() -> None:
+def load_publishers(monkeypatch) -> None:
+    monkeypatch.setattr("comicapi.utils.publishers", {})
     utils.load_publishers()
 
     def add_publisher_to_lexer(publisher: str) -> None:

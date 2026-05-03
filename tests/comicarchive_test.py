@@ -54,20 +54,20 @@ def test_write_cr(tmp_comic):
 
 
 @pytest.mark.xfail(not (comicapi.archivers.rar.rar_support and shutil.which("rar")), reason="rar support")
-def test_save_cr_rar(tmp_path, md_saved):
+def test_save_cr_rar(tmp_path, md_saved, md):
     cbr_path = datadir / "fake_cbr.cbr"
     shutil.copy(cbr_path, tmp_path)
 
     tmp_comic = comicapi.comicarchive.ComicArchive(tmp_path / cbr_path.name)
     assert tmp_comic.seems_to_be_a_comic_archive()
-    assert tmp_comic.write_tags(comicapi.genericmetadata.md_test, "cr")
+    assert tmp_comic.write_tags(md, "cr")
 
-    md = tmp_comic.read_tags("cr")
+    new_md = tmp_comic.read_tags("cr")
 
     # This is a fake CBR we don't need to care about the pages for this test
-    md.pages = []
+    new_md.pages = []
     md_saved.pages = []
-    assert md == md_saved
+    assert new_md == md_saved
 
 
 def test_page_type_write(tmp_comic):
@@ -80,13 +80,13 @@ def test_page_type_write(tmp_comic):
     md = tmp_comic.read_tags("cr")
 
 
-def test_invalid_zip(tmp_comic: comicapi.comicarchive.ComicArchive):
+def test_invalid_zip(tmp_comic: comicapi.comicarchive.ComicArchive, md):
     with open(tmp_comic.path, mode="b+r") as f:
         # Corrupting the first file only breaks the first file. If it is never read then no exception will be raised
         f.seek(-10, os.SEEK_END)  # seek to a probably bad place in th Central Directory and write some bytes
         f.write(b"PK\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000")
 
-    result = tmp_comic.write_tags(comicapi.genericmetadata.md_test, "cr")  # This is not the first file
+    result = tmp_comic.write_tags(md, "cr")  # This is not the first file
     assert result
     assert not tmp_comic.seems_to_be_a_comic_archive()  # Calls archiver.is_valid
 

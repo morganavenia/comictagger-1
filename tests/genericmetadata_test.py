@@ -9,14 +9,14 @@ import comicapi.merge
 import testing.comicdata
 
 
-def test_apply_default_page_list(tmp_path):
-    md = comicapi.genericmetadata.GenericMetadata()
-    md.overlay(comicapi.genericmetadata.md_test)
-    md.pages = []
-    md.apply_default_page_list(["testing"])
+def test_apply_default_page_list(tmp_path, md):
+    new_md = comicapi.genericmetadata.GenericMetadata()
+    new_md.overlay(comicapi.genericmetadata.md_test)
+    new_md.pages = []
+    new_md.apply_default_page_list(["testing"])
 
-    assert md.pages[0].display_index == 0
-    assert md.pages[0].archive_index == 0
+    assert new_md.pages[0].display_index == 0
+    assert new_md.pages[0].archive_index == 0
 
 
 @pytest.mark.parametrize("md, new, expected", testing.comicdata.metadata)

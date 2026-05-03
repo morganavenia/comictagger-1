@@ -20,16 +20,16 @@ if not tags:
 
 
 @pytest.mark.parametrize("tag_type", tags)
-def test_metadata(mock_version, tmp_comic, md_saved, tag_type):
+def test_metadata(mock_version, tmp_comic, md_saved, tag_type, md):
     tag = tag_type(mock_version[0])
     supported_attributes = tag.supported_attributes
-    tag.write_tags(comicapi.genericmetadata.md_test, tmp_comic.archiver)
+    tag.write_tags(md, tmp_comic.archiver)
     written_metadata = tag.read_tags(tmp_comic.archiver)
-    md = md_saved._get_clean_metadata(*supported_attributes)
+    new_md = md_saved._get_clean_metadata(*supported_attributes)
 
     # Hack back in the pages variable because CoMet supports identifying the cover by the filename
     if tag.id == "comet":
-        md.pages = [
+        new_md.pages = [
             comicapi.genericmetadata.PageMetadata(
                 archive_index=0,
                 bookmark="",
@@ -44,7 +44,7 @@ def test_metadata(mock_version, tmp_comic, md_saved, tag_type):
     else:
         written_metadata = written_metadata._get_clean_metadata(*supported_attributes)
 
-    assert written_metadata == md
+    assert written_metadata == new_md
 
 
 @pytest.mark.parametrize("metadata, expected", testing.comicdata.metadata_prepared)

@@ -218,8 +218,16 @@ metadata_keys = [
 ]
 
 credits = [
-    (comicapi.genericmetadata.md_test, "writer", comicapi.genericmetadata.Credit(person="Dara Naraghi", role="Writer")),
-    (comicapi.genericmetadata.md_test, "writeR", comicapi.genericmetadata.Credit(person="Dara Naraghi", role="Writer")),
+    (
+        comicapi.genericmetadata.md_test.copy(),
+        "writer",
+        comicapi.genericmetadata.Credit(person="Dara Naraghi", role="Writer"),
+    ),
+    (
+        comicapi.genericmetadata.md_test.copy(),
+        "writeR",
+        comicapi.genericmetadata.Credit(person="Dara Naraghi", role="Writer"),
+    ),
     (
         comicapi.genericmetadata.md_test.replace(
             credits=[

@@ -4,7 +4,6 @@ import pathlib
 
 import pytest
 
-from comicapi.genericmetadata import md_test
 from comictaggerlib import filerenamer
 from testing.filenames import file_renames, folder_names
 
@@ -12,9 +11,9 @@ from testing.filenames import file_renames, folder_names
 @pytest.mark.parametrize(
     "template, move, move_only, smart_cleanup, platform, expected, exception, warnings", file_renames
 )
-def test_rename(template, move, move_only, smart_cleanup, platform, expected, exception, warnings):
+def test_rename(md, template, move, move_only, smart_cleanup, platform, expected, exception, warnings):
     fr = filerenamer.FileRenamer(None, platform=platform)
-    fr.set_metadata(md_test, "cory doctorow #1.cbz")
+    fr.set_metadata(md, "cory doctorow #1.cbz")
     fr.move = move
     fr.move_only = move_only
     fr.set_template(template)
