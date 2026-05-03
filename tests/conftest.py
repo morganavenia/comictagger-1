@@ -220,7 +220,9 @@ def config(tmp_path):
     app = App()
     app.register_settings(False)
 
-    defaults = app.parse_settings(comictaggerlib.ctsettings.ComicTaggerPaths(tmp_path / "config"), "")
+    defaults = app.parse_settings(
+        comictaggerlib.ctsettings.ComicTaggerPaths(tmp_path / "config"), "--config", str(tmp_path / "config")
+    )
     defaults[0].Runtime_Options__config.user_config_dir.mkdir(parents=True, exist_ok=True)
     defaults[0].Runtime_Options__config.user_cache_dir.mkdir(parents=True, exist_ok=True)
     defaults[0].Runtime_Options__config.user_log_dir.mkdir(parents=True, exist_ok=True)
@@ -241,7 +243,7 @@ def plugin_config(tmp_path, comicvine_api):
     app.load_plugins(ns)
     app.register_settings(False)
 
-    defaults = app.parse_settings(ns.config, "")
+    defaults = app.parse_settings(ns.config, "--config", str(tmp_path / "config"))
     yield (defaults, app.talkers)
 
 
