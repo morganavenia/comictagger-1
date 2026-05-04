@@ -316,6 +316,7 @@ class App:
                     True,
                 )
             try:
+                import comictaggerlib.graphics.resources  # noqa: F401
                 from comictaggerlib import gui
 
                 if not gui.qt_available:
