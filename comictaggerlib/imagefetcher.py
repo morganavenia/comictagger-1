@@ -68,8 +68,9 @@ class ImageFetcher:
                 self.qt_available = True
             except ImportError:
                 self.qt_available = False
-        if not os.path.exists(self.db_file):
+        if not self.db_file.exists():
             self.create_image_db()
+        self.cache_folder.mkdir(parents=True, exist_ok=True)
 
         if self.qt_available:
             self.nam = QtNetwork.QNetworkAccessManager()
@@ -171,7 +172,7 @@ class ImageFetcher:
         # wipe any existing image cache folder too
         if os.path.isdir(self.cache_folder):
             shutil.rmtree(self.cache_folder)
-        os.makedirs(self.cache_folder)
+        self.cache_folder.mkdir(parents=True, exist_ok=True)
 
         # create tables
         with contextlib.closing(sqlite3.connect(self.db_file)) as con, contextlib.closing(con.cursor()) as cur:
