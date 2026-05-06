@@ -16,13 +16,14 @@
 # limitations under the License.
 from __future__ import annotations
 
+import contextlib
 import datetime
 import io
 import logging
 import os
 import pathlib
 import shutil
-import sqlite3 as lite
+import sqlite3
 import tempfile
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -173,15 +174,11 @@ class ImageFetcher:
         os.makedirs(self.cache_folder)
 
         # create tables
-        with lite.connect(self.db_file) as con:
-            cur = con.cursor()
-
+        with contextlib.closing(sqlite3.connect(self.db_file)) as con, contextlib.closing(con.cursor()) as cur:
             cur.execute("CREATE TABLE Images(url TEXT,filename TEXT,timestamp TEXT,PRIMARY KEY (url))")
 
     def add_image_to_cache(self, url: str, image_data: bytes) -> None:
-        with lite.connect(self.db_file) as con:
-            cur = con.cursor()
-
+        with contextlib.closing(sqlite3.connect(self.db_file)) as con, contextlib.closing(con.cursor()) as cur:
             timestamp = datetime.datetime.now()
 
             tmp_fd, filename = tempfile.mkstemp(dir=self.cache_folder, prefix="img")
@@ -191,9 +188,7 @@ class ImageFetcher:
             cur.execute("INSERT or REPLACE INTO Images VALUES(?, ?, ?)", (url, filename, timestamp))
 
     def get_image_from_cache(self, url: str) -> bytes:
-        with lite.connect(self.db_file) as con:
-            cur = con.cursor()
-
+        with contextlib.closing(sqlite3.connect(self.db_file)) as con, contextlib.closing(con.cursor()) as cur:
             cur.execute("SELECT filename FROM Images WHERE url=?", [url])
             row = cur.fetchone()
 
