@@ -49,6 +49,7 @@ def identify_comic(
         cache_dir=config.Runtime_Options__config.user_cache_dir,
         border_crop_percent=config.Issue_Identifier__border_crop_percent,
         talker=talker,
+        tpb_detection=config.Issue_Identifier__tpb_detection,
     )
     ii = IssueIdentifier(
         iio,

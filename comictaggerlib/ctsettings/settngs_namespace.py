@@ -63,6 +63,7 @@ class SettngsNS(settngs.TypedNS):
     Issue_Identifier__series_match_identify_thresh: int
     Issue_Identifier__series_match_search_thresh: int
     Issue_Identifier__border_crop_percent: int
+    Issue_Identifier__tpb_detection: bool
     Issue_Identifier__sort_series_by_year: bool
     Issue_Identifier__exact_series_matches_first: bool
 
@@ -191,6 +192,7 @@ class Issue_Identifier(typing.TypedDict):
     series_match_identify_thresh: int
     series_match_search_thresh: int
     border_crop_percent: int
+    tpb_detection: bool
     sort_series_by_year: bool
     exact_series_matches_first: bool
 

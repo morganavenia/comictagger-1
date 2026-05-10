@@ -213,6 +213,7 @@ metadata_keys = [
             "alternate_number": "2",
             "imprint": "craphound.com",
             "publisher": "IDW Publishing",
+            "page_count": 24,
         },
     ),
 ]
